@@ -70,15 +70,17 @@ const VueDoc = defineComponent({
 
 const destinationPageNumbers = async (
   bytes: Uint8Array,
+  ids: readonly string[] = TARGETS,
 ): Promise<Record<string, number>> => {
   installPdfCanvasGlobals()
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
   const doc = await pdfjs.getDocument({ data: Uint8Array.from(bytes), useWorkerFetch: false, verbosity: 0 }).promise
   try {
     const pages: Record<string, number> = {}
-    for (const id of TARGETS) {
-      const dest = await doc.getDestination(id) as [{ num: number, gen: number }]
-      pages[id] = (await doc.getPageIndex(dest[0])) + 1
+    for (const id of ids) {
+      const dest = await doc.getDestination(id) as [{ num: number, gen: number }] | null
+      expect(dest, `named destination "${id}" missing from the PDF`).not.toBeNull()
+      pages[id] = (await doc.getPageIndex(dest![0])) + 1
     }
     return pages
   }
@@ -118,5 +120,85 @@ describe('internal links (paired React/Vue)', () => {
     ])
     expect(vueDest).toEqual(reactDest)
     expect(vueDest).toEqual({ alpha: 2, beta: 3 })
+  }, 20_000)
+})
+
+// Vue-only destination anchoring on the SINGLE-pass path (the shipped path for
+// link-only documents). React PDF cannot be the oracle here: its destination
+// table is last-writer-wins, the exact behavior these tests reject.
+describe('single-pass destination anchoring', () => {
+  const renderVue = async (component: Parameters<typeof mountPdfComponent>[0]) => {
+    const mounted = await mountPdfComponent(component, {})
+    try {
+      return (await renderDocument(mounted.document as unknown as DocumentNode)).bytes
+    }
+    finally {
+      mounted.unmount()
+    }
+  }
+
+  it('anchors a page-spanning id at its first page without multi-pass', async () => {
+    const SpanningDoc = defineComponent({
+      name: 'SpanningDoc',
+      setup() {
+        return () =>
+          h(PdfDocument, {}, {
+            default: () => [
+              h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
+                default: () => h(PdfLink, { src: '#long', style: { fontSize: 14 } }, { default: () => 'Jump to long' }),
+              }),
+              h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
+                default: () => h(PdfView, { id: 'long' }, {
+                  default: () => Array.from({ length: 80 }, (_, i) =>
+                    h(PdfText, { style: { fontSize: 12, marginBottom: 4 } }, { default: () => `long line ${i + 1}` }),
+                  ),
+                }),
+              }),
+            ],
+          })
+      },
+    })
+
+    const bytes = await renderVue(SpanningDoc)
+    const parsed = await parsePdf(bytes)
+    const startPage = parsed.pages.find(p => p.text.includes('long line 1'))!.number
+    const endPage = parsed.pages.find(p => p.text.includes('long line 80'))!.number
+    expect(endPage).toBeGreaterThan(startPage)
+
+    expect(await destinationPageNumbers(bytes, ['long'])).toEqual({ long: startPage })
+  }, 20_000)
+
+  it('keeps the destination of a fixed node repeated on every page', async () => {
+    // Pagination reuses ONE node object (and props object) for a fixed node on
+    // every page, so the anchoring pass must copy-on-write: an in-place delete
+    // would erase the destination entirely.
+    const FixedDoc = defineComponent({
+      name: 'FixedDoc',
+      setup() {
+        return () =>
+          h(PdfDocument, {}, {
+            default: () => [
+              h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
+                default: () => [
+                  h(PdfView, { id: 'brand', fixed: true, style: { position: 'absolute', top: 12, left: 40 } }, {
+                    default: () => h(PdfText, { style: { fontSize: 9 } }, { default: () => 'Fieldnote Studio' }),
+                  }),
+                  h(PdfLink, { src: '#brand', style: { fontSize: 14, marginTop: 40 } }, { default: () => 'Jump to brand header' }),
+                  ...Array.from({ length: 60 }, (_, i) =>
+                    h(PdfText, { style: { fontSize: 12, marginBottom: 4 } }, { default: () => `body line ${i + 1}` }),
+                  ),
+                ],
+              }),
+            ],
+          })
+      },
+    })
+
+    const bytes = await renderVue(FixedDoc)
+    const parsed = await parsePdf(bytes)
+    expect(parsed.pageCount).toBeGreaterThan(1) // the fixed node repeats
+
+    // The destination still exists and resolves to the first page.
+    expect(await destinationPageNumbers(bytes, ['brand'])).toEqual({ brand: 1 })
   }, 20_000)
 })

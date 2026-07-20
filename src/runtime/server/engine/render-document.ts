@@ -197,26 +197,57 @@ export const extractDestinationPages = (
 }
 
 /**
- * Before serialization, delete `props.id` from every fragment of an id whose
- * destination was already anchored on an earlier page. pdfkit's NameTree (and
- * upstream `setDestination`, called per node) is last-writer-wins, so without
- * this a page-spanning section's destination would point at its LAST page. After
- * stripping, the single surviving `setDestination` call anchors the destination
- * at the section's first page — matching `extractDestinationPages` and the
- * printed TOC number. The layout is derived and disposable (see CONTRACTS.md), so
- * mutating it here is legitimate.
+ * Before serialization, drop `props.id` from every appearance of an id after its
+ * first page. pdfkit's NameTree (and upstream `setDestination`, called per node)
+ * is last-writer-wins, so without this a page-spanning section's destination
+ * would point at its LAST page. After the drop, the single surviving
+ * `setDestination` call anchors the destination at the section's first page —
+ * matching `extractDestinationPages` and the printed TOC number.
+ *
+ * The drop is copy-on-write, never an in-place delete: pagination REUSES node
+ * objects across pages — a `fixed` node is the SAME object (and props object) on
+ * every page it repeats on, and only split fragments get fresh props — so an
+ * in-place delete on a later page would erase the first page's destination too.
+ * Later appearances are replaced with shallow copies (props without `id`), and
+ * the copy propagates up through the ancestor path so shared subtrees on earlier
+ * pages stay untouched. The layout is derived and disposable (see CONTRACTS.md),
+ * so replacing nodes inside it is legitimate.
  */
 const anchorDestinationsAtFirstPage = (layout: SafeDocumentNode): void => {
   const seen = new Set<string>()
 
-  for (const page of documentPages(layout)) {
-    visitPageNodes(page, (node) => {
-      const id = nodeId(node)
-      if (id === undefined) return
-      if (seen.has(id)) delete node.props.id
-      else seen.add(id)
-    })
+  const strip = (node: PdfNode): PdfNode => {
+    if (!('props' in node)) return node
+    const element = node as PdfElementNode
+    let next = element
+
+    const id = nodeId(element)
+    if (id !== undefined) {
+      if (!seen.has(id)) {
+        seen.add(id)
+      }
+      else {
+        const { id: _dropped, ...rest } = element.props
+        next = { ...element, props: rest }
+      }
+    }
+
+    const children = next.children
+    if (Array.isArray(children)) {
+      let changed = false
+      const stripped = children.map((child) => {
+        const result = strip(child)
+        if (result !== child) changed = true
+        return result
+      })
+      if (changed) next = { ...next, children: stripped }
+    }
+
+    return next
   }
+
+  const root = layout as unknown as PdfElementNode
+  root.children = documentPages(layout).map(strip) as PdfElementNode['children']
 }
 
 // Serialization seam. Paints one already-laid-out document to PDF bytes.
