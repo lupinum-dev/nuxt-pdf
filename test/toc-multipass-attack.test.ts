@@ -34,10 +34,11 @@ import { installPdfCanvasGlobals, parsePdf } from './utils/pdf'
 //
 // They HOLD, and are asserted green below.
 //
-// Attack 2 (convergence to a WRONG number) surfaced ONE genuine defect: when the
-// id-carrying node spans a page boundary, the TOC entry resolves to the section's
-// LAST page instead of its first. That is committed as an `it.skip` documenting
-// the defect (see bottom of file) and reported as a finding.
+// Attack 2 (id on a page-spanning node) surfaced a genuine defect in the spike:
+// the destination resolved to the section's LAST page instead of its first. That
+// is now FIXED — `extractDestinationPages` is first-writer-wins and serialization
+// anchors the destination at the first fragment — and Attack 2 is a permanent
+// regression test at the bottom of this file.
 // ===========================================================================
 
 const mountedSource = (
@@ -343,8 +344,8 @@ const SplitDoc = defineComponent({
   },
 })
 
-describe('ATTACK 2 — id on a page-spanning container (FINDING: wrong TOC page)', () => {
-  it.skip('should point the TOC entry at the page where the section STARTS', async () => {
+describe('ATTACK 2 — id on a page-spanning container points at the section START', () => {
+  it('points the TOC entry and named destination at the page where the section STARTS', async () => {
     const m = await mountPdfComponent(SplitDoc, { resolved: {} })
     const result = await renderDocumentMultiPass(mountedSource(m))
     const parsed = await parsePdf(result.bytes)
@@ -352,10 +353,12 @@ describe('ATTACK 2 — id on a page-spanning container (FINDING: wrong TOC page)
     const endPage = parsed.pages.find(p => p.text.includes('big line 80'))!.number
     expect(endPage).toBeGreaterThan(startPage) // section genuinely spans pages
 
-    // DESIRED: the TOC entry and the named destination both point at the section
-    // START. ACTUAL (defect): both resolve to the section's LAST page.
-    expect(result.pages.big).toBe(startPage) // FAILS: extracts endPage
-    expect(parsed.pages[0]!.text).toContain(`Big Section ..... ${startPage}`) // FAILS
+    // The TOC entry and the named destination both point at the section START.
+    // `extractDestinationPages` is first-writer-wins and serialization anchors the
+    // destination at the first fragment, so a section spanning pages 2–3 prints "2"
+    // and its click jumps to page 2, not the last fragment's page.
+    expect(result.pages.big).toBe(startPage)
+    expect(parsed.pages[0]!.text).toContain(`Big Section ..... ${startPage}`)
 
     installPdfCanvasGlobals()
     const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
@@ -363,7 +366,7 @@ describe('ATTACK 2 — id on a page-spanning container (FINDING: wrong TOC page)
     const dest = await doc.getDestination('big') as [{ num: number, gen: number }]
     const destPage = (await doc.getPageIndex(dest[0])) + 1
     await doc.destroy()
-    expect(destPage).toBe(startPage) // FAILS: jumps to endPage
+    expect(destPage).toBe(startPage)
     m.unmount()
   })
 })

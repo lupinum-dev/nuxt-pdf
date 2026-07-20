@@ -17,12 +17,16 @@ import {
 import {
   PDF_PRIMITIVES,
   type PdfElementNode,
+  type PdfNode,
 } from '../../renderer/types'
 
 export interface PdfEngineOptions {
   compress?: boolean
   fontStore?: PdfFontStore
 }
+
+/** id (named destination) → 1-based page number the destination resolves to. */
+export type DestinationPageMap = Record<string, number>
 
 export interface PdfEngineResult {
   bytes: Uint8Array
@@ -143,6 +147,78 @@ export const layoutPdfTree = async (
   }
 }
 
+// Depth-first walk over the element nodes of one final page tree. The laid-out
+// SafeDocumentNode replaces some nodes' `children` with other shapes (e.g. a
+// laid-out TEXT carries `lines`, an SVG leaf measures itself), so recurse only
+// into an actual array of children.
+const visitPageNodes = (
+  page: PdfNode,
+  visit: (node: PdfElementNode) => void,
+): void => {
+  if (!('props' in page)) return
+  visit(page as PdfElementNode)
+  const children = (page as PdfElementNode).children
+  if (Array.isArray(children)) {
+    for (const child of children) visitPageNodes(child, visit)
+  }
+}
+
+const documentPages = (layout: SafeDocumentNode): PdfNode[] =>
+  ((layout as unknown as PdfElementNode).children ?? []) as PdfNode[]
+
+const nodeId = (node: PdfElementNode): string | undefined => {
+  const id = node.props?.id
+  return typeof id === 'string' && id.length > 0 ? id : undefined
+}
+
+/**
+ * Map every `id` (named destination) to the **first** 1-based page it appears
+ * on. `id` is the key `render/src/operations/setDestination.ts` emits and that a
+ * Link `src="#id"` jumps to (`setLink.ts`), so this map is the table-of-contents'
+ * source of truth. Pagination splits a node that spans a page boundary into a
+ * fragment on every page it touches, each keeping `props.id`; a destination names
+ * where a section STARTS, so the first page wins (`first-writer-wins`).
+ * `layout.children` is the final ordered page list produced by `resolvePagination`.
+ */
+export const extractDestinationPages = (
+  layout: SafeDocumentNode,
+): DestinationPageMap => {
+  const pages: DestinationPageMap = {}
+
+  documentPages(layout).forEach((page, index) => {
+    const pageNumber = index + 1
+    visitPageNodes(page, (node) => {
+      const id = nodeId(node)
+      if (id !== undefined && !(id in pages)) pages[id] = pageNumber
+    })
+  })
+
+  return pages
+}
+
+/**
+ * Before serialization, delete `props.id` from every fragment of an id whose
+ * destination was already anchored on an earlier page. pdfkit's NameTree (and
+ * upstream `setDestination`, called per node) is last-writer-wins, so without
+ * this a page-spanning section's destination would point at its LAST page. After
+ * stripping, the single surviving `setDestination` call anchors the destination
+ * at the section's first page — matching `extractDestinationPages` and the
+ * printed TOC number. The layout is derived and disposable (see CONTRACTS.md), so
+ * mutating it here is legitimate.
+ */
+const anchorDestinationsAtFirstPage = (layout: SafeDocumentNode): void => {
+  const seen = new Set<string>()
+
+  for (const page of documentPages(layout)) {
+    visitPageNodes(page, (node) => {
+      const id = nodeId(node)
+      if (id === undefined) return
+      if (seen.has(id)) delete node.props.id
+      else seen.add(id)
+    })
+  }
+}
+
 // Serialization seam. Paints one already-laid-out document to PDF bytes.
 export const serializePdfLayout = async (
   props: DocumentMetadata,
@@ -150,6 +226,7 @@ export const serializePdfLayout = async (
   compress: boolean,
 ): Promise<Uint8Array> => {
   try {
+    anchorDestinationsAtFirstPage(layout)
     const context = createContext(props, compress)
     const stream = renderPDF(
       context as unknown as Parameters<typeof renderPDF>[0],

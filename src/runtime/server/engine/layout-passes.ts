@@ -2,7 +2,14 @@ import type { DocumentNode, SafeDocumentNode } from '@react-pdf/layout'
 import { createPdfFontStore, type PdfFontStore } from '../fonts'
 import { NuxtPdfError, PDF_ERROR_CODES } from '../../shared/errors'
 import type { PdfElementNode, PdfNode } from '../../renderer/types'
-import { layoutPdfTree, serializePdfLayout } from './render-document'
+import {
+  extractDestinationPages,
+  layoutPdfTree,
+  serializePdfLayout,
+  type DestinationPageMap,
+} from './render-document'
+
+export { extractDestinationPages, type DestinationPageMap }
 
 // SPIKE (internal, not publicly exported). Proves the multi-pass layout
 // architecture that a table of contents with correct page numbers requires.
@@ -18,9 +25,6 @@ import { layoutPdfTree, serializePdfLayout } from './render-document'
 // its input as immutable for every non-bookmark node (Object.assign copies at
 // each step; see CONTRACTS.md "Layout purity contract"), so the same mounted tree
 // is safe to lay out repeatedly without cloning.
-
-/** id (named destination) → 1-based final page number. */
-export type DestinationPageMap = Record<string, number>
 
 /**
  * A mountable document whose page-number feedback can be re-fed between passes.
@@ -53,32 +57,31 @@ export interface MultiPassResult {
 
 const DEFAULT_MAX_PASSES = 5
 
-/**
- * Walk the SafeDocumentNode's final per-page trees and map every node's `id`
- * prop to its 1-based page number. `id` is the named-destination key that
- * `render/src/operations/setDestination.ts` emits and that a Link `src="#id"`
- * jumps to (`render/src/operations/setLink.ts`), so this map is exactly the
- * TOC's source of truth. `layout.children` is the final, ordered page list
- * produced by `resolvePagination`.
- */
-export const extractDestinationPages = (
-  layout: SafeDocumentNode,
-): DestinationPageMap => {
-  const pages: DestinationPageMap = {}
-  const documentChildren = (layout as unknown as PdfElementNode).children ?? []
+// `resolveBookmarks` is the one layout step that writes derived state back onto
+// the input tree: it REPLACES `props.bookmark` with a resolved `{ ref, parent,
+// …bookmark }` hierarchy on the mounted node (`resolveBookmarks.ts:52`; see
+// CONTRACTS.md "Layout purity contract"). Across passes that resolved object
+// feeds back into the next pass's `getBookmarkValue`, whose `{ …bookmark }` spread
+// carries the STALE `ref`/`parent` forward and corrupts the outline hierarchy.
+// The reset restores each bookmark-carrying node's ORIGINAL authored value before
+// every pass. resolveBookmarks only reassigns the reference (never mutates the
+// object), so restoring the captured reference is a complete reset.
+type BookmarkSnapshot = ReadonlyArray<readonly [PdfElementNode, unknown]>
 
-  documentChildren.forEach((page, index) => {
-    const pageNumber = index + 1
-    const visit = (node: PdfNode): void => {
-      if (!('children' in node)) return
-      const id = (node as PdfElementNode).props?.id
-      if (typeof id === 'string' && id.length > 0) pages[id] = pageNumber
-      for (const child of (node as PdfElementNode).children) visit(child)
-    }
-    visit(page as PdfNode)
-  })
+const snapshotBookmarks = (root: PdfElementNode): BookmarkSnapshot => {
+  const entries: Array<readonly [PdfElementNode, unknown]> = []
+  const visit = (node: PdfNode): void => {
+    if (!('children' in node)) return
+    const element = node as PdfElementNode
+    if ('bookmark' in element.props) entries.push([element, element.props.bookmark])
+    for (const child of element.children) visit(child)
+  }
+  visit(root)
+  return entries
+}
 
-  return pages
+const restoreBookmarks = (snapshot: BookmarkSnapshot): void => {
+  for (const [node, bookmark] of snapshot) node.props.bookmark = bookmark
 }
 
 const samePages = (a: DestinationPageMap, b: DestinationPageMap): boolean => {
@@ -107,12 +110,14 @@ export const renderDocumentMultiPass = async (
 ): Promise<MultiPassResult> => {
   const fontStore = options.fontStore ?? createPdfFontStore()
   const maxPasses = options.maxPasses ?? DEFAULT_MAX_PASSES
+  const bookmarks = snapshotBookmarks(source.document as unknown as PdfElementNode)
 
   let fed: DestinationPageMap = {}
   let produced: DestinationPageMap = {}
 
   for (let pass = 1; pass <= maxPasses; pass += 1) {
     await source.feed(fed)
+    restoreBookmarks(bookmarks)
     const layout = await layoutPdfTree(source.document, fontStore)
     produced = extractDestinationPages(layout)
 
