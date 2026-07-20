@@ -1,15 +1,19 @@
 import { Buffer } from 'node:buffer'
-import FontStore from '@react-pdf/font'
+import type FontStore from '@react-pdf/font'
 import layoutDocument, {
   type DocumentNode,
   type SafeDocumentNode,
 } from '@react-pdf/layout'
 import PDFDocument from '@react-pdf/pdfkit'
 import renderPDF from '@react-pdf/render'
+import {
+  createPdfFontStore,
+  type PdfFontStore,
+} from '../fonts'
 
 export interface PdfEngineOptions {
   compress?: boolean
-  fontStore?: FontStore
+  fontStore?: PdfFontStore
 }
 
 export interface PdfEngineResult {
@@ -69,8 +73,11 @@ export const renderDocument = async (
     throw new TypeError(`Expected a DOCUMENT root, received ${document.type}`)
   }
 
-  const fontStore = options.fontStore ?? new FontStore()
-  const layout = await runLayout(document, fontStore)
+  const fontStore = options.fontStore ?? createPdfFontStore()
+  const layout = await runLayout(
+    document,
+    fontStore as unknown as FontStore,
+  )
   const context = createContext(document.props, options.compress ?? true)
   const stream = renderPDF(
     context as unknown as Parameters<typeof renderPDF>[0],
@@ -82,5 +89,3 @@ export const renderDocument = async (
     layout,
   }
 }
-
-export { FontStore }

@@ -1,3 +1,11 @@
+import {
+  copyFile,
+  mkdir,
+  mkdtemp,
+  rm,
+} from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { DocumentNode } from '@react-pdf/layout'
 import {
@@ -6,10 +14,9 @@ import {
 } from '@react-pdf/renderer'
 import { describe, expect, it } from 'vitest'
 import { mountPdfComponent } from '../src/runtime/renderer'
-import {
-  FontStore,
-  renderDocument,
-} from '../src/runtime/server/engine/render-document'
+import { bundlePdfFonts } from '../src/build/fonts'
+import { renderDocument } from '../src/runtime/server/engine/render-document'
+import { createPdfFontStore } from '../src/runtime/server/fonts'
 import { createReactConformanceDocument } from './fixtures/react-conformance'
 import { VueConformanceDocument } from './fixtures/vue-conformance'
 import {
@@ -36,17 +43,35 @@ describe('React PDF compatibility', () => {
       createReactConformanceDocument({ imagePath }),
     ))
 
-    const mounted = await mountPdfComponent(VueConformanceDocument, {
-      imagePath,
-      showConditional: true,
-    })
-    const fontStore = new FontStore()
-    fontStore.register({ family: 'Roboto', src: fontPath })
-    const vueResult = await renderDocument(
-      mounted.document as unknown as DocumentNode,
-      { fontStore },
-    )
-    mounted.unmount()
+    const temporaryRoot = await mkdtemp(join(tmpdir(), 'nuxt-pdf-font-'))
+    const fontRoot = join(temporaryRoot, 'pdfs/fonts')
+    const bundledFontPath = join(fontRoot, 'Roboto-Regular.ttf')
+    await mkdir(dirname(bundledFontPath), { recursive: true })
+    await copyFile(fontPath, bundledFontPath)
+
+    let vueResult: Awaited<ReturnType<typeof renderDocument>>
+    try {
+      const fonts = await bundlePdfFonts(
+        [{ family: 'Roboto', src: 'Roboto-Regular.ttf' }],
+        { fontRoots: [fontRoot] },
+      )
+      const mounted = await mountPdfComponent(VueConformanceDocument, {
+        imagePath,
+        showConditional: true,
+      })
+      try {
+        vueResult = await renderDocument(
+          mounted.document as unknown as DocumentNode,
+          { fontStore: createPdfFontStore(fonts) },
+        )
+      }
+      finally {
+        mounted.unmount()
+      }
+    }
+    finally {
+      await rm(temporaryRoot, { force: true, recursive: true })
+    }
 
     expect(hasPdfHeader(reactBytes)).toBe(true)
     expect(hasPdfHeader(vueResult.bytes)).toBe(true)
