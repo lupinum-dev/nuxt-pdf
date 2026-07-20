@@ -110,6 +110,40 @@ definePdf({})
     mounted.unmount()
   })
 
+  it('injects the auto-imported composable only when used and not already imported', async () => {
+    const composables = resolve('src/runtime/composables/index')
+    const importLine = `import { usePdfPageNumbers } from ${JSON.stringify(composables)}`
+    const usesFile = resolve('test/fixtures/pdf-sfc/uses-composable.vue')
+    const importsFile = resolve('test/fixtures/pdf-sfc/imports-composable.vue')
+    const plainFile = resolve('test/fixtures/pdf-sfc/plain.vue')
+
+    const uses = `<script setup lang="ts">
+definePdf({})
+const pages = usePdfPageNumbers()
+</script>
+<template><PdfDocument><PdfPage><PdfText>{{ pages.a ?? '' }}</PdfText></PdfPage></PdfDocument></template>`
+    const injected = await compilePdfSfc(uses, usesFile, 'template', false, composables)
+    expect(injected.code).toContain(importLine)
+
+    // Already imported by the author: no duplicate injection.
+    const alreadyImported = `<script setup lang="ts">
+import { usePdfPageNumbers } from ${JSON.stringify(composables)}
+definePdf({})
+const pages = usePdfPageNumbers()
+</script>
+<template><PdfDocument><PdfPage><PdfText>{{ pages.a ?? '' }}</PdfText></PdfPage></PdfDocument></template>`
+    const notDoubled = await compilePdfSfc(alreadyImported, importsFile, 'template', false, composables)
+    expect(notDoubled.code.match(/usePdfPageNumbers.*from/g)?.length).toBe(1)
+
+    // Never referenced: nothing injected.
+    const plain = `<script setup lang="ts">
+definePdf({})
+</script>
+<template><PdfDocument><PdfPage><PdfText>Hi</PdfText></PdfPage></PdfDocument></template>`
+    const untouched = await compilePdfSfc(plain, plainFile, 'template', false, composables)
+    expect(untouched.code).not.toContain('usePdfPageNumbers')
+  })
+
   it('compiles discovered components with typed props and slots but no metadata', async () => {
     const source = await readFile(lineItemFile, 'utf8')
     const result = await compilePdfSfc(source, lineItemFile, 'component')
