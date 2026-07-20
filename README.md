@@ -343,15 +343,16 @@ await comparePdfSnapshot(bytes, './test/baselines/invoice')
 
 Nuxt PDF is currently designed for invoices, reports, certificates, tickets,
 and similar server-generated documents. The release does not include a table
-engine, CSS compiler, HTML printing, DevTools studio, browser renderer, remote
-asset fetcher, deterministic PDF bytes, forms, signing, tagged PDF, SVG
-primitives, or an independent layout engine.
+engine, CSS compiler, HTML printing, DevTools studio, browser renderer,
+deterministic PDF bytes, forms, signing, tagged PDF, or an independent layout
+engine.
 
 Dynamic text callbacks are synchronous and must return a string or number.
-Apply `lineHeight` directly to static `PdfText` nodes; inheriting it from a
-`PdfPage` or `PdfView` into dynamic text is rejected with `PDF_LAYOUT_ERROR`
+Dynamic text always renders with font-default line spacing: any `lineHeight`
+reaching it — inherited or its own — is neutralized rather than rejected,
 because the pinned upstream layout engine produces invalid geometry for that
-combination.
+combination (upstream React PDF silently drops such footers; Nuxt PDF renders
+them correctly).
 
 For the complete tested behavior and exact lower-engine versions, read
 [CONFORMANCE.md](./CONFORMANCE.md) and

@@ -358,6 +358,8 @@ failure messages, in `test/test-utils-public.test.ts`.
   convergence for documents whose geometry depends on the numbers they print
   (these fail closed with `PDF_LIMIT_EXCEEDED`, they are not made to converge).
 - Tagged PDF, PDF/UA, archival, or other accessibility/compliance profiles.
+- PDF encryption. `ownerPassword`, `userPassword`, and `permissions` are typed
+  passthroughs to the engine with no conformance fixture behind them.
 - Deterministic PDF bytes across operating systems or PDF viewers.
 - Hard render cancellation, worker isolation, concurrency guarantees, output
   byte limits, decoded-pixel limits, or maximum-page enforcement.
