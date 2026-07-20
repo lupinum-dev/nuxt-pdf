@@ -1,6 +1,6 @@
 export default defineNuxtConfig({
-  modules: ['my-module'],
+  modules: ['nuxt-pdf'],
   devtools: { enabled: true },
-  compatibilityDate: 'latest',
-  myModule: {},
+  compatibilityDate: '2026-07-20',
+  pdf: {},
 })

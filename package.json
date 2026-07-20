@@ -1,9 +1,10 @@
 {
-  "name": "my-module",
-  "version": "1.0.0",
-  "description": "My new Nuxt module",
-  "repository": "your-org/my-module",
+  "name": "nuxt-pdf",
+  "version": "0.1.0",
+  "description": "Author and render PDFs with Vue components in Nuxt",
+  "repository": "github:Mat4m0/nuxt-pdf",
   "license": "MIT",
+  "packageManager": "pnpm@11.13.1",
   "type": "module",
   "exports": {
     ".": {
@@ -22,6 +23,9 @@
   "files": [
     "dist"
   ],
+  "engines": {
+    "node": ">=20"
+  },
   "workspaces": [
     "playground"
   ],
@@ -30,27 +34,43 @@
     "dev": "npm run dev:prepare && nuxt dev playground",
     "dev:build": "nuxt build playground",
     "dev:prepare": "nuxt-module-build build --stub && nuxt-module-build prepare && nuxt prepare playground",
-    "release": "npm run lint && npm run test && npm run prepack && changelogen --release && npm publish && git push --follow-tags",
+    "build": "nuxt-module-build build",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest watch",
-    "test:types": "vue-tsc --noEmit && cd playground && vue-tsc --noEmit"
+    "test:types": "vue-tsc --noEmit && pnpm --dir playground exec vue-tsc --noEmit",
+    "verify": "pnpm lint && pnpm test:types && pnpm test && pnpm build && pnpm dev:build"
   },
   "dependencies": {
-    "@nuxt/kit": "^4.4.8"
+    "@nuxt/kit": "^4.4.8",
+    "@react-pdf/font": "4.0.8",
+    "@react-pdf/layout": "4.6.1",
+    "@react-pdf/pdfkit": "5.1.1",
+    "@react-pdf/primitives": "4.3.0",
+    "@react-pdf/render": "4.5.1"
+  },
+  "peerDependencies": {
+    "nuxt": "^3.17.0 || ^4.0.0",
+    "vue": "^3.5.0"
   },
   "devDependencies": {
+    "@napi-rs/canvas": "0.1.97",
     "@nuxt/devtools": "^3.2.4",
     "@nuxt/eslint-config": "^1.15.2",
     "@nuxt/module-builder": "^1.0.2",
     "@nuxt/schema": "^4.4.8",
     "@nuxt/test-utils": "^4.0.3",
+    "@react-pdf/renderer": "4.5.1",
     "@types/node": "latest",
+    "@types/react": "19.2.14",
     "changelogen": "^0.6.2",
     "eslint": "^10.4.1",
     "nuxt": "^4.4.8",
-    "typescript": "~6.0.3",
+    "pdfjs-dist": "5.6.205",
+    "react": "19.2.0",
+    "typescript": "~5.9.3",
     "vitest": "^4.1.8",
+    "vue": "3.5.40",
     "vue-tsc": "^3.3.3"
   }
 }
