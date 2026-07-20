@@ -17,7 +17,6 @@ import {
 import {
   PDF_PRIMITIVES,
   type PdfElementNode,
-  type PdfStyleValue,
 } from '../../renderer/types'
 
 export interface PdfEngineOptions {
@@ -38,43 +37,33 @@ type LayoutDocument = (
 
 const runLayout = layoutDocument as unknown as LayoutDocument
 
-const ownLineHeight = (style: PdfStyleValue): unknown => {
-  const styles = Array.isArray(style) ? style : [style]
-  let lineHeight: unknown
+// `''` is the unique fixed point of upstream's transformLineHeight
+// (@react-pdf/stylesheet resolve/text.ts:53 short-circuits `if (value === '')`).
+// Every other lineHeight value is an absolute number after the first resolution,
+// and pagination re-resolves dynamic-node styles multiple times
+// (@react-pdf/layout resolvePagination.ts / resolveStyles.ts), re-multiplying it
+// by fontSize on each pass until the dynamic line box explodes off-page.
+const DYNAMIC_LINE_HEIGHT_SENTINEL = ''
 
-  for (const entry of styles) {
-    if (
-      entry
-      && Object.prototype.hasOwnProperty.call(entry, 'lineHeight')
-    ) {
-      lineHeight = entry.lineHeight
-    }
-  }
-
-  return lineHeight
-}
-
-const assertDynamicTextLineHeight = (
-  node: PdfElementNode,
-  inheritedLineHeight?: unknown,
-): void => {
-  const localLineHeight = ownLineHeight(node.style)
-  const lineHeight = localLineHeight ?? inheritedLineHeight
-
+// Shield dynamic text from any inherited lineHeight by giving each dynamic Text
+// node its OWN `''` lineHeight, which survives re-resolution and (via
+// resolveInheritance's own-over-inherited merge) overrides the compounding
+// ancestor value. Replaces the node.style reference on the disposable mounted
+// tree, mirroring how registry.ts mutates styles before layout; the shared
+// style object is never mutated.
+const normalizeDynamicTextLineHeight = (node: PdfElementNode): void => {
   if (
     node.type === PDF_PRIMITIVES.Text
     && typeof node.props.render === 'function'
-    && lineHeight !== undefined
   ) {
-    throw new NuxtPdfError(
-      PDF_ERROR_CODES.LayoutError,
-      'Dynamic PdfText cannot inherit a lineHeight style. Move lineHeight from PdfPage or PdfView to static PdfText styles; the current PDF layout engine otherwise produces invalid page-text geometry.',
-    )
+    node.style = Array.isArray(node.style)
+      ? [...node.style, { lineHeight: DYNAMIC_LINE_HEIGHT_SENTINEL }]
+      : { ...(node.style ?? {}), lineHeight: DYNAMIC_LINE_HEIGHT_SENTINEL }
   }
 
   for (const child of node.children) {
     if ('children' in child) {
-      assertDynamicTextLineHeight(child, lineHeight)
+      normalizeDynamicTextLineHeight(child)
     }
   }
 }
@@ -126,7 +115,7 @@ export const renderDocument = async (
     )
   }
 
-  assertDynamicTextLineHeight(document as unknown as PdfElementNode)
+  normalizeDynamicTextLineHeight(document as unknown as PdfElementNode)
 
   const fontStore = options.fontStore ?? createPdfFontStore()
   let layout: SafeDocumentNode

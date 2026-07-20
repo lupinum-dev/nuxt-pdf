@@ -31,6 +31,9 @@ The paired React/Vue fixture verifies:
 - A4 layout, normal text flow, explicit page breaking, and two output pages;
 - fixed content repeated across pages;
 - synchronous dynamic text returning scalar page-number and page-total text;
+- dynamic text (page-number footers) rendering at correct page-bottom geometry
+  even when an ancestor `PdfPage` or `PdfView` sets `lineHeight` — matching the
+  static equivalent, where upstream React PDF instead drops the footer;
 - a local Roboto TTF and local PNG;
 - an external link annotation; and
 - equivalent extracted text, link annotations, page count, and a thresholded
@@ -83,9 +86,11 @@ or filesystem sandbox claim.
 - Full React PDF component, hook, browser-helper, or test-suite parity.
 - React runtime compatibility or React-shaped dynamic callback results.
 - Asynchronous dynamic text; callbacks return only scalar text or numbers.
-- Inherited `lineHeight` on dynamic text. Apply `lineHeight` to static
-  `PdfText` nodes rather than a containing `PdfPage` or `PdfView`; 0.1.0
-  rejects the invalid upstream geometry with `PDF_LAYOUT_ERROR`.
+- A `lineHeight` multiplier applied to dynamic text. Dynamic text renders with
+  font-default line spacing regardless of an inherited or explicit `lineHeight`;
+  the multiplier is intentionally not applied, because the upstream engine
+  re-resolves dynamic-node styles during pagination and cannot carry an absolute
+  `lineHeight` through. Static `PdfText` honors `lineHeight` normally.
 - Browser-side or edge-runtime rendering. The engine is Node server-only.
 - Nuxt 3, Node 20, or versions outside the table above.
 - Remote images or fonts, redirects, host allowlists, or authenticated fetches.
