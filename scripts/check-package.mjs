@@ -10,10 +10,11 @@ const packageJson = JSON.parse(
 )
 const expectedRelease = {
   name: '@lupinum/nuxt-pdf',
-  version: '0.1.0',
+  version: '0.2.0',
 }
 
 const requiredFiles = [
+  'CHANGELOG.md',
   'CONFORMANCE.md',
   'LICENSE',
   'README.md',
