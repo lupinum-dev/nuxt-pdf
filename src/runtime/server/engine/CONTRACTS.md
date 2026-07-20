@@ -49,6 +49,56 @@ The layout result is derived and disposable. The mounted Vue tree remains the ca
 
 Protected by the engine integration and paired conformance tests. An incompatible change will fail type checking, semantic PDF assertions, or raster comparison.
 
+### Layout purity contract (multi-pass re-layout)
+
+The multi-pass loop (`layout-passes.ts`, used to resolve table-of-contents page
+numbers) lays out the **same mounted tree repeatedly** — once per fixed-point
+pass — without cloning it. That is only sound because `layoutDocument` treats its
+input as immutable for every node it re-parents:
+
+- **Every pipeline step rebuilds nodes with `Object.assign`, never in place.**
+  `layoutDocument` is `asyncCompose(...)` (`layout/src/index.ts:20-38`), which
+  applies steps right-to-left. Each step maps children into a fresh array and
+  returns `Object.assign({}, node, { … })` — e.g. `resolveStyles.ts:49,53`,
+  `resolveOrigins.ts:13`, `resolveZIndex`, `resolveDimensions.ts:229,235`. The
+  first structural step to touch a node's descendants (`resolveStyles`, executed
+  5th) deep-copies the whole subtree, so pagination, dimensions, and text layout
+  all mutate **copies**, never the input.
+- **`box` on the input is never populated.** After `resolveStyles` a copied node
+  shares the original `box` reference, but `resolveDimensions` builds a brand-new
+  `box` object (`resolveDimensions.ts:221,229`) rather than writing into it, so
+  the mounted tree's `box` stays `{}`. Verified empirically: two full layouts of
+  the same mounted document leave `page.box` an empty object.
+- **The one in-place mutation is `resolveBookmarks`.** It assigns
+  `child.props.bookmark = newHierarchy` on the original node's props
+  (`resolveBookmarks.ts:52`), executing before `resolveStyles` copies. This is
+  idempotent enough for re-layout (`getBookmarkValue` returns an already-resolved
+  bookmark object unchanged) but it **does** write derived state back onto the
+  canonical tree. The TOC loop does not use `bookmark` props; any future feature
+  that combines bookmarks with multi-pass layout must clone bookmark-carrying
+  nodes per pass or reset `props.bookmark` between passes.
+
+Because the mounted tree is otherwise untouched, the loop feeds each pass's
+`id → page` map back through a reactive prop and our renderer **re-patches the
+same node objects in place** (node identity is asserted stable across passes in
+`test/toc-multipass.test.ts`); no per-pass re-mount and no structural clone are
+required. Convergence is a fixed point — the map a layout *produces* equals the
+map it was laid out *with* — reached in **2 passes** for an ordinary document.
+Non-convergence (a TOC entry whose size depends on the number it prints) is
+capped at `maxPasses` (default 5) and raises `PDF_LIMIT_EXCEEDED`.
+
+### Named destination / internal link contract
+
+A node's `id` prop becomes a PDF named destination anchored at the node's final
+page and `box.top` (`render/src/operations/setDestination.ts:10`, called from
+`renderNode.ts` for every node). A `Link` whose `src` (or `href`) starts with `#`
+renders as a `goTo` to that name rather than an external `link`
+(`render/src/operations/setLink.ts:7,13`). pdfjs reports the resulting Link
+annotation's `dest` as the raw id string. The multi-pass loop reads the same
+`id`s off the paginated `SafeDocumentNode` (`layout.children` is the final ordered
+page list) to build the `id → page` map, so the printed TOC numbers and the jump
+targets share one source of truth. Protected by `test/toc-multipass.test.ts`.
+
 ## Dynamic text contract
 
 Layout detects a dynamic node when the `render` key exists in its props. The Vue renderer must therefore delete nullish props instead of retaining `render: undefined`.
