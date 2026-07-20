@@ -151,12 +151,24 @@ describe('table-of-contents feature (productized)', () => {
     expect(new Uint8Array(bytes).slice(0, 5)).toEqual(new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2D]))
   })
 
-  it('activates multi-pass from an internal #id link without the composable', async () => {
+  it('keeps an internal-#id-link document on the single-pass path', async () => {
+    // A named destination resolves by NAME in one pass (anchored at the
+    // section's first page during serialization), so a link alone must not pay
+    // for the multi-pass loop. Only usePdfPageNumbers() activates it.
     const spy = vi.spyOn(layoutPasses, 'renderDocumentMultiPass')
     const template = createPdfTemplate('link-only', LinkOnlyTemplate)
-    await (await template.render({})).toUint8Array()
+    const pdf = await parsePdf(await (await template.render({})).toUint8Array())
 
-    expect(spy).toHaveBeenCalledTimes(1)
+    expect(spy).not.toHaveBeenCalled()
+
+    const links = pdf.pages.flatMap(page => page.annotations)
+    expect(links.some(link => link.destination === 'target')).toBe(true)
+  })
+
+  it('fails fast when usePdfPageNumbers is called outside a PDF render', () => {
+    expect(() => usePdfPageNumbers()).toThrow(
+      /only available inside a PDF template/,
+    )
   })
 
   it('rejects a non-positive maxPasses at definePdf validation', () => {

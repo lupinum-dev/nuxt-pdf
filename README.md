@@ -178,8 +178,8 @@ const pageNumbers = usePdfPageNumbers()
 </template>
 ```
 
-Reading the composable (or including any internal `#` link) turns on a
-multi-pass layout: the document is laid out repeatedly, feeding the resolved page
+Reading the composable turns on a multi-pass layout (internal `#` links alone
+stay single-pass — they resolve by name): the document is laid out repeatedly, feeding the resolved page
 numbers back in, until they stabilize — an ordinary table of contents settles in
 two passes. On the first pass the numbers are `undefined`, so keep a fallback.
 Numbers and links always resolve to the page a section **starts** on, even when

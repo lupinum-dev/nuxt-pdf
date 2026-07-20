@@ -23,7 +23,10 @@ export { extractDestinationPages, type DestinationPageMap }
 // input as immutable for every non-bookmark node (Object.assign copies at each
 // step; see CONTRACTS.md "Layout purity contract"), so the same mounted tree is
 // safe to lay out repeatedly without cloning. registry.ts gates entry to this
-// loop on `usePdfPageNumbers()` usage or an internal `#` link.
+// loop on `usePdfPageNumbers()` usage — the only thing that consumes resolved
+// page numbers. Internal `#id` links alone do NOT need it: a named destination
+// is resolved by name in a single pass (`serializePdfLayout` anchors it at the
+// section's first page), so link-only documents stay single-pass.
 
 /**
  * A mountable document whose page-number feedback can be re-fed between passes.
@@ -45,25 +48,6 @@ export interface MultiPassOptions {
   maxPasses?: number
 }
 
-/**
- * Whether the mounted tree contains a `Link` whose `src`/`href` targets an
- * internal destination (`#id`). Such a link needs the resolved page number of
- * its target, so it activates the multi-pass loop even when the template never
- * calls `usePdfPageNumbers()`. External links (`http…`, `mailto:`) do not.
- */
-export const hasInternalLink = (document: DocumentNode): boolean => {
-  const visit = (node: PdfNode): boolean => {
-    if (!('props' in node)) return false
-    const element = node as PdfElementNode
-    if (element.type === 'LINK') {
-      const target = element.props.src ?? element.props.href
-      if (typeof target === 'string' && target.startsWith('#')) return true
-    }
-    return element.children.some(visit)
-  }
-  return visit(document as unknown as PdfNode)
-}
-
 export interface MultiPassResult {
   bytes: Uint8Array
   layout: SafeDocumentNode
@@ -83,23 +67,26 @@ const DEFAULT_MAX_PASSES = 5
 // carries the STALE `ref`/`parent` forward and corrupts the outline hierarchy.
 // The reset restores each bookmark-carrying node's ORIGINAL authored value before
 // every pass. resolveBookmarks only reassigns the reference (never mutates the
-// object), so restoring the captured reference is a complete reset.
-type BookmarkSnapshot = ReadonlyArray<readonly [PdfElementNode, unknown]>
+// object), so restoring the captured reference is a complete reset. The snapshot
+// is merged before EVERY pass, not captured once: a bookmark that first appears
+// mid-loop (e.g. behind a v-if on a resolved page number) is recorded with its
+// authored value the first time it is seen, before any layout resolves it.
+type BookmarkSnapshot = Map<PdfElementNode, unknown>
 
-const snapshotBookmarks = (root: PdfElementNode): BookmarkSnapshot => {
-  const entries: Array<readonly [PdfElementNode, unknown]> = []
+const resetBookmarks = (
+  root: PdfElementNode,
+  snapshot: BookmarkSnapshot,
+): void => {
   const visit = (node: PdfNode): void => {
     if (!('children' in node)) return
     const element = node as PdfElementNode
-    if ('bookmark' in element.props) entries.push([element, element.props.bookmark])
+    if ('bookmark' in element.props) {
+      if (snapshot.has(element)) element.props.bookmark = snapshot.get(element)
+      else snapshot.set(element, element.props.bookmark)
+    }
     for (const child of element.children) visit(child)
   }
   visit(root)
-  return entries
-}
-
-const restoreBookmarks = (snapshot: BookmarkSnapshot): void => {
-  for (const [node, bookmark] of snapshot) node.props.bookmark = bookmark
 }
 
 const samePages = (a: DestinationPageMap, b: DestinationPageMap): boolean => {
@@ -128,14 +115,14 @@ export const renderDocumentMultiPass = async (
 ): Promise<MultiPassResult> => {
   const fontStore = options.fontStore ?? createPdfFontStore()
   const maxPasses = options.maxPasses ?? DEFAULT_MAX_PASSES
-  const bookmarks = snapshotBookmarks(source.document as unknown as PdfElementNode)
+  const bookmarks: BookmarkSnapshot = new Map()
 
   let fed: DestinationPageMap = {}
   let produced: DestinationPageMap = {}
 
   for (let pass = 1; pass <= maxPasses; pass += 1) {
     await source.feed(fed)
-    restoreBookmarks(bookmarks)
+    resetBookmarks(source.document as unknown as PdfElementNode, bookmarks)
     const layout = await layoutPdfTree(source.document, fontStore)
     produced = extractDestinationPages(layout)
 

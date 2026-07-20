@@ -18,10 +18,7 @@ import {
 } from './assets/resolve-asset'
 import type { RemoteAssetPolicy } from './assets/remote'
 import { renderDocument } from './engine/render-document'
-import {
-  hasInternalLink,
-  renderDocumentMultiPass,
-} from './engine/layout-passes'
+import { renderDocumentMultiPass } from './engine/layout-passes'
 import {
   createPdfFontStore,
   type BundledPdfFontDescriptor,
@@ -218,10 +215,12 @@ const renderTemplate = async <Props extends object>(
     const document = mounted.document as unknown as Parameters<typeof renderDocument>[0]
     const fontStore = createPdfFontStore(options.fonts)
 
-    // Gate: a template that reads `usePdfPageNumbers()` or links to an internal
-    // `#id` needs resolved page numbers, so it runs the fixed-point layout loop.
-    // Every other document keeps exactly one layout pass — zero added cost.
-    if (mounted.usesPageNumbers || hasInternalLink(document)) {
+    // Gate: only a template that reads `usePdfPageNumbers()` consumes resolved
+    // page numbers, so only it runs the fixed-point layout loop. Internal `#id`
+    // links resolve by NAME in a single pass (destinations are anchored at the
+    // section's first page during serialization), so every other document —
+    // links included — keeps exactly one layout pass.
+    if (mounted.usesPageNumbers) {
       const live = mounted
       const result = await renderDocumentMultiPass(
         {
