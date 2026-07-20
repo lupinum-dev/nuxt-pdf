@@ -20,6 +20,7 @@ import {
 import {
   fetchRemoteResource,
   matchesAllowlist,
+  redactUrl,
   type RemoteAssetPolicy,
 } from './remote'
 
@@ -389,13 +390,13 @@ const resolveRemoteImage = async (
 ): Promise<ResolvedPdfImageAsset> => {
   if (!remote) {
     return blocked(
-      `Remote PDF image fetching is disabled. Set pdf.remote.allow to fetch "${url}".`,
+      `Remote PDF image fetching is disabled. Set pdf.remote.allow to fetch "${redactUrl(url)}".`,
     )
   }
 
   if (!matchesAllowlist(url, remote)) {
     return blocked(
-      `The PDF image "${url}" is not permitted by pdf.remote.allow.`,
+      `The PDF image "${redactUrl(url)}" is not permitted by pdf.remote.allow.`,
     )
   }
 

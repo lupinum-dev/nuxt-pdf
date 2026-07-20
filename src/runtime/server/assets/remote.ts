@@ -45,6 +45,31 @@ export const DEFAULT_REMOTE_TIMEOUT_MS = 10_000
 
 const MAX_REDIRECTS = 5
 
+// Deliberately non-exhaustive: the most common shared-hosting suffixes where a
+// wildcard would admit arbitrary third parties. Developers own their allowlist;
+// this only catches the obvious footguns.
+const WILDCARD_PUBLIC_SUFFIXES = new Set([
+  'co.uk', 'org.uk', 'com.au', 'co.jp', 'com.br', 'co.in', 'co.nz', 'co.za',
+  'github.io', 'gitlab.io', 'pages.dev', 'vercel.app', 'netlify.app',
+  'herokuapp.com', 'amazonaws.com', 's3.amazonaws.com', 'cloudfront.net',
+  'azurewebsites.net', 'firebaseapp.com', 'web.app', 'workers.dev',
+])
+
+// Error messages must never echo query strings: remote URLs commonly carry
+// signed tokens, and these messages travel into logs and preview responses.
+export const redactUrl = (url: string): string => {
+  try {
+    const parsed = new URL(url)
+    const hadQuery = parsed.search !== '' || parsed.hash !== ''
+    parsed.search = ''
+    parsed.hash = ''
+    return hadQuery ? `${parsed.toString()}?…` : parsed.toString()
+  }
+  catch {
+    return url.split(/[?#]/, 1)[0] ?? url
+  }
+}
+
 const configError = (message: string): never => {
   throw new TypeError(message)
 }
@@ -56,7 +81,7 @@ const blocked = (message: string, cause?: unknown): never => {
 const limitExceeded = (url: string, maxBytes: number): never => {
   throw new PdfAssetError(
     PDF_ASSET_ERROR_CODES.LimitExceeded,
-    `The remote resource "${url}" exceeds the ${maxBytes}-byte limit.`,
+    `The remote resource "${redactUrl(url)}" exceeds the ${maxBytes}-byte limit.`,
   )
 }
 
@@ -94,6 +119,11 @@ const parseAllowEntry = (entry: unknown): RemoteAssetRule => {
     if (!suffix.slice(1).includes('.')) {
       configError(
         `pdf.remote.allow entry "${entry}" must use a "*." wildcard on a registrable domain.`,
+      )
+    }
+    if (WILDCARD_PUBLIC_SUFFIXES.has(suffix.slice(1))) {
+      configError(
+        `pdf.remote.allow entry "${entry}" wildcards a public suffix, which would admit every site under it. Allowlist your own domain instead.`,
       )
     }
     if (suffix.slice(1).includes('*')) {
@@ -172,8 +202,15 @@ export const matchesAllowlist = (
   return policy.allow.some(rule =>
     (rule.wildcard ? hostname.endsWith(rule.host) : hostname === rule.host)
     && port === rule.port
-    && pathname.startsWith(rule.pathPrefix),
+    && matchesPathPrefix(pathname, rule.pathPrefix),
   )
+}
+
+// A prefix only matches on a path-segment boundary: "/avatars" must admit
+// "/avatars/x.png" but never "/avatars-private/x.png".
+const matchesPathPrefix = (pathname: string, prefix: string): boolean => {
+  if (prefix.endsWith('/')) return pathname.startsWith(prefix)
+  return pathname === prefix || pathname.startsWith(`${prefix}/`)
 }
 
 const isAbortError = (error: unknown): boolean =>
@@ -227,14 +264,14 @@ const fetchOnce = async (
       await response.body?.cancel()
       const location = response.headers.get('location')
       if (!location) {
-        blocked(`The remote resource "${url}" returned a redirect without a Location.`)
+        blocked(`The remote resource "${redactUrl(url)}" returned a redirect without a Location.`)
       }
       return { redirectTo: new URL(location!, url).toString() }
     }
 
     if (response.status !== 200) {
       await response.body?.cancel()
-      return blocked(`The remote resource "${url}" returned HTTP ${response.status}.`)
+      return blocked(`The remote resource "${redactUrl(url)}" returned HTTP ${response.status}.`)
     }
 
     const declaredLength = Number(response.headers.get('content-length'))
@@ -248,9 +285,9 @@ const fetchOnce = async (
   catch (error) {
     if (error instanceof PdfAssetError) throw error
     if (timedOut || isAbortError(error)) {
-      return blocked(`The remote resource "${url}" timed out after ${policy.timeoutMs}ms.`)
+      return blocked(`The remote resource "${redactUrl(url)}" timed out after ${policy.timeoutMs}ms.`)
     }
-    return blocked(`The remote resource "${url}" could not be fetched.`, error)
+    return blocked(`The remote resource "${redactUrl(url)}" could not be fetched.`, error)
   }
   finally {
     clearTimeout(timer)
@@ -267,7 +304,7 @@ const fetchResolved = async (
   for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
     if (!matchesAllowlist(url, policy)) {
       blocked(
-        `The remote resource "${url}" is not permitted by pdf.remote.allow.`,
+        `The remote resource "${redactUrl(url)}" is not permitted by pdf.remote.allow.`,
       )
     }
 
@@ -277,7 +314,7 @@ const fetchResolved = async (
   }
 
   return blocked(
-    `The remote resource "${initialUrl}" exceeded the ${MAX_REDIRECTS}-redirect limit.`,
+    `The remote resource "${redactUrl(initialUrl)}" exceeded the ${MAX_REDIRECTS}-redirect limit.`,
   )
 }
 

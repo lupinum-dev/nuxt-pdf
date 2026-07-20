@@ -64,6 +64,10 @@ const HTML = Buffer.from('<!doctype html><title>not an image</title>')
 let certDir: string
 let server: Server
 let origin: string
+
+// Written by the /streamed-oversized route so the cap test can assert the
+// client aborted mid-stream instead of buffering the whole body.
+const streamStats = { sent: 0 }
 let requests: string[] = []
 const openSockets = new Set<import('node:net').Socket>()
 
@@ -111,12 +115,30 @@ const routes = (req: IncomingMessage, res: ServerResponse): void => {
       res.writeHead(200, { 'content-length': String(50 * 1024 * 1024) })
       res.end(Buffer.alloc(64))
       return
-    case '/streamed-oversized':
-      // No content-length: chunked body that must be capped mid-stream.
+    case '/streamed-oversized': {
+      // No content-length: a long chunked body. The client must abort
+      // mid-stream; streamStats.sent lets the test prove it did not
+      // consume the whole body before checking the cap.
       res.writeHead(200, { 'content-type': 'application/octet-stream' })
-      for (let index = 0; index < 4; index += 1) res.write(Buffer.alloc(1024, 1))
-      res.end()
+      const chunk = Buffer.alloc(1024, 1)
+      let remaining = 4096
+      const writeMore = () => {
+        while (remaining > 0) {
+          remaining -= 1
+          streamStats.sent += chunk.byteLength
+          if (!res.write(chunk)) {
+            res.once('drain', writeMore)
+            return
+          }
+        }
+        res.end()
+      }
+      res.once('close', () => {
+        remaining = 0
+      })
+      writeMore()
       return
+    }
     case '/redirect-internal':
       res.writeHead(302, { location: '/png' })
       res.end('go')
@@ -243,6 +265,17 @@ describe('remote allowlist matching', () => {
     expect(matchesAllowlist('not a url', policy)).toBe(false)
   })
 
+  it('matches path prefixes only on segment boundaries', () => {
+    const policy = normalizeRemoteAssetPolicy({
+      allow: ['https://cdn.example.com/avatars'],
+    }, { maxImageBytes: 1, maxFontBytes: 1 })!
+
+    expect(matchesAllowlist('https://cdn.example.com/avatars', policy)).toBe(true)
+    expect(matchesAllowlist('https://cdn.example.com/avatars/a.png', policy)).toBe(true)
+    expect(matchesAllowlist('https://cdn.example.com/avatars-private/a.png', policy)).toBe(false)
+    expect(matchesAllowlist('https://cdn.example.com/avatarsx', policy)).toBe(false)
+  })
+
   it('rejects unsafe allowlist entries at setup', () => {
     const defaults = { maxImageBytes: 1, maxFontBytes: 1 }
     expect(normalizeRemoteAssetPolicy(undefined, defaults)).toBeUndefined()
@@ -254,6 +287,10 @@ describe('remote allowlist matching', () => {
       .toThrow(/explicit host/)
     expect(() => normalizeRemoteAssetPolicy({ allow: ['https://*.com/'] }, defaults))
       .toThrow(/registrable domain/)
+    expect(() => normalizeRemoteAssetPolicy({ allow: ['https://*.co.uk/'] }, defaults))
+      .toThrow(/public suffix/)
+    expect(() => normalizeRemoteAssetPolicy({ allow: ['https://*.github.io/'] }, defaults))
+      .toThrow(/public suffix/)
     expect(() => normalizeRemoteAssetPolicy({ allow: ['https://user:pw@cdn.example.com/'] }, defaults))
       .toThrow(/credentials/)
     expect(() => normalizeRemoteAssetPolicy({ allow: ['https://cdn.example.com/?x=1'] }, defaults))
@@ -317,6 +354,20 @@ describe('remote images', () => {
     )
   })
 
+  it('redacts query strings from remote error messages', async () => {
+    try {
+      await resolvePdfImageAssets(
+        documentWith(image({ src: 'https://blocked.example.com/a.png?sig=SECRETTOKEN' })),
+        { assets: {}, remote: policyFor() },
+      )
+      expect.unreachable()
+    }
+    catch (error) {
+      expect((error as Error).message).not.toContain('SECRETTOKEN')
+      expect((error as Error).message).toContain('blocked.example.com')
+    }
+  })
+
   it('trusts the byte signature over a deceptive content-type', async () => {
     await expectAssetError(
       resolvePdfImageAssets(documentWith(image({ src: `${origin}/wrong-signature` })), {
@@ -338,6 +389,8 @@ describe('remote images', () => {
   })
 
   it('enforces the byte cap on a streamed body with no content-length', async () => {
+    streamStats.sent = 0
+
     await expectAssetError(
       resolvePdfImageAssets(documentWith(image({ src: `${origin}/streamed-oversized` })), {
         assets: {},
@@ -345,6 +398,11 @@ describe('remote images', () => {
       }),
       'PDF_LIMIT_EXCEEDED',
     )
+
+    // The route offers 4 MiB; a client that buffered the whole body before
+    // checking the cap would have consumed it all. Mid-stream abort must stop
+    // the transfer well short of that (socket buffers still admit some slack).
+    expect(streamStats.sent).toBeLessThan(1024 * 1024)
   })
 
   it('re-validates the allowlist on every redirect hop', async () => {
