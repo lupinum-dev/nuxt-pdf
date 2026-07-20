@@ -16,6 +16,69 @@ Nuxt PDF replaces React PDF's reconciler and reuses its published lower-level en
 
 All runtime imports use package roots. There are no imports from unpublished source paths and no patches.
 
+## Engine upgrade drill (runbook)
+
+These pins are deliberate. React PDF ships no semver guarantee for the
+lower-level engine packages, so every bump is decided by conformance evidence,
+not by the version number. Run this drill whenever a newer stable release
+appears.
+
+**Steps**
+
+1. Check for newer *stable* releases only:
+   `npm view <pkg> dist-tags` for each of `@react-pdf/layout`, `render`, `font`,
+   `pdfkit`, `primitives`. Compare each `latest` tag against the pins table
+   above. Ignore `beta`/`reactpdf`/other pre-release tags. If no `latest`
+   exceeds its pin, record that fact and stop — the pins hold.
+2. On branch `drill/engine-bump`, bump all five pins together (keep
+   `@react-pdf/renderer` aligned with `render`), then `pnpm install`. Bisect
+   per-package only if the combined bump fails.
+3. Run the full evidence chain and record exact results:
+   - `pnpm lint`
+   - `pnpm test` (193 tests, including the paired conformance fixtures and the
+     raster baselines)
+   - `pnpm test:types`
+4. Re-verify each documented contract below against the new engine source in the
+   read-only reference checkout (`react-pdf/`). Update the **Reference commit**
+   and this file for any wording that changed. The contracts most likely to
+   drift silently — verify these by reading source, not by trusting green tests:
+   - Layout contract: `layoutDocument(document, fontStore)` still forwards
+     `fontStore` as the second argument.
+   - Dynamic text contract: dynamic-node detection still keys on the `render`
+     prop.
+   - Layout purity: `transformLineHeight('')` still returns the fixed-point
+     sentinel; `resolveBookmarks` still mutates in place; pagination still
+     shares the same node object for fixed nodes across pages.
+   - Named destination contract: `setDestination` / `NameTree` last-write-wins
+     behavior is unchanged.
+
+**Gates** — every one must pass, no exceptions:
+`pnpm lint`, `pnpm test`, `pnpm test:types` (the release gate is `pnpm verify`).
+
+**Raster baselines** — a changed raster diff is *expected* upgrade evidence, not
+an automatic failure. Inspect each failing baseline visually and classify:
+- *benign drift* (sub-pixel antialiasing, identical layout) → re-bless the
+  baseline and note it in the merge commit;
+- *rendering regression* (moved/missing/reflowed content) → treat as a failed
+  gate.
+
+**Decision rule**
+
+- All gates green and every contract re-verified → **merge** the bump to `main`
+  with the updated pins table, Reference commit, and CONFORMANCE.md version
+  table.
+- Any gate red, or a fix that is not small and obviously correct → **revert**
+  (delete the branch), keep the pins, and record in this file precisely *what*
+  broke and *which contract caught it*. A revert with a recorded cause is a
+  successful drill.
+
+**Drill log**
+
+- **2026-07-21** — All five `latest` dist-tags equalled the current pins
+  (`layout` 4.6.1, `render` 4.5.1, `font` 4.0.8, `pdfkit` 5.1.1, `primitives`
+  4.3.0). Only pre-release `2.0.0-beta.*` tags and pdfkit's legacy `reactpdf`
+  0.8.5 were newer, and neither is a stable upgrade. No bump. Pins hold.
+
 ## Host node contract
 
 The Vue renderer creates the same plain node shape as `@react-pdf/renderer`:
