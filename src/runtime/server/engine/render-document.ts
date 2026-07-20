@@ -19,10 +19,16 @@ import {
   type PdfElementNode,
   type PdfNode,
 } from '../../renderer/types'
+import {
+  enforceMaxPages,
+  type RenderDeadline,
+  type RenderLimits,
+} from './limits'
 
 export interface PdfEngineOptions {
   compress?: boolean
   fontStore?: PdfFontStore
+  limits?: RenderLimits
 }
 
 /** id (named destination) → 1-based page number the destination resolves to. */
@@ -118,7 +124,10 @@ const createContext = (props: DocumentMetadata, compress: boolean) => new PDFDoc
 export const layoutPdfTree = async (
   document: DocumentNode,
   fontStore: PdfFontStore,
+  limits?: RenderLimits,
 ): Promise<SafeDocumentNode> => {
+  limits?.deadline.check()
+
   if (document.type !== 'DOCUMENT') {
     throw new NuxtPdfError(
       PDF_ERROR_CODES.TreeInvalid,
@@ -128,8 +137,9 @@ export const layoutPdfTree = async (
 
   normalizeDynamicTextLineHeight(document as unknown as PdfElementNode)
 
+  let layout: SafeDocumentNode
   try {
-    return await runLayout(
+    layout = await runLayout(
       document,
       fontStore as unknown as FontStore,
     )
@@ -145,6 +155,16 @@ export const layoutPdfTree = async (
       { cause: error },
     )
   }
+
+  // The single page-count enforcement point. Both the single-pass path and every
+  // multi-pass iteration reach layout through here, right after the page list is
+  // produced and before serialization — so the cap is checked once, not copied.
+  // Kept outside the layout try/catch so a limit breach stays PDF_LIMIT_EXCEEDED
+  // rather than being re-wrapped as a layout error.
+  limits?.deadline.check()
+  if (limits) enforceMaxPages(countPages(layout), limits.maxPages)
+
+  return layout
 }
 
 // Depth-first walk over the element nodes of one final page tree. The laid-out
@@ -259,7 +279,11 @@ export const serializePdfLayout = async (
   props: DocumentMetadata,
   layout: SafeDocumentNode,
   compress: boolean,
+  deadline?: RenderDeadline,
 ): Promise<Uint8Array> => {
+  // Checked before the paint (outside the try below) so an expired budget stays
+  // PDF_LIMIT_EXCEEDED instead of being re-wrapped as a serialization failure.
+  deadline?.check()
   try {
     anchorDestinationsAtFirstPage(layout)
     const context = createContext(props, compress)
@@ -284,11 +308,12 @@ export const renderDocument = async (
   options: PdfEngineOptions = {},
 ): Promise<PdfEngineResult> => {
   const fontStore = options.fontStore ?? createPdfFontStore()
-  const layout = await layoutPdfTree(document, fontStore)
+  const layout = await layoutPdfTree(document, fontStore, options.limits)
   const bytes = await serializePdfLayout(
     document.props,
     layout,
     options.compress ?? true,
+    options.limits?.deadline,
   )
 
   return { bytes, layout }

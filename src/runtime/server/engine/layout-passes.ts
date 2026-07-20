@@ -2,6 +2,7 @@ import type { DocumentNode, SafeDocumentNode } from '@react-pdf/layout'
 import { createPdfFontStore, type PdfFontStore } from '../fonts'
 import { NuxtPdfError, PDF_ERROR_CODES } from '../../shared/errors'
 import type { PdfElementNode, PdfNode } from '../../renderer/types'
+import type { RenderLimits } from './limits'
 import {
   extractDestinationPages,
   layoutPdfTree,
@@ -46,6 +47,8 @@ export interface MultiPassOptions {
   compress?: boolean
   /** Hard cap on layout passes before declaring non-convergence. */
   maxPasses?: number
+  /** Render limits bounding the whole loop (page cap + shared time budget). */
+  limits?: RenderLimits
 }
 
 export interface MultiPassResult {
@@ -123,7 +126,10 @@ export const renderDocumentMultiPass = async (
   for (let pass = 1; pass <= maxPasses; pass += 1) {
     await source.feed(fed)
     resetBookmarks(source.document as unknown as PdfElementNode, bookmarks)
-    const layout = await layoutPdfTree(source.document, fontStore)
+    // layoutPdfTree checks the shared deadline before and after each pass and
+    // enforces the page cap on every laid-out result, so the whole loop is
+    // bounded by the same budget without a second enforcement site here.
+    const layout = await layoutPdfTree(source.document, fontStore, options.limits)
     produced = extractDestinationPages(layout)
 
     if (samePages(produced, fed)) {
@@ -131,6 +137,7 @@ export const renderDocumentMultiPass = async (
         source.document.props,
         layout,
         options.compress ?? true,
+        options.limits?.deadline,
       )
       return { bytes, layout, passes: pass, pages: produced }
     }

@@ -30,11 +30,21 @@ import {
   DEFAULT_MAX_PDF_IMAGE_BYTES,
   loadPdfImageAsset,
 } from './runtime/server/assets/resolve-asset'
+import {
+  normalizePdfLimits,
+  type PdfLimitsOptions,
+} from './runtime/server/engine/limits'
 import type { PdfFontDeclaration } from './runtime/server/fonts'
 
 export interface ModuleOptions {
   fonts?: readonly PdfFontDeclaration[]
   remote?: RemoteAssetOptions
+  /**
+   * Render limits enforced on every PDF render. Both fields are optional
+   * positive integers; omitted fields fall back to the built-in defaults
+   * (`timeoutMs` 30000, `maxPages` 2000).
+   */
+  limits?: PdfLimitsOptions
 }
 
 const quote = (value: string): string => JSON.stringify(value)
@@ -132,6 +142,7 @@ export default defineNuxtModule<ModuleOptions>({
       maxImageBytes: DEFAULT_MAX_PDF_IMAGE_BYTES,
       maxFontBytes: DEFAULT_MAX_PDF_FONT_BYTES,
     })
+    const limits = normalizePdfLimits(options.limits)
     const fonts = await bundlePdfFonts(options.fonts ?? [], { fontRoots, remote })
     const pdfSfcFiles = new Map<string, 'component' | 'template'>(
       componentFiles.map(file => [file, 'component']),
@@ -151,6 +162,7 @@ export default defineNuxtModule<ModuleOptions>({
         assets,
         fonts,
         remote,
+        limits,
         runtimeImport,
       }),
     })

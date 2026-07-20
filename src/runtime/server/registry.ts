@@ -21,6 +21,11 @@ import type { RemoteAssetPolicy } from './assets/remote'
 import { countPages, renderDocument } from './engine/render-document'
 import { renderDocumentMultiPass } from './engine/layout-passes'
 import {
+  createRenderLimits,
+  resolvePdfRenderLimits,
+  type PdfRenderLimits,
+} from './engine/limits'
+import {
   createPdfFontStore,
   type BundledPdfFontDescriptor,
 } from './fonts'
@@ -36,6 +41,11 @@ export interface PdfTemplateRuntimeOptions {
   file?: string
   fonts?: readonly BundledPdfFontDescriptor[]
   remote?: RemoteAssetPolicy
+  /**
+   * Render limits (time budget + page cap). Absent means the generous built-in
+   * defaults apply, so every render is bounded even with no `pdf.limits` config.
+   */
+  limits?: PdfRenderLimits
 }
 
 type PdfTemplateIdentity = Pick<PdfTemplate<object>, 'key' | 'render'>
@@ -213,6 +223,10 @@ const renderTemplate = async <Props extends object>(
   const warn = (message: string): void =>
     warnSink(`${templatePrefix(key, options.file)}: ${message}`)
 
+  // Built once here so the deadline clock covers the WHOLE render — mount, asset
+  // resolution, every layout pass, and serialization — under one shared budget.
+  const limits = createRenderLimits(resolvePdfRenderLimits(options.limits))
+
   try {
     mounted = await mountPdfComponent(
       component,
@@ -244,7 +258,7 @@ const renderTemplate = async <Props extends object>(
             await live.feedPageNumbers(pages)
           },
         },
-        { fontStore, maxPasses },
+        { fontStore, maxPasses, limits },
       )
       return {
         bytes: result.bytes,
@@ -253,7 +267,7 @@ const renderTemplate = async <Props extends object>(
       }
     }
 
-    const result = await renderDocument(document, { fontStore })
+    const result = await renderDocument(document, { fontStore, limits })
     return { bytes: result.bytes, passes: 1, pageCount: countPages(result.layout) }
   }
   finally {

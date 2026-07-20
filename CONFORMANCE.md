@@ -301,6 +301,32 @@ conformance fixture already rasters against React. Not claimed: authenticated
 fetches, request headers or bodies, cookies/credentials, private-IP or DNS
 rebinding protection beyond the allowlist, and any cross-render caching.
 
+### Render limits
+
+Every render is bounded by two operator-overridable limits under `pdf.limits`,
+enforced identically on the single-pass and multi-pass paths through one shared
+pipeline (`test/limits.test.ts`):
+
+- **`maxPages`** (default `2000`) — the laid-out page count is checked once,
+  right after layout and before serialization, at the single shared layout seam
+  both paths pass through (`layoutPdfTree`), including every intermediate
+  multi-pass iteration. Exceeding it fails closed with a `PDF_LIMIT_EXCEEDED`
+  `NuxtPdfError` naming the page count, the cap, and the `pdf.limits.maxPages`
+  config key, attributed to the template through the same boundary as every
+  other render failure.
+- **`timeoutMs`** (default `30000`) — the whole render (mount, asset resolution,
+  every layout pass, and serialization) is bounded by one deadline started before
+  mount. On expiry it fails with a `PDF_LIMIT_EXCEEDED` error naming the elapsed
+  budget. Upstream layout is not abortable mid-step, so the deadline is polled
+  between engine stages and passes, not mid-step; worst-case overshoot is one
+  engine stage. This is a checked budget, not hard cancellation (see "not
+  claimed").
+
+Both defaults are generous enough that no legitimate document reaches them, and
+both are validated as positive integers at module setup (a non-positive,
+non-integer, or non-numeric value fails the build). With no `pdf.limits`
+configured the same defaults still apply, so every render is bounded.
+
 ### Testing utilities
 
 The verification helpers this suite runs on ship as `@lupinum/nuxt-pdf/test`.
@@ -361,8 +387,13 @@ failure messages, in `test/test-utils-public.test.ts`.
 - PDF encryption. `ownerPassword`, `userPassword`, and `permissions` are typed
   passthroughs to the engine with no conformance fixture behind them.
 - Deterministic PDF bytes across operating systems or PDF viewers.
-- Hard render cancellation, worker isolation, concurrency guarantees, output
-  byte limits, decoded-pixel limits, or maximum-page enforcement.
+- Hard render cancellation. The `pdf.limits.timeoutMs` budget is polled between
+  engine stages and passes — upstream layout is not abortable mid-step — so a
+  single engine stage can overshoot it; it is a checked deadline, not mid-step
+  cancellation. Time-budget and page-count limits themselves are claimed above
+  under "Render limits".
+- Worker isolation, concurrency guarantees, output byte limits, or
+  decoded-pixel limits.
 - Visual equivalence beyond the paired fixture, pinned inputs, and tested
   raster environment.
 
