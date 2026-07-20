@@ -1,22 +1,19 @@
-# Vue conformance raster baselines
+# Reviewed raster baselines
 
-These two reviewed PNGs are the page-level visual contract for the pinned Vue
-conformance fixture. The same test also checks page text, links, page count, and
-React/Vue raster parity; raw PDF bytes are intentionally not snapshotted.
+Every committed PNG here (and in the sibling fixture directories listed below)
+is a reviewed page-level visual contract. The owning tests also check page
+text, links, page count, and — where React PDF is a valid oracle — React/Vue
+raster parity; raw PDF bytes are intentionally not snapshotted.
 
-Regenerate only for an intentional layout change:
+Regenerate a baseline only for an intentional layout change, review every
+changed PNG visually, then rerun the owning test without the environment
+variable. If the change alters page count, remove obsolete PNGs so exact
+baseline-file assertions pass.
 
-```sh
-UPDATE_PDF_BASELINES=1 pnpm exec vitest run test/conformance.test.ts
-```
-
-Review every changed PNG, then rerun the command without the environment
-variable. If the intentional change alters page count, remove obsolete PNGs so
-the exact baseline-file assertion passes.
-
-The `svg/` subdirectory holds the reviewed baseline for the paired SVG fixture.
-Regenerate it the same way for an intentional SVG change:
-
-```sh
-UPDATE_PDF_BASELINES=1 pnpm exec vitest run test/svg-conformance.test.ts
-```
+| Baseline location | Owning test | Regenerate with |
+| --- | --- | --- |
+| `./*.png` | `test/conformance.test.ts` | `UPDATE_PDF_BASELINES=1 pnpm exec vitest run test/conformance.test.ts` |
+| `./svg/` | `test/svg-conformance.test.ts` | `UPDATE_PDF_BASELINES=1 pnpm exec vitest run test/svg-conformance.test.ts` |
+| `./toc/` | `test/toc-conformance.test.ts` | `UPDATE_PDF_BASELINES=1 pnpm exec vitest run test/toc-conformance.test.ts` |
+| `./corpus/` | `test/corpus/pagination.test.ts` | `UPDATE_PDF_BASELINES=1 pnpm exec vitest run test/corpus/pagination.test.ts` |
+| `../corpus/*.png` (alongside the image fixtures) | `test/corpus/images.test.ts` | `UPDATE_PDF_BASELINES=1 pnpm exec vitest run test/corpus/images.test.ts` |

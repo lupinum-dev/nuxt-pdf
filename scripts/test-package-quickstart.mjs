@@ -176,20 +176,28 @@ ${dependencyOverrides.map(([name, version]) => `  ${JSON.stringify(name)}: ${JSO
 `)
 
   await writeFile(join(appDir, 'pdfs', 'invoice.vue'), `<script setup lang="ts">
+// Mirrors the documented quickstart shape exactly: nested props, so the gate
+// proves the same registry typegen and prop inference the docs teach.
 type InvoiceProps = {
-  customer: string
-  number: string
+  invoice: {
+    customer: string
+    number: string
+    total: string
+  }
 }
 
 const props = defineProps<InvoiceProps>()
 
 definePdf<InvoiceProps>({
-  title: invoice => \`Invoice \${invoice.number}\`,
-  filename: invoice => \`invoice-\${invoice.number}.pdf\`,
+  title: ({ invoice }) => \`Invoice \${invoice.number}\`,
+  filename: ({ invoice }) => \`invoice-\${invoice.number}.pdf\`,
   language: 'en-GB',
   sampleData: {
-    customer: 'Ada Lovelace',
-    number: 'QS-001',
+    invoice: {
+      customer: 'Ada Lovelace',
+      number: 'QS-001',
+      total: 'EUR 1,250.00',
+    },
   },
 })
 </script>
@@ -201,9 +209,10 @@ definePdf<InvoiceProps>({
       :style="{ padding: 48 }"
     >
       <PdfText :style="{ fontSize: 24 }">
-        Installable invoice {{ props.number }}
+        Installable invoice {{ props.invoice.number }}
       </PdfText>
-      <PdfText>Prepared for {{ props.customer }}</PdfText>
+      <PdfText>Prepared for {{ props.invoice.customer }}</PdfText>
+      <PdfText>Total: {{ props.invoice.total }}</PdfText>
       <PdfText
         fixed
         :style="{ bottom: 24, position: 'absolute', right: 48 }"
@@ -218,13 +227,16 @@ definePdf<InvoiceProps>({
 
 export default defineEventHandler(async () => {
   const props: Parameters<typeof pdf.invoice.render>[0] = {
-    customer: 'Ada Lovelace',
-    number: 'QS-001',
+    invoice: {
+      customer: 'Ada Lovelace',
+      number: 'QS-001',
+      total: 'EUR 1,250.00',
+    },
   }
 
   if (false) {
     // @ts-expect-error The generated registry rejects missing required props.
-    await pdf.invoice.render({ number: 'INVALID' })
+    await pdf.invoice.render({ invoice: { number: 'INVALID' } })
   }
 
   return (await pdf.invoice.render(props)).response()
@@ -251,6 +263,7 @@ const assertPdfSemantics = async (bytes) => {
 
     assert(text.includes('Installable invoice QS-001'), 'PDF is missing the typed invoice data.')
     assert(text.includes('Prepared for Ada Lovelace'), 'PDF is missing the customer data.')
+    assert(text.includes('Total: EUR 1,250.00'), 'PDF is missing the nested total.')
     assert(text.includes('Page 1 of 1'), 'PDF is missing dynamic page text.')
   }
   finally {

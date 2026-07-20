@@ -17,6 +17,7 @@ import {
   fetchRemoteResource,
   matchesAllowlist,
   type RemoteAssetPolicy,
+  redactUrl,
 } from '../runtime/server/assets/remote'
 import type {
   BundledPdfFontDescriptor,
@@ -229,12 +230,12 @@ const validateFontSource = (
     const url = src.trim()
     if (!remote) {
       throw fontError(
-        url,
+        redactUrl(url),
         'remote fonts are disabled. Set pdf.remote.allow to fetch this URL.',
       )
     }
     if (!matchesAllowlist(url, remote)) {
-      throw fontError(url, 'the URL is not permitted by pdf.remote.allow.')
+      throw fontError(redactUrl(url), 'the URL is not permitted by pdf.remote.allow.')
     }
     return { kind: 'remote', url }
   }
@@ -247,7 +248,7 @@ const validateDeclaration = (
   remote: RemoteAssetPolicy | undefined,
 ): ValidatedFont => {
   const resolved = validateFontSource(declaration?.src, remote)
-  const label = resolved.kind === 'local' ? resolved.source : resolved.url
+  const label = resolved.kind === 'local' ? resolved.source : redactUrl(resolved.url)
   if (typeof declaration.family !== 'string' || declaration.family.trim() === '') {
     throw fontError(label, 'family must be a non-empty string.')
   }

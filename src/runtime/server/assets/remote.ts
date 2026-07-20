@@ -57,6 +57,9 @@ const WILDCARD_PUBLIC_SUFFIXES = new Set([
 
 // Error messages must never echo query strings: remote URLs commonly carry
 // signed tokens, and these messages travel into logs and preview responses.
+// Path segments are deliberately kept — redacting them would make the message
+// useless — so URL schemes that sign in the path still surface those segments;
+// prefer query-signed URLs for tokenized sources (documented in CONFORMANCE).
 export const redactUrl = (url: string): string => {
   try {
     const parsed = new URL(url)

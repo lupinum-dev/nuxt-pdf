@@ -277,7 +277,10 @@ tested boundary guarantees:
   string is ignored for matching but preserved for the fetch. Wildcards on the
   most common public suffixes (`*.co.uk`, `*.github.io`, …) are rejected at
   setup; the list is deliberately non-exhaustive and the allowlist remains the
-  operator's trust decision. Error messages redact query strings.
+  operator's trust decision. Error messages redact query strings (for image and
+  font URLs alike) but keep path segments — a URL scheme that signs in the path
+  still surfaces those segments in messages, so prefer query-signed URLs for
+  tokenized sources.
 - Redirects are followed manually and the allowlist is re-checked on every hop
   (bounded to five), so an allowlisted host cannot redirect out of the allowlist.
 - Byte caps reuse the local image (10MB) and font (5MB) limits and are enforced

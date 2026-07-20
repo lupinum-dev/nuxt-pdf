@@ -67,10 +67,15 @@ conformance fixture. Everything is additive: no 0.1.0 public API changed.
 
 ### Breaking changes
 
-None. The 0.1.0 public surface — module options, `#pdf` registry, components,
-and `definePdf` — is unchanged; every 0.2.0 addition is opt-in. `pdfjs-dist` and
-`@napi-rs/canvas` are added only as **optional** peer dependencies for the new
-`/test` entry.
+One type-level narrowing: the `bookmark` prop is no longer **typed** on
+`PdfLink` and `PdfNote`. It was never tested or claimed there, and outline
+entries are verified only on `PdfPage`/`PdfView`/`PdfText`/`PdfImage`, so the
+types now match the tested contract. Runtime behavior is unchanged.
+
+Everything else in the 0.1.0 public surface — module options, `#pdf` registry,
+components, and `definePdf` — is unchanged; every 0.2.0 addition is opt-in.
+`pdfjs-dist` and `@napi-rs/canvas` are added only as **optional** peer
+dependencies for the new `/test` entry.
 
 ## 0.1.0
 
