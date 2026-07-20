@@ -108,6 +108,17 @@ Protected by PDF magic-byte, parse, metadata, stream completion, and stream erro
 
 A fresh `FontStore` contains the standard PDF fonts. Additional local fonts are registered before layout and the same store is passed to `layoutDocument`.
 
+Font resolution runs *inside* the layout pipeline (`resolveAssets` calls
+`fontStore.load`), so a missing family throws during `layoutDocument`. Nuxt PDF
+surfaces this as a single `PDF_LAYOUT_ERROR` carrying React PDF's own exact
+message (`Font family not registered: <family>` / `Could not resolve font for
+<family>, fontWeight …`). Font failures are deliberately **not** sub-classified
+into a separate error code: `@react-pdf/font` throws a plain `Error` with no
+machine-readable signal, and the only way to isolate the font sub-stage would be
+to walk the tree and call `fontStore.getFont` per descriptor — duplicating the
+`resolveAssets` traversal this file forbids. The precise family is already named
+in the preserved message, so no re-classification is needed.
+
 Protected by the local-font conformance fixture. Asset policy, path validation, and registration ownership live outside the engine and must run before layout.
 
 ## Remote resource boundary

@@ -151,11 +151,15 @@ describe('React PDF engine pipeline', () => {
     })
   })
 
-  it('classifies missing fonts before serialization', async () => {
+  it('surfaces font-resolution failures as a layout error with the upstream message', async () => {
     const invalid = createDocument('Missing Font')
 
+    // Font resolution is a layout sub-stage, so a missing family fails as
+    // LAYOUT_ERROR carrying React PDF's own precise message rather than a
+    // separately classified font code.
     await expect(renderDocument(invalid)).rejects.toMatchObject({
-      code: 'PDF_FONT_ERROR',
+      code: 'PDF_LAYOUT_ERROR',
+      message: expect.stringContaining('Font family not registered'),
     })
   })
 

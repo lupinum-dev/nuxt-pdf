@@ -127,16 +127,13 @@ export const renderDocument = async (
     )
   }
   catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    const code = /font|glyph/i.test(message)
-      ? PDF_ERROR_CODES.FontError
-      : PDF_ERROR_CODES.LayoutError
-
+    // Font resolution is a layout sub-stage (resolveAssets → fontStore.load), so
+    // font failures surface here as LAYOUT_ERROR carrying React PDF's own message
+    // (e.g. "Font family not registered: Roboto"). Nuxt PDF does not re-classify
+    // by message text or duplicate the layout traversal to sub-type the failure.
     throw new NuxtPdfError(
-      code,
-      code === PDF_ERROR_CODES.FontError
-        ? `PDF font resolution failed: ${message}`
-        : `PDF layout failed: ${message}`,
+      PDF_ERROR_CODES.LayoutError,
+      `PDF layout failed: ${error instanceof Error ? error.message : String(error)}`,
       { cause: error },
     )
   }
