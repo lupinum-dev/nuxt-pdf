@@ -327,6 +327,16 @@ both are validated as positive integers at module setup (a non-positive,
 non-integer, or non-numeric value fails the build). With no `pdf.limits`
 configured the same defaults still apply, so every render is bounded.
 
+### Serverless build
+
+The module builds under a serverless Nitro preset (`test/serverless-build.test.ts`
+builds the basic fixture with `NITRO_PRESET=vercel`): the build succeeds, the
+React PDF engine lands in the server function bundle, the `.vercel/output`
+serverless structure is emitted, and no React renderer runtime leaks into the
+bundle. This claims exactly that it **builds** under the vercel preset;
+execution is verified on node-server (`test/production.test.ts`) — the Vercel
+runtime is not executed locally.
+
 ### Testing utilities
 
 The verification helpers this suite runs on ship as `@lupinum/nuxt-pdf/test`.
