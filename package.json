@@ -10,6 +10,10 @@
     ".": {
       "types": "./dist/types.d.mts",
       "import": "./dist/module.mjs"
+    },
+    "./test": {
+      "types": "./dist/test.d.mts",
+      "import": "./dist/test.mjs"
     }
   },
   "main": "./dist/module.mjs",
@@ -53,8 +57,18 @@
     "h3": "1.15.11"
   },
   "peerDependencies": {
+    "@napi-rs/canvas": "^0.1.97",
     "nuxt": "^4.4.8",
+    "pdfjs-dist": "^5.6.205",
     "vue": "^3.5.0"
+  },
+  "peerDependenciesMeta": {
+    "@napi-rs/canvas": {
+      "optional": true
+    },
+    "pdfjs-dist": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@napi-rs/canvas": "0.1.97",
