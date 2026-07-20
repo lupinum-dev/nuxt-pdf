@@ -26,6 +26,12 @@ importers:
       '@react-pdf/render':
         specifier: 4.5.1
         version: 4.5.1
+      '@vue/compiler-sfc':
+        specifier: 3.5.40
+        version: 3.5.40
+      esbuild:
+        specifier: 0.28.1
+        version: 0.28.1
     devDependencies:
       '@napi-rs/canvas':
         specifier: 0.1.97

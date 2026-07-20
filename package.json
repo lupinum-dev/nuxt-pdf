@@ -48,7 +48,9 @@
     "@react-pdf/layout": "4.6.1",
     "@react-pdf/pdfkit": "5.1.1",
     "@react-pdf/primitives": "4.3.0",
-    "@react-pdf/render": "4.5.1"
+    "@react-pdf/render": "4.5.1",
+    "@vue/compiler-sfc": "3.5.40",
+    "esbuild": "0.28.1"
   },
   "peerDependencies": {
     "nuxt": "^4.4.8",
