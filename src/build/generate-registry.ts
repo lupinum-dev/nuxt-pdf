@@ -1,6 +1,18 @@
+import { Buffer } from 'node:buffer'
 import type { PdfTemplate } from './discover-templates'
 
 export type PdfRegistryGenerationOptions = {
+  assets?: readonly {
+    data: Uint8Array
+    format: 'jpg' | 'png'
+    key: string
+  }[]
+  fonts?: readonly {
+    family: string
+    fontStyle?: 'italic' | 'normal' | 'oblique'
+    fontWeight?: number
+    src: string
+  }[]
   runtimeImport: string
 }
 
@@ -14,6 +26,38 @@ const quote = (value: string): string => JSON.stringify(value)
 
 const importPath = (filePath: string): string =>
   filePath.replaceAll('\\', '/')
+
+const runtimeOptionsSource = (
+  options: PdfRegistryGenerationOptions,
+): string[] => {
+  const assets = options.assets ?? []
+  const fonts = options.fonts ?? []
+
+  if (assets.length === 0 && fonts.length === 0) return []
+
+  const lines = ['', 'const __pdfRuntimeOptions = Object.freeze({']
+
+  if (assets.length > 0) {
+    lines.push('  assets: Object.freeze({')
+    for (const asset of assets) {
+      lines.push(
+        `    ${quote(asset.key)}: Object.freeze({ data: __pdfBuffer.from(${quote(Buffer.from(asset.data).toString('base64'))}, 'base64'), format: ${quote(asset.format)} }),`,
+      )
+    }
+    lines.push('  }),')
+  }
+
+  if (fonts.length > 0) {
+    lines.push('  fonts: Object.freeze([')
+    for (const font of fonts) {
+      lines.push(`    Object.freeze(${JSON.stringify(font)}),`)
+    }
+    lines.push('  ]),')
+  }
+
+  lines.push('})')
+  return lines
+}
 
 const orderedTemplates = (
   templates: readonly PdfTemplate[],
@@ -62,17 +106,25 @@ export const generatePdfRuntimeRegistry = (
     `import { createPdfRegistry, createPdfTemplate } from ${quote(options.runtimeImport)}`,
   ]
 
+  if ((options.assets?.length ?? 0) > 0) {
+    lines.push('import { Buffer as __pdfBuffer } from \'node:buffer\'')
+  }
+
   ordered.forEach((template, index) => {
     lines.push(
       `import __pdfTemplate${index} from ${quote(importPath(template.filePath))}`,
     )
   })
 
-  lines.push('', 'const registry = createPdfRegistry({')
+  const runtimeOptions = runtimeOptionsSource(options)
+  lines.push(...runtimeOptions, '', 'const registry = createPdfRegistry({')
 
   ordered.forEach((template, index) => {
+    const runtimeArgument = runtimeOptions.length > 0
+      ? ', __pdfRuntimeOptions'
+      : ''
     lines.push(
-      `  ${quote(template.propertyKey)}: createPdfTemplate(${quote(template.canonicalKey)}, __pdfTemplate${index}),`,
+      `  ${quote(template.propertyKey)}: createPdfTemplate(${quote(template.canonicalKey)}, __pdfTemplate${index}${runtimeArgument}),`,
     )
   })
 

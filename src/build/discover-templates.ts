@@ -25,6 +25,13 @@ export type PdfTemplate = {
   layerName: string
 }
 
+export type PdfImageFile = {
+  filePath: string
+  key: string
+  rootDir: string
+  layerIndex: number
+}
+
 const compareText = (left: string, right: string): number => {
   if (left < right) return -1
   if (left > right) return 1
@@ -166,8 +173,14 @@ export const normalizePdfTemplateCandidates = (
   return templates
 }
 
-const findVueFiles = async (
+type FindFilesOptions = {
+  excludedRootDirectories?: ReadonlySet<string>
+  include: (filename: string) => boolean
+}
+
+const findFiles = async (
   directory: string,
+  options: FindFilesOptions,
   relativeDirectory = '',
 ): Promise<string[]> => {
   let entries
@@ -192,20 +205,37 @@ const findVueFiles = async (
     if (
       relativeDirectory === ''
       && entry.isDirectory()
-      && EXCLUDED_ROOT_DIRECTORIES.has(entry.name)
+      && options.excludedRootDirectories?.has(entry.name)
     ) {
       continue
     }
 
     if (entry.isDirectory()) {
-      files.push(...await findVueFiles(join(directory, entry.name), relativePath))
+      files.push(...await findFiles(
+        join(directory, entry.name),
+        options,
+        relativePath,
+      ))
     }
-    else if (entry.isFile() && entry.name.endsWith('.vue')) {
+    else if (entry.isFile() && options.include(entry.name)) {
       files.push(relativePath)
     }
   }
 
   return files
+}
+
+const VUE_FILES: FindFilesOptions = {
+  excludedRootDirectories: EXCLUDED_ROOT_DIRECTORIES,
+  include: filename => filename.endsWith('.vue'),
+}
+
+const PDF_COMPONENT_FILES: FindFilesOptions = {
+  include: filename => filename.endsWith('.vue'),
+}
+
+const PDF_IMAGE_FILES: FindFilesOptions = {
+  include: filename => /\.(?:jpe?g|png)$/i.test(filename),
 }
 
 export const discoverPdfTemplates = async (
@@ -216,7 +246,7 @@ export const discoverPdfTemplates = async (
   for (const [layerIndex, layer] of layers.entries()) {
     const rootDir = resolve(layer.rootDir)
     const pdfsDir = join(rootDir, 'pdfs')
-    const files = await findVueFiles(pdfsDir)
+    const files = await findFiles(pdfsDir, VUE_FILES)
 
     for (const relativePath of files) {
       candidates.push({
@@ -239,10 +269,33 @@ export const discoverPdfComponentFiles = async (
   for (const layer of layers) {
     const directory = join(resolve(layer.rootDir), 'pdfs', 'components')
 
-    for (const relativePath of await findVueFiles(directory)) {
+    for (const relativePath of await findFiles(directory, PDF_COMPONENT_FILES)) {
       files.add(join(directory, ...relativePath.split('/')))
     }
   }
 
   return [...files].sort(compareText)
+}
+
+export const discoverPdfImageFiles = async (
+  layers: readonly PdfTemplateLayer[],
+): Promise<PdfImageFile[]> => {
+  const files = new Map<string, PdfImageFile>()
+
+  for (const [layerIndex, layer] of layers.entries()) {
+    const rootDir = join(resolve(layer.rootDir), 'pdfs', 'assets')
+
+    for (const key of await findFiles(rootDir, PDF_IMAGE_FILES)) {
+      if (!files.has(key)) {
+        files.set(key, {
+          filePath: join(rootDir, ...key.split('/')),
+          key,
+          rootDir,
+          layerIndex,
+        })
+      }
+    }
+  }
+
+  return [...files.values()].sort((left, right) => compareText(left.key, right.key))
 }

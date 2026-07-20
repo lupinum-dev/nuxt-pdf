@@ -48,7 +48,7 @@ definePdf<InvoiceProps>({
       size="A4"
       :style="{
         color: '#17201b',
-        fontFamily: 'Helvetica',
+        fontFamily: 'Invoice Sans',
         fontSize: 11,
         gap: 16,
         padding: 48,
@@ -58,6 +58,10 @@ definePdf<InvoiceProps>({
         Invoice {{ props.number }}
       </PdfText>
       <PdfText>{{ props.customer }}</PdfText>
+      <PdfImage
+        src="sample.png"
+        :style="{ height: 24, objectFit: 'contain', width: 24 }"
+      />
       <InvoiceLine
         v-for="line in props.lines"
         :key="line.id"

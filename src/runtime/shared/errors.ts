@@ -1,7 +1,10 @@
 export const PDF_ERROR_CODES = {
   AssetBlocked: 'PDF_ASSET_BLOCKED',
   AssetInvalid: 'PDF_ASSET_INVALID',
+  FontError: 'PDF_FONT_ERROR',
+  LayoutError: 'PDF_LAYOUT_ERROR',
   LimitExceeded: 'PDF_LIMIT_EXCEEDED',
+  TreeInvalid: 'PDF_TREE_INVALID',
   TemplateNotFound: 'PDF_TEMPLATE_NOT_FOUND',
   TemplateInvalid: 'PDF_TEMPLATE_INVALID',
   RenderError: 'PDF_RENDER_ERROR',

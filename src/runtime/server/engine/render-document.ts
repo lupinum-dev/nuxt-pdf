@@ -10,6 +10,10 @@ import {
   createPdfFontStore,
   type PdfFontStore,
 } from '../fonts'
+import {
+  NuxtPdfError,
+  PDF_ERROR_CODES,
+} from '../../shared/errors'
 
 export interface PdfEngineOptions {
   compress?: boolean
@@ -70,22 +74,53 @@ export const renderDocument = async (
   options: PdfEngineOptions = {},
 ): Promise<PdfEngineResult> => {
   if (document.type !== 'DOCUMENT') {
-    throw new TypeError(`Expected a DOCUMENT root, received ${document.type}`)
+    throw new NuxtPdfError(
+      PDF_ERROR_CODES.TreeInvalid,
+      `Expected a DOCUMENT root, received ${document.type}.`,
+    )
   }
 
   const fontStore = options.fontStore ?? createPdfFontStore()
-  const layout = await runLayout(
-    document,
-    fontStore as unknown as FontStore,
-  )
-  const context = createContext(document.props, options.compress ?? true)
-  const stream = renderPDF(
-    context as unknown as Parameters<typeof renderPDF>[0],
-    layout,
-  ) as unknown as NodeJS.ReadableStream
+  let layout: SafeDocumentNode
 
-  return {
-    bytes: await collectStream(stream),
-    layout,
+  try {
+    layout = await runLayout(
+      document,
+      fontStore as unknown as FontStore,
+    )
+  }
+  catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    const code = /font|glyph/i.test(message)
+      ? PDF_ERROR_CODES.FontError
+      : PDF_ERROR_CODES.LayoutError
+
+    throw new NuxtPdfError(
+      code,
+      code === PDF_ERROR_CODES.FontError
+        ? `PDF font resolution failed: ${message}`
+        : `PDF layout failed: ${message}`,
+      { cause: error },
+    )
+  }
+
+  try {
+    const context = createContext(document.props, options.compress ?? true)
+    const stream = renderPDF(
+      context as unknown as Parameters<typeof renderPDF>[0],
+      layout,
+    ) as unknown as NodeJS.ReadableStream
+
+    return {
+      bytes: await collectStream(stream),
+      layout,
+    }
+  }
+  catch (error) {
+    throw new NuxtPdfError(
+      PDF_ERROR_CODES.RenderError,
+      `PDF serialization failed: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
+    )
   }
 }

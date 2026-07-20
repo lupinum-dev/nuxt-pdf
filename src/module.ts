@@ -1,3 +1,4 @@
+import { stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
   addServerHandler,
@@ -10,18 +11,39 @@ import {
 } from '@nuxt/kit'
 import {
   discoverPdfComponentFiles,
+  discoverPdfImageFiles,
   discoverPdfTemplates,
   type PdfTemplateLayer,
 } from './build/discover-templates'
+import { bundlePdfFonts } from './build/fonts'
 import {
   generatePdfRegistryTypes,
   generatePdfRuntimeRegistry,
 } from './build/generate-registry'
 import { createPdfSfcPlugin } from './build/pdf-sfc-plugin'
+import { loadPdfImageAsset } from './runtime/server/assets/resolve-asset'
+import type { PdfFontDeclaration } from './runtime/server/fonts'
 
-export type ModuleOptions = Record<string, never>
+export interface ModuleOptions {
+  fonts?: readonly PdfFontDeclaration[]
+}
 
 const quote = (value: string): string => JSON.stringify(value)
+
+const existingDirectories = async (directories: readonly string[]) => {
+  const result: string[] = []
+
+  for (const directory of directories) {
+    try {
+      if ((await stat(directory)).isDirectory()) result.push(directory)
+    }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    }
+  }
+
+  return result
+}
 
 const generateAuthoringTypes = (
   sharedImport: string,
@@ -57,8 +79,10 @@ export default defineNuxtModule<ModuleOptions>({
       nuxt: '>=4.4.8',
     },
   },
-  defaults: {},
-  async setup(_options, nuxt) {
+  defaults: {
+    fonts: [],
+  },
+  async setup(options, nuxt) {
     const resolver = createResolver(import.meta.url)
     const runtimeImport = resolver.resolve('./runtime/server/index')
     const sharedImport = resolver.resolve('./runtime/shared/index')
@@ -72,6 +96,14 @@ export default defineNuxtModule<ModuleOptions>({
     )
     const templates = await discoverPdfTemplates(layers)
     const componentFiles = await discoverPdfComponentFiles(layers)
+    const imageFiles = await discoverPdfImageFiles(layers)
+    const assets = await Promise.all(imageFiles.map(image =>
+      loadPdfImageAsset(image.key, { roots: [image.rootDir] }),
+    ))
+    const fontRoots = await existingDirectories(
+      layers.map(layer => join(layer.rootDir, 'pdfs', 'fonts')),
+    )
+    const fonts = await bundlePdfFonts(options.fonts ?? [], { fontRoots })
     const pdfSfcFiles = new Map<string, 'component' | 'template'>(
       componentFiles.map(file => [file, 'component']),
     )
@@ -87,6 +119,8 @@ export default defineNuxtModule<ModuleOptions>({
     addServerTemplate({
       filename: '#pdf',
       getContents: () => generatePdfRuntimeRegistry(templates, {
+        assets,
+        fonts,
         runtimeImport,
       }),
     })

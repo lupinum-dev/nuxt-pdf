@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import {
   canonicalKeyFromRelativePath,
   discoverPdfComponentFiles,
+  discoverPdfImageFiles,
   discoverPdfTemplates,
   normalizePdfTemplateCandidates,
   propertyKeyFromCanonicalKey,
@@ -77,6 +78,7 @@ describe('PDF template discovery', () => {
       'pdfs/invoice.vue': '<template>project</template>',
       'pdfs/components/LineItem.vue': '<template />',
       'pdfs/assets/logo.vue': '<template />',
+      'pdfs/assets/brand/logo.png': 'image',
       'pdfs/fonts/specimen.vue': '<template />',
       'pdfs/readme.txt': 'ignored',
     })
@@ -118,6 +120,15 @@ describe('PDF template discovery', () => {
     ])).toEqual([
       join(project, 'pdfs/components/LineItem.vue'),
     ])
+    expect(await discoverPdfImageFiles([
+      { rootDir: project },
+      { rootDir: base },
+    ])).toEqual([{
+      filePath: join(project, 'pdfs/assets/brand/logo.png'),
+      key: 'brand/logo.png',
+      layerIndex: 0,
+      rootDir: join(project, 'pdfs/assets'),
+    }])
   })
 
   it('fails on canonical and property collisions', () => {
@@ -215,6 +226,29 @@ describe('PDF registry generation', () => {
     expect(source).toContain(
       'export const pdfTemplateKeys = registry.pdfTemplateKeys',
     )
+  })
+
+  it('embeds validated assets and fonts without source-tree paths', () => {
+    const source = generatePdfRuntimeRegistry(templates, {
+      assets: [{
+        data: new Uint8Array([1, 2, 3]),
+        format: 'png',
+        key: 'brand/logo.png',
+      }],
+      fonts: [{
+        family: 'Invoice Sans',
+        src: 'data:font/ttf;base64,AAEAAA==',
+      }],
+      runtimeImport: '#pdf-runtime',
+    })
+
+    expect(source).toContain('Buffer as __pdfBuffer')
+    expect(source).toContain('__pdfBuffer.from("AQID", \'base64\')')
+    expect(source).toContain('"brand/logo.png"')
+    expect(source).toContain('"Invoice Sans"')
+    expect(source).toContain(', __pdfRuntimeOptions)')
+    expect(source).not.toContain('/project/pdfs/assets')
+    expect(source).not.toContain('/project/pdfs/fonts')
   })
 
   it('generates typed property access and canonical overloads without a loose string API', () => {

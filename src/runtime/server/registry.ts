@@ -12,10 +12,24 @@ import {
   type PdfTemplate,
   type ResolvedPdfMetadata,
 } from '../shared/template'
+import {
+  resolvePdfImageAssets,
+  type PdfImageAssetMap,
+} from './assets/resolve-asset'
 import { renderDocument } from './engine/render-document'
+import {
+  createPdfFontStore,
+  type BundledPdfFontDescriptor,
+} from './fonts'
 import { createPdfRenderResult } from './result'
 
 const EMPTY_SCENARIOS = Object.freeze({})
+const EMPTY_ASSETS = Object.freeze({})
+
+export interface PdfTemplateRuntimeOptions {
+  assets?: PdfImageAssetMap
+  fonts?: readonly BundledPdfFontDescriptor[]
+}
 
 type PdfTemplateIdentity = Pick<PdfTemplate<object>, 'key' | 'render'>
 
@@ -128,6 +142,7 @@ const renderTemplate = async <Props extends object>(
   component: Component,
   props: Props,
   metadata: ResolvedPdfMetadata,
+  options: PdfTemplateRuntimeOptions,
 ): Promise<Uint8Array> => {
   let mounted: Awaited<ReturnType<typeof mountPdfComponent>> | undefined
 
@@ -137,14 +152,26 @@ const renderTemplate = async <Props extends object>(
       props as Record<string, unknown>,
     )
     applyDocumentMetadata(mounted.document, metadata)
+    await resolvePdfImageAssets(mounted.document, {
+      assets: options.assets ?? EMPTY_ASSETS,
+    })
 
     const result = await renderDocument(
       mounted.document as unknown as Parameters<typeof renderDocument>[0],
+      { fontStore: createPdfFontStore(options.fonts) },
     )
     return result.bytes
   }
   catch (error) {
-    if (error instanceof NuxtPdfError) throw error
+    if (error instanceof NuxtPdfError) {
+      if (error.templateKey === key) throw error
+
+      throw new NuxtPdfError(
+        error.code,
+        `PDF template "${key}": ${error.message}`,
+        { cause: error, templateKey: key },
+      )
+    }
 
     throw new NuxtPdfError(
       PDF_ERROR_CODES.RenderError,
@@ -160,6 +187,7 @@ const renderTemplate = async <Props extends object>(
 export const createPdfTemplate = <Props extends object>(
   key: string,
   component: Component,
+  options: PdfTemplateRuntimeOptions = {},
 ): PdfTemplate<Props> => {
   if (!key.trim()) {
     throw templateError(key, 'template key must not be empty.')
@@ -199,7 +227,13 @@ export const createPdfTemplate = <Props extends object>(
       }
 
       const metadata = resolveMetadata(key, definition, props)
-      const bytesPromise = renderTemplate(key, component, props, metadata)
+      const bytesPromise = renderTemplate(
+        key,
+        component,
+        props,
+        metadata,
+        options,
+      )
       await bytesPromise
 
       return createPdfRenderResult(bytesPromise, metadata.filename)

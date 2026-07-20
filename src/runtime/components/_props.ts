@@ -89,11 +89,11 @@ export type PdfImageSource
     | Uint8Array
     | ArrayBuffer
     | { data: Uint8Array, format: 'png' | 'jpg' }
-    | { uri: string, headers?: Record<string, string> }
+    | { uri: string, format?: 'png' | 'jpg' }
 
 export type PdfImageProps = PdfBaseProps & {
-  src?: PdfImageSource | (() => PdfImageSource | Promise<PdfImageSource>)
-  source?: PdfImageSource | (() => PdfImageSource | Promise<PdfImageSource>)
+  src?: PdfImageSource
+  source?: PdfImageSource
   cache?: boolean
 }
 

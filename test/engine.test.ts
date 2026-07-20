@@ -3,7 +3,7 @@ import * as P from '@react-pdf/primitives'
 import { describe, expect, it } from 'vitest'
 import { renderDocument } from '../src/runtime/server/engine/render-document'
 
-const createDocument = (): DocumentNode => ({
+const createDocument = (fontFamily = 'Helvetica'): DocumentNode => ({
   type: P.Document,
   props: {
     title: 'Engine proof',
@@ -19,7 +19,7 @@ const createDocument = (): DocumentNode => ({
         {
           type: P.Text,
           box: {},
-          style: { fontFamily: 'Helvetica', fontSize: 18 },
+          style: { fontFamily, fontSize: 18 },
           props: {},
           children: [
             { type: P.TextInstance, value: 'Nuxt PDF engine proof' },
@@ -44,8 +44,17 @@ describe('React PDF engine pipeline', () => {
   it('rejects a non-document root before layout', async () => {
     const invalid = { ...createDocument(), type: P.Page } as unknown as DocumentNode
 
-    await expect(renderDocument(invalid)).rejects.toThrow(
-      'Expected a DOCUMENT root, received PAGE',
-    )
+    await expect(renderDocument(invalid)).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message: 'Expected a DOCUMENT root, received PAGE.',
+    })
+  })
+
+  it('classifies missing fonts before serialization', async () => {
+    const invalid = createDocument('Missing Font')
+
+    await expect(renderDocument(invalid)).rejects.toMatchObject({
+      code: 'PDF_FONT_ERROR',
+    })
   })
 })
