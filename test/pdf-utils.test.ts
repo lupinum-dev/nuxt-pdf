@@ -2,6 +2,7 @@ import { Buffer } from 'node:buffer'
 import { describe, expect, it } from 'vitest'
 import {
   comparePageImages,
+  decodePngPage,
   hasPdfHeader,
   normalizePdfText,
   parsePdf,
@@ -48,6 +49,13 @@ describe('PDF verification utilities', () => {
       0x0A,
     ])
 
+    const decodedPage = await decodePngPage(page!.png, page!.number)
+    expect(comparePageImages(decodedPage, page!)).toMatchObject({
+      dimensionsMatch: true,
+      matches: true,
+      pageNumbersMatch: true,
+    })
+
     const identical = comparePageImages(page!, page!)
 
     expect(identical).toMatchObject({
@@ -77,7 +85,7 @@ describe('PDF verification utilities', () => {
     expect(comparison.maxChannelDifference).toBe(255)
   })
 
-  it('normalizes semantic whitespace and validates comparison inputs', () => {
+  it('normalizes semantic whitespace and validates comparison inputs', async () => {
     expect(normalizePdfText('  Hello\n\t PDF  ')).toBe('Hello PDF')
 
     const page = createPageImage()
@@ -91,6 +99,8 @@ describe('PDF verification utilities', () => {
       .toThrow('channelThreshold must be between 0 and 255')
     expect(() => comparePageImages(page, page, { maxChangedPixelRatio: -0.1 }))
       .toThrow('maxChangedPixelRatio must be between 0 and 1')
+    await expect(decodePngPage(page.png, 0))
+      .rejects.toThrow('PNG page number must be a positive integer')
   })
 })
 

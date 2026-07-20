@@ -3,6 +3,7 @@ import {
   ImageData,
   Path2D,
   createCanvas,
+  loadImage,
   type Canvas,
   type SKRSContext2D,
 } from '@napi-rs/canvas'
@@ -208,6 +209,32 @@ export async function rasterizePdf(
 
     return images
   })
+}
+
+/** Decode a committed PNG into the same page-image shape as `rasterizePdf`. */
+export async function decodePngPage(
+  data: PdfData,
+  number: number,
+): Promise<PdfPageImage> {
+  if (!Number.isInteger(number) || number < 1) {
+    throw new RangeError('PNG page number must be a positive integer')
+  }
+
+  const png = copyPdfData(data)
+  const image = await loadImage(png)
+  const canvas = createCanvas(image.width, image.height)
+  const context = canvas.getContext('2d')
+  context.drawImage(image, 0, 0)
+
+  return {
+    height: image.height,
+    number,
+    pixels: new Uint8ClampedArray(
+      context.getImageData(0, 0, image.width, image.height).data,
+    ),
+    png,
+    width: image.width,
+  }
 }
 
 /** Compare two rasterized pages using explicit per-channel and page thresholds. */

@@ -2,7 +2,10 @@ import {
   copyFile,
   mkdir,
   mkdtemp,
+  readFile,
+  readdir,
   rm,
+  writeFile,
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -21,6 +24,7 @@ import { createReactConformanceDocument } from './fixtures/react-conformance'
 import { VueConformanceDocument } from './fixtures/vue-conformance'
 import {
   comparePageImages,
+  decodePngPage,
   hasPdfHeader,
   parsePdf,
   rasterizePdf,
@@ -34,6 +38,33 @@ const imagePath = fileURLToPath(new URL(
   './fixtures/assets/sample.png',
   import.meta.url,
 ))
+const baselineDirectory = fileURLToPath(new URL(
+  './fixtures/baselines',
+  import.meta.url,
+))
+const updatePdfBaselines = process.env.UPDATE_PDF_BASELINES === '1'
+const rasterThresholds = {
+  channelThreshold: 25,
+  maxChangedPixelRatio: 0.005,
+} as const
+const pageSemantics = [
+  {
+    includes: [
+      'Renderer conformance',
+      'Conditional approval included',
+      'Page 1 of 2',
+    ],
+    excludes: ['Explicit second page'],
+  },
+  {
+    includes: [
+      'Explicit second page',
+      'Nuxt documentation',
+      'Page 2 of 2',
+    ],
+    excludes: ['Conditional approval included'],
+  },
+] as const
 
 describe('React PDF compatibility', () => {
   it('produces semantically and visually equivalent output from React and Vue', async () => {
@@ -86,11 +117,6 @@ describe('React PDF compatibility', () => {
     expect(vuePdf.pages.map(page => page.text)).toEqual(
       reactPdf.pages.map(page => page.text),
     )
-    expect(vuePdf.pages[0]?.text).toContain('Conditional approval included')
-    expect(vuePdf.pages[0]?.text).toContain('Page 1 of 2')
-    expect(vuePdf.pages[0]?.text).not.toContain('Explicit second page')
-    expect(vuePdf.pages[1]?.text).toContain('Explicit second page')
-    expect(vuePdf.pages[1]?.text).toContain('Page 2 of 2')
 
     const reactLinks = reactPdf.pages.flatMap(page => page.annotations)
       .filter(annotation => annotation.subtype === 'Link')
@@ -109,14 +135,54 @@ describe('React PDF compatibility', () => {
     ])
 
     expect(vuePages).toHaveLength(reactPages.length)
+    expect(vuePages).toHaveLength(pageSemantics.length)
+
+    if (updatePdfBaselines) {
+      await mkdir(baselineDirectory, { recursive: true })
+    }
 
     for (const [index, reactPage] of reactPages.entries()) {
-      const comparison = comparePageImages(vuePages[index]!, reactPage)
-      expect(comparison, `page ${index + 1} raster mismatch`).toMatchObject({
+      const vuePage = vuePages[index]!
+      const semantics = pageSemantics[index]!
+
+      for (const text of semantics.includes) {
+        expect(vuePdf.pages[index]?.text).toContain(text)
+      }
+      for (const text of semantics.excludes) {
+        expect(vuePdf.pages[index]?.text).not.toContain(text)
+      }
+
+      const parity = comparePageImages(vuePage, reactPage, rasterThresholds)
+      expect(parity, `page ${index + 1} React/Vue raster mismatch`).toMatchObject({
+        dimensionsMatch: true,
+        matches: true,
+        pageNumbersMatch: true,
+      })
+
+      const baselineName = `vue-conformance-page-${index + 1}.png`
+      const baselinePath = join(baselineDirectory, baselineName)
+      if (updatePdfBaselines) {
+        await writeFile(baselinePath, vuePage.png)
+      }
+
+      const baseline = await decodePngPage(
+        await readFile(baselinePath),
+        vuePage.number,
+      )
+      const regression = comparePageImages(vuePage, baseline, rasterThresholds)
+      expect(regression, `page ${index + 1} reviewed baseline mismatch`).toMatchObject({
         dimensionsMatch: true,
         matches: true,
         pageNumbersMatch: true,
       })
     }
+
+    const expectedBaselineNames = vuePages.map(
+      (_, index) => `vue-conformance-page-${index + 1}.png`,
+    )
+    const actualBaselineNames = (await readdir(baselineDirectory))
+      .filter(name => name.endsWith('.png'))
+      .sort()
+    expect(actualBaselineNames).toEqual(expectedBaselineNames)
   }, 20_000)
 })
