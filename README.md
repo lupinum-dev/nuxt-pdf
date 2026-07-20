@@ -268,6 +268,56 @@ embedded into the server build. Absolute paths, traversal, symlink escapes,
 remote URLs, and runtime filesystem fallbacks are rejected. Remote images and
 fonts are intentionally unsupported in `0.1.0`.
 
+## Testing your PDFs
+
+The same utilities this package is tested with ship as `@lupinum/nuxt-pdf/test`,
+so you can assert against your own templates with a real render — no Nuxt boot,
+no snapshot guesswork. The parser and rasterizer load `pdfjs-dist` and
+`@napi-rs/canvas` lazily; install them as dev dependencies of your project:
+
+```bash
+pnpm add -D pdfjs-dist @napi-rs/canvas
+```
+
+`renderPdfTemplate` mounts a component through the real pipeline (asset
+resolution, font registration, single- or multi-pass layout) and returns the
+bytes alongside a parsed document. `expectPdf` gives runner-agnostic assertions
+that throw a `PdfAssertionError` with an actionable message on failure:
+
+```ts
+import { describe, it } from 'vitest'
+import { expectPdf, renderPdfTemplate } from '@lupinum/nuxt-pdf/test'
+import Invoice from './pdfs/invoice.vue'
+
+describe('invoice.vue', () => {
+  it('renders the customer, a terms link, and an outline', async () => {
+    const { parsed } = await renderPdfTemplate(Invoice, { customer: 'Acme Corp' })
+
+    expectPdf(parsed)
+      .toHavePageCount(2)
+      .toContainText('Invoice for Acme Corp', { page: 1 })
+      .toHaveLink({ destination: 'terms', page: 1 })
+      .toHaveLink({ url: 'https://example.com/' })
+      .toHaveOutline([{ title: 'Terms' }])
+  })
+})
+```
+
+`parsePdf` also accepts a `PdfRenderResult` straight from the server registry —
+`await parsePdf(await pdf.invoice.render(props))` — so route tests read naturally.
+
+For pixel-level regressions, `comparePdfSnapshot` follows a reviewed-baseline
+policy: it writes per-page PNG baselines into a directory when
+`UPDATE_PDF_BASELINES=1` (or `{ update: true }`) is set, and otherwise compares
+each page against them within a pixel threshold.
+
+```ts
+import { comparePdfSnapshot, renderPdfTemplate } from '@lupinum/nuxt-pdf/test'
+
+const { bytes } = await renderPdfTemplate(Invoice, { customer: 'Acme Corp' })
+await comparePdfSnapshot(bytes, './test/baselines/invoice')
+```
+
 ## Alpha boundary
 
 Nuxt PDF is currently designed for invoices, reports, certificates, tickets,

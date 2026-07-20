@@ -223,6 +223,30 @@ conformance fixture already rasters against React. Not claimed: authenticated
 fetches, request headers or bodies, cookies/credentials, private-IP or DNS
 rebinding protection beyond the allowlist, and any cross-render caching.
 
+### Testing utilities
+
+The verification helpers this suite runs on ship as `@lupinum/nuxt-pdf/test`.
+`test/utils/pdf.ts` re-exports `src/test-utils/`, so the entire suite exercises
+the same shipped code — there is one parser, not two. Claimed:
+
+- `parsePdf` accepts PDF bytes or a `PdfRenderResult` and returns page text,
+  page count, flattened link annotations (named destination or external URL),
+  and the outline via pdfjs;
+- `expectPdf` runner-agnostic assertions (`toHavePageCount`, `toContainText`,
+  `toHaveLink`, `toHaveOutline`) that throw a `PdfAssertionError` — no vitest or
+  jest dependency;
+- `renderPdfTemplate`, which renders a Vue PDF component through the real
+  registry pipeline (assets, fonts, single- or multi-pass layout) without Nuxt,
+  with or without `definePdf` metadata;
+- `rasterizePdf` and `comparePdfSnapshot`, the reviewed per-page PNG baseline
+  flow with an `UPDATE_PDF_BASELINES` update mode; and
+- `pdfjs-dist` and `@napi-rs/canvas` as optional peer dependencies, loaded
+  lazily with an actionable install error and absent from the module's
+  production dependency graph.
+
+Verified end-to-end against a real rendered template, including assertion
+failure messages, in `test/test-utils-public.test.ts`.
+
 ## Explicitly not claimed in 0.1.0
 
 - Full React PDF component, hook, browser-helper, or test-suite parity.
