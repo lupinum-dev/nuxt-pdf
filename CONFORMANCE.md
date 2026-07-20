@@ -31,9 +31,6 @@ The paired React/Vue fixture verifies:
 - A4 layout, normal text flow, explicit page breaking, and two output pages;
 - fixed content repeated across pages;
 - synchronous dynamic text returning scalar page-number and page-total text;
-- dynamic text (page-number footers) rendering at correct page-bottom geometry
-  even when an ancestor `PdfPage` or `PdfView` sets `lineHeight` — matching the
-  static equivalent, where upstream React PDF instead drops the footer;
 - a local Roboto TTF and local PNG;
 - an external link annotation; and
 - equivalent extracted text, link annotations, page count, and a thresholded
@@ -42,6 +39,13 @@ The paired React/Vue fixture verifies:
 Renderer tests separately cover insertion, removal, keyed movement, prop and
 text updates, primitive resolution, rejection of invalid roots, and exclusion
 of orphan text from the document tree.
+
+Dynamic text (page-number footers) renders at correct page-bottom geometry even
+when a `lineHeight` reaches it — inherited from `PdfPage` or nested `PdfView`
+chains, given as a percentage, or set on the dynamic node itself. This is a
+deliberate divergence from upstream React PDF, which drops such footers, so it
+is verified by Vue-only engine tests (`test/engine.test.ts`) against the
+equivalent static-text geometry, not by the paired React fixture.
 
 ### SVG drawing primitives
 
@@ -137,8 +141,11 @@ tested boundary guarantees:
 - `https://` only; `http://`, embedded credentials, and non-matching hosts,
   ports, or path prefixes are blocked. An allowlist entry is an explicit host
   (or a single leading `*.` subdomain wildcard on a registrable domain) plus a
-  pathname prefix; the query string is ignored for matching but preserved for
-  the fetch.
+  pathname prefix; prefixes match only on path-segment boundaries, and the query
+  string is ignored for matching but preserved for the fetch. Wildcards on the
+  most common public suffixes (`*.co.uk`, `*.github.io`, …) are rejected at
+  setup; the list is deliberately non-exhaustive and the allowlist remains the
+  operator's trust decision. Error messages redact query strings.
 - Redirects are followed manually and the allowlist is re-checked on every hop
   (bounded to five), so an allowlisted host cannot redirect out of the allowlist.
 - Byte caps reuse the local image (10MB) and font (5MB) limits and are enforced

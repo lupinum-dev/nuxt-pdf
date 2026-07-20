@@ -31,46 +31,69 @@ const createDocument = (fontFamily = 'Helvetica'): DocumentNode => ({
   ],
 } as DocumentNode)
 
-const createDynamicPageDocument = (lineHeight?: number): DocumentNode => ({
+interface DynamicDocumentOptions {
+  lineHeight?: number | string
+  /** Extra style on the dynamic footer itself (e.g. its own lineHeight). */
+  footerStyle?: Record<string, unknown>
+  /** Wrap the footer in a View that also sets a lineHeight. */
+  nestedViewLineHeight?: number
+}
+
+const createDynamicPageDocument = (
+  options: DynamicDocumentOptions = {},
+): DocumentNode => ({
   type: P.Document,
   props: {},
-  children: [1, 2].map(pageNumber => ({
-    type: P.Page,
-    box: {},
-    style: { lineHeight, padding: 32 },
-    props: { size: 'A4' },
-    children: [
-      {
-        type: P.Text,
-        box: {},
-        style: { fontFamily: 'Helvetica', fontSize: 12 },
-        props: {},
-        children: [{ type: P.TextInstance, value: `Body ${pageNumber}` }],
+  children: [1, 2].map((pageNumber) => {
+    const footer = {
+      type: P.Text,
+      box: {},
+      style: {
+        bottom: 22,
+        fontFamily: 'Helvetica',
+        fontSize: 8,
+        left: 42,
+        position: 'absolute',
+        right: 42,
+        textAlign: 'center',
+        ...options.footerStyle,
       },
-      {
-        type: P.Text,
-        box: {},
-        style: {
-          bottom: 22,
-          fontFamily: 'Helvetica',
-          fontSize: 8,
-          left: 42,
-          position: 'absolute',
-          right: 42,
-          textAlign: 'center',
-        },
-        props: {
-          fixed: true,
-          render: ({
-            pageNumber: currentPage,
-            totalPages,
-          }: { pageNumber: number, totalPages?: number }) =>
-            `Page ${currentPage} of ${totalPages}`,
-        },
-        children: [],
+      props: {
+        fixed: true,
+        render: ({
+          pageNumber: currentPage,
+          totalPages,
+        }: { pageNumber: number, totalPages?: number }) =>
+          `Page ${currentPage} of ${totalPages}`,
       },
-    ],
-  })),
+      children: [],
+    }
+
+    return {
+      type: P.Page,
+      box: {},
+      style: { lineHeight: options.lineHeight, padding: 32 },
+      props: { size: 'A4' },
+      children: [
+        {
+          type: P.Text,
+          box: {},
+          style: { fontFamily: 'Helvetica', fontSize: 12 },
+          props: {},
+          children: [{ type: P.TextInstance, value: `Body ${pageNumber}` }],
+        },
+        options.nestedViewLineHeight === undefined
+          ? footer
+          : {
+              type: P.View,
+              box: {},
+              style: { lineHeight: options.nestedViewLineHeight },
+              props: {},
+              children: [footer],
+            },
+      ],
+    }
+  }),
 } as DocumentNode)
 
 // Oracle for the fixed dynamic-footer geometry: the SAME document authored with
@@ -119,14 +142,21 @@ interface TextGeometry {
 }
 
 const laidOutPages = (layout: SafeDocumentNode) =>
-  layout.children as unknown as { children: [TextGeometry, TextGeometry] }[]
+  layout.children as unknown as {
+    children: [TextGeometry, TextGeometry & { children?: TextGeometry[] }]
+  }[]
 
+// The footer is the page's second child, or that child's own first child when
+// the fixture wraps the footer in a View.
 const footerGeometry = (layout: SafeDocumentNode) =>
-  laidOutPages(layout).map(({ children: [, footer] }) => ({
-    top: footer.box.top,
-    height: footer.box.height,
-    lineHeight: footer.lines[0]!.box.height,
-  }))
+  laidOutPages(layout).map(({ children: [, second] }) => {
+    const footer = second.lines ? second : second.children![0]!
+    return {
+      top: footer.box.top,
+      height: footer.box.height,
+      lineHeight: footer.lines[0]!.box.height,
+    }
+  })
 
 const bodyHeight = (layout: SafeDocumentNode) =>
   laidOutPages(layout)[0]!.children[0].box.height
@@ -166,7 +196,7 @@ describe('React PDF engine pipeline', () => {
   it('renders dynamic totals on explicit pages, with or without inherited line height', async () => {
     // The inherited-lineHeight case (1.45) is the one upstream React PDF drops;
     // here it must render on both pages just like the plain case.
-    for (const document of [createDynamicPageDocument(), createDynamicPageDocument(1.45)]) {
+    for (const document of [createDynamicPageDocument(), createDynamicPageDocument({ lineHeight: 1.45 })]) {
       const pdf = await parsePdf((await renderDocument(document)).bytes)
 
       expect(pdf.pageCount).toBe(2)
@@ -176,7 +206,7 @@ describe('React PDF engine pipeline', () => {
   })
 
   it('gives inherited-lineHeight dynamic text the same geometry as static text', async () => {
-    const dynamic = await renderDocument(createDynamicPageDocument(1.45))
+    const dynamic = await renderDocument(createDynamicPageDocument({ lineHeight: 1.45 }))
     const staticEquivalent = await renderDocument(createStaticFooterDocument())
 
     // Core assertion: the dynamic footer under an ancestor lineHeight lands at
@@ -190,5 +220,42 @@ describe('React PDF engine pipeline', () => {
     // content. The oracle's body, with no inherited lineHeight, stays smaller.
     expect(bodyHeight(dynamic.layout)).toBeCloseTo(26.1, 1)
     expect(bodyHeight(staticEquivalent.layout)).toBeCloseTo(13.2, 1)
+  })
+
+  it('shields dynamic text from every lineHeight source, not just a page number', async () => {
+    const oracle = footerGeometry(
+      (await renderDocument(createStaticFooterDocument())).layout,
+    )
+
+    // Percent lineHeight, an own lineHeight on the dynamic node itself, and a
+    // nested View chain each hit the same non-idempotent upstream resolution;
+    // all must resolve to the clean static line geometry. The nested variant's
+    // box.top is relative to its wrapping View rather than the page, so only
+    // the frame-independent line metrics are compared there.
+    const variants = [
+      { document: createDynamicPageDocument({ lineHeight: '145%' }), sameFrame: true },
+      { document: createDynamicPageDocument({ footerStyle: { lineHeight: 1.45 } }), sameFrame: true },
+      {
+        document: createDynamicPageDocument({ lineHeight: 1.3, nestedViewLineHeight: 1.45 }),
+        sameFrame: false,
+      },
+    ]
+
+    for (const { document, sameFrame } of variants) {
+      const { layout, bytes } = await renderDocument(document)
+      const geometry = footerGeometry(layout)
+
+      if (sameFrame) {
+        expect(geometry).toEqual(oracle)
+      }
+      else {
+        expect(geometry.map(({ height, lineHeight }) => ({ height, lineHeight })))
+          .toEqual(oracle.map(({ height, lineHeight }) => ({ height, lineHeight })))
+      }
+
+      const pdf = await parsePdf(bytes)
+      expect(pdf.pages[0]?.text).toContain('Page 1 of 2')
+      expect(pdf.pages[1]?.text).toContain('Page 2 of 2')
+    }
   })
 })
