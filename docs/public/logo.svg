@@ -1,0 +1,7 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Nuxt PDF">
+  <path d="M8 3.5h11.5L25 9v18a2.5 2.5 0 0 1-2.5 2.5h-14A2.5 2.5 0 0 1 6 27V6A2.5 2.5 0 0 1 8.5 3.5Z" fill="#315d3b"/>
+  <path d="M19.5 3.5 25 9h-4a1.5 1.5 0 0 1-1.5-1.5V3.5Z" fill="#7bbf88"/>
+  <rect x="10" y="15" width="11" height="2" rx="1" fill="#ffffff"/>
+  <rect x="10" y="19.5" width="11" height="2" rx="1" fill="#ffffff"/>
+  <rect x="10" y="24" width="7" height="2" rx="1" fill="#ffffff" fill-opacity="0.7"/>
+</svg>
