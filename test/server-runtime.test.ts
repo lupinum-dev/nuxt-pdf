@@ -248,6 +248,51 @@ describe('PDF runtime registry', () => {
     )
   })
 
+  it('attributes construction-time validation errors to name and file exactly once', async () => {
+    // A bare component that never called definePdf.
+    const component = defineComponent({
+      setup: () => () => h(PdfDocument),
+    })
+
+    const error = (() => {
+      try {
+        createPdfTemplate('invoice', component, { file: 'pdfs/invoice.vue' })
+        return undefined
+      }
+      catch (cause) {
+        return cause
+      }
+    })()
+
+    expect(error).toBeInstanceOf(NuxtPdfError)
+    expect(error).toMatchObject({
+      code: 'PDF_TEMPLATE_INVALID',
+      templateKey: 'invoice',
+      templateFile: 'pdfs/invoice.vue',
+    })
+    // Exactly one attribution: the file appears once and the key exactly once.
+    const message = (error as NuxtPdfError).message
+    expect(message).toBe(
+      'Invalid PDF template "invoice" (pdfs/invoice.vue): definePdf metadata is missing. Add one top-level definePdf({...}) call.',
+    )
+  })
+
+  it('does not re-wrap render-time template errors that are already attributed', async () => {
+    const component = templateComponent(() => h(PdfDocument))
+    const template = createPdfTemplate('invoice', component, {
+      file: 'pdfs/invoice.vue',
+    })
+
+    const error = await template
+      .render(null as unknown as Record<string, never>)
+      .catch((cause: unknown) => cause)
+
+    expect(error).toBeInstanceOf(NuxtPdfError)
+    expect((error as NuxtPdfError).message).toBe(
+      'Invalid PDF template "invoice" (pdfs/invoice.vue): render props must be an object.',
+    )
+  })
+
   it('wraps unknown render failures with template context', async () => {
     const component = templateComponent(() => {
       throw new Error('boom in render')

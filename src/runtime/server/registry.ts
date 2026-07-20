@@ -52,14 +52,19 @@ export interface PdfRegistry<
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
+interface TemplateRef {
+  readonly key: string
+  readonly file?: string
+}
+
 const templateError = (
-  key: string,
+  ref: TemplateRef,
   message: string,
   cause?: unknown,
 ) => new NuxtPdfError(
   PDF_ERROR_CODES.TemplateInvalid,
-  `Invalid PDF template "${key}": ${message}`,
-  { cause, templateKey: key },
+  `Invalid ${templatePrefix(ref.key, ref.file)}: ${message}`,
+  { cause, templateKey: ref.key, templateFile: ref.file },
 )
 
 const templatePrefix = (key: string, file?: string): string =>
@@ -68,10 +73,11 @@ const templatePrefix = (key: string, file?: string): string =>
     : `PDF template "${key}" (${file})`
 
 // The single attribution boundary. Every failure surfaced from a template's
-// render() passes through here and is re-stamped with the template key, the
-// source file, and a prefixed message. The engine and renderer stay
-// template-agnostic, so this is the only place a prefix is applied — nested
-// re-wrapping cannot occur.
+// render() passes through here and is stamped with the template key, the
+// source file, and a prefixed message — unless templateError already
+// attributed it, in which case it passes through untouched. The engine and
+// renderer stay template-agnostic, so no other layer applies a prefix and
+// nested re-wrapping cannot occur.
 const enrichTemplateError = (
   error: unknown,
   key: string,
@@ -80,6 +86,8 @@ const enrichTemplateError = (
   const prefix = templatePrefix(key, file)
 
   if (error instanceof NuxtPdfError) {
+    if (error.templateKey === key) return error
+
     return new NuxtPdfError(error.code, `${prefix}: ${error.message}`, {
       cause: error,
       templateKey: key,
@@ -95,12 +103,12 @@ const enrichTemplateError = (
 }
 
 const validateDefinition = <Props extends object>(
-  key: string,
+  ref: TemplateRef,
   definition: PdfDefinition<Props> | undefined,
 ): PdfDefinition<Props> => {
   if (!isObject(definition)) {
     throw templateError(
-      key,
+      ref,
       'definePdf metadata is missing. Add one top-level definePdf({...}) call.',
     )
   }
@@ -108,24 +116,24 @@ const validateDefinition = <Props extends object>(
   for (const field of ['title', 'filename'] as const) {
     const value = definition[field]
     if (value !== undefined && typeof value !== 'string' && typeof value !== 'function') {
-      throw templateError(key, `${field} must be a string or function.`)
+      throw templateError(ref, `${field} must be a string or function.`)
     }
   }
 
   if (definition.language !== undefined && typeof definition.language !== 'string') {
-    throw templateError(key, 'language must be a string.')
+    throw templateError(ref, 'language must be a string.')
   }
   if (definition.sampleData !== undefined && !isObject(definition.sampleData)) {
-    throw templateError(key, 'sampleData must be an object.')
+    throw templateError(ref, 'sampleData must be an object.')
   }
   if (definition.scenarios !== undefined) {
     if (!isObject(definition.scenarios)) {
-      throw templateError(key, 'scenarios must be an object.')
+      throw templateError(ref, 'scenarios must be an object.')
     }
 
     for (const [name, props] of Object.entries(definition.scenarios)) {
       if (!name || !isObject(props)) {
-        throw templateError(key, `scenario "${name}" must contain a props object.`)
+        throw templateError(ref, `scenario "${name}" must contain a props object.`)
       }
     }
   }
@@ -134,7 +142,7 @@ const validateDefinition = <Props extends object>(
 }
 
 const resolveMetadataValue = <Props extends object>(
-  key: string,
+  ref: TemplateRef,
   field: 'filename' | 'title',
   value: PdfDefinition<Props>[typeof field],
   props: Props,
@@ -144,23 +152,23 @@ const resolveMetadataValue = <Props extends object>(
     resolved = typeof value === 'function' ? value(props) : value
   }
   catch (error) {
-    throw templateError(key, `${field} metadata could not be evaluated.`, error)
+    throw templateError(ref, `${field} metadata could not be evaluated.`, error)
   }
 
   if (resolved !== undefined && typeof resolved !== 'string') {
-    throw templateError(key, `${field} metadata must resolve to a string.`)
+    throw templateError(ref, `${field} metadata must resolve to a string.`)
   }
 
   return resolved
 }
 
 const resolveMetadata = <Props extends object>(
-  key: string,
+  ref: TemplateRef,
   definition: PdfDefinition<Props>,
   props: Props,
 ): ResolvedPdfMetadata => ({
-  title: resolveMetadataValue(key, 'title', definition.title, props),
-  filename: resolveMetadataValue(key, 'filename', definition.filename, props),
+  title: resolveMetadataValue(ref, 'title', definition.title, props),
+  filename: resolveMetadataValue(ref, 'filename', definition.filename, props),
   language: definition.language,
 })
 
@@ -211,12 +219,14 @@ export const createPdfTemplate = <Props extends object>(
   component: Component,
   options: PdfTemplateRuntimeOptions = {},
 ): PdfTemplate<Props> => {
+  const ref: TemplateRef = { key, file: options.file }
+
   if (!key.trim()) {
-    throw templateError(key, 'template key must not be empty.')
+    throw templateError(ref, 'template key must not be empty.')
   }
 
   const definition = validateDefinition(
-    key,
+    ref,
     (component as PdfComponent<Props>)[PDF_DEFINITION_PROPERTY],
   )
 
@@ -241,15 +251,15 @@ export const createPdfTemplate = <Props extends object>(
       return scenarios[scenario]
     },
     resolveMetadata(props: Props) {
-      return resolveMetadata(key, definition, props)
+      return resolveMetadata(ref, definition, props)
     },
     async render(props: Props): Promise<PdfRenderResult> {
       try {
         if (!isObject(props)) {
-          throw templateError(key, 'render props must be an object.')
+          throw templateError(ref, 'render props must be an object.')
         }
 
-        const metadata = resolveMetadata(key, definition, props)
+        const metadata = resolveMetadata(ref, definition, props)
         const bytesPromise = renderTemplate(
           key,
           component,
