@@ -4,6 +4,7 @@ import { defineComponent, h } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import {
   PdfDocument,
+  PdfLink,
   PdfPage,
   PdfText,
   PdfView,
@@ -11,7 +12,9 @@ import {
 import {
   createPdfRegistry,
   createPdfTemplate,
+  type PdfPreviewRender,
 } from '../src/runtime/server/registry'
+import { usePdfPageNumbers } from '../src/runtime/composables/use-pdf-page-numbers'
 import { renderPdfPreview } from '../src/runtime/server/preview'
 import { NuxtPdfError } from '../src/runtime/shared/errors'
 import {
@@ -76,10 +79,27 @@ const collectStream = async (stream: NodeJS.ReadableStream) => {
   return Buffer.concat(chunks)
 }
 
+const previewRender = (
+  overrides: Partial<PdfPreviewRender['diagnostics']> = {},
+): PdfPreviewRender => ({
+  bytes: new TextEncoder().encode('%PDF-preview'),
+  title: 'Preview invoice',
+  filename: 'invoice.pdf',
+  diagnostics: {
+    durationMs: 12,
+    byteLength: 12,
+    pageCount: 1,
+    passes: 1,
+    warnings: [],
+    ...overrides,
+  },
+})
+
 const createPreviewTemplate = (
   options: {
     sampleData?: object
     scenarios?: Readonly<Record<string, object>>
+    renderForPreview?: (props: object) => Promise<PdfPreviewRender>
   } = {},
 ) => {
   const sampleData = options.sampleData
@@ -88,22 +108,30 @@ const createPreviewTemplate = (
     new TextEncoder().encode('%PDF-preview'),
     'invoice.pdf',
   ))
-  const template: PdfTemplate<object> = {
+  const renderForPreview = vi.fn(
+    options.renderForPreview ?? (async () => previewRender()),
+  )
+  const template = {
     key: 'invoice',
+    file: 'pdfs/invoice.vue',
     definition: { sampleData, scenarios },
     sampleData,
     scenarios,
     scenarioNames: Object.keys(scenarios).sort(),
-    getPreviewProps(scenario) {
+    getPreviewProps(scenario?: string) {
       return scenario === undefined ? sampleData : scenarios[scenario]
     },
     resolveMetadata() {
       return { title: 'Preview invoice', filename: 'invoice.pdf' }
     },
     render,
+    renderForPreview,
+  } satisfies PdfTemplate<object> & {
+    file: string
+    renderForPreview: (props: object) => Promise<PdfPreviewRender>
   }
 
-  return { render, template }
+  return { render, renderForPreview, template }
 }
 
 describe('PDF render result', () => {
@@ -397,5 +425,106 @@ describe('development PDF preview', () => {
     expect(missingScenario.status).toBe(404)
     expect(await missingScenario.text()).toContain('Available scenarios: none')
     expect(missingTemplate.status).toBe(404)
+  })
+
+  it('switches scenarios with active tabs and swaps the iframe source', async () => {
+    const { template } = createPreviewTemplate({
+      sampleData: { id: 'sample' },
+      scenarios: { long: { id: 'long' }, compact: { id: 'lin' } },
+    })
+    const registry = { invoice: template }
+
+    const def = await (await renderPdfPreview(registry, { path: 'invoice' })).text()
+    const long = await (await renderPdfPreview(registry, {
+      path: 'invoice',
+      scenario: 'long',
+    })).text()
+
+    // Every scenario plus the default sample data is offered as a tab.
+    expect(def).toContain('>Default<')
+    expect(def).toContain('>long<')
+    expect(def).toContain('>compact<')
+
+    // Active state tracks the selected scenario.
+    expect(def).toMatch(/class="active" aria-current="page">Default</)
+    expect(long).toMatch(/class="active" aria-current="page">long</)
+
+    // The iframe source swaps with the scenario.
+    expect(def).toContain('src="/_pdf/invoice.pdf"')
+    expect(long).toContain('src="/_pdf/invoice.pdf?scenario=long"')
+  })
+
+  it('reports render diagnostics including passes and collected warnings', async () => {
+    const component = defineComponent({
+      setup() {
+        const pages = usePdfPageNumbers()
+        return () => h(PdfDocument, null, {
+          default: () => [
+            h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
+              default: () => [
+                h(PdfLink, { src: '#sec', style: { color: 'black' } }, () =>
+                  `Section ..... ${pages.sec ?? ''}`),
+                // Invalid nesting: forces exactly one warning at mount time.
+                h(PdfView, null, { default: () => h(PdfPage, { key: 'bad' }) }),
+              ],
+            }),
+            h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
+              default: () => h(PdfText, { id: 'sec' }, () => 'Section body'),
+            }),
+          ],
+        })
+      },
+    })
+    Object.defineProperty(component, PDF_DEFINITION_PROPERTY, {
+      value: { sampleData: {} } satisfies PdfDefinition<object>,
+    })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const template = createPdfTemplate('report', component, {
+      file: 'pdfs/report.vue',
+    })
+
+    const render = await (template as unknown as {
+      renderForPreview(props: object): Promise<PdfPreviewRender>
+    }).renderForPreview({})
+
+    // usePdfPageNumbers() activates the multi-pass loop; it converges in two.
+    expect(render.diagnostics.passes).toBeGreaterThanOrEqual(2)
+    expect(render.diagnostics.pageCount).toBe(2)
+    expect(render.diagnostics.byteLength).toBeGreaterThan(0)
+    expect(render.diagnostics.durationMs).toBeGreaterThan(0)
+    // The warn callback is threaded into a collected array, not the console.
+    expect(render.diagnostics.warnings).toContainEqual(
+      'PDF template "report" (pdfs/report.vue): Invalid PDF nesting: <PdfView> cannot contain <PdfPage>. The <PdfPage> child was ignored.',
+    )
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it('renders an error panel with code, template, and file when a render fails', async () => {
+    const { template } = createPreviewTemplate({
+      sampleData: { id: 'sample' },
+      renderForPreview: async () => {
+        throw new NuxtPdfError(
+          'PDF_LAYOUT_ERROR',
+          'PDF template "invoice" (pdfs/invoice.vue): PDF layout failed: Font family not registered: Roboto',
+          { templateKey: 'invoice', templateFile: 'pdfs/invoice.vue' },
+        )
+      },
+    })
+
+    const response = await renderPdfPreview({ invoice: template }, {
+      path: 'invoice',
+    })
+    const body = await response.text()
+
+    // The viewer stays a readable HTML page — the raw route keeps the 500.
+    expect(response.status).toBe(200)
+    expect(body).toContain('This template failed to render')
+    expect(body).toContain('PDF_LAYOUT_ERROR')
+    expect(body).toContain('invoice')
+    expect(body).toContain('pdfs/invoice.vue')
+    expect(body).toContain('Font family not registered')
+    // No iframe and no stack dump surface for a failed render.
+    expect(body).not.toContain('<iframe')
   })
 })

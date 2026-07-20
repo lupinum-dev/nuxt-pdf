@@ -40,6 +40,9 @@ describe('Nuxt PDF production boundary', () => {
     expect(pdf.pages[0]?.text).toContain('Invoice INV-001')
     expect(previewBody).toContain('<div>basic</div>')
     expect(previewBody).not.toContain('<h1>PDF templates</h1>')
+    // The diagnostics/scenario preview UI must never reach production either.
+    expect(previewBody).not.toContain('class="diagnostics"')
+    expect(previewBody).not.toContain('Layout passes')
   })
 
   it('keeps React PDF engine packages out of the client bundle', async () => {
