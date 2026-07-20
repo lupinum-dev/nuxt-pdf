@@ -14,6 +14,11 @@ import {
   NuxtPdfError,
   PDF_ERROR_CODES,
 } from '../../shared/errors'
+import {
+  PDF_PRIMITIVES,
+  type PdfElementNode,
+  type PdfStyleValue,
+} from '../../renderer/types'
 
 export interface PdfEngineOptions {
   compress?: boolean
@@ -32,6 +37,47 @@ type LayoutDocument = (
 ) => Promise<SafeDocumentNode>
 
 const runLayout = layoutDocument as unknown as LayoutDocument
+
+const ownLineHeight = (style: PdfStyleValue): unknown => {
+  const styles = Array.isArray(style) ? style : [style]
+  let lineHeight: unknown
+
+  for (const entry of styles) {
+    if (
+      entry
+      && Object.prototype.hasOwnProperty.call(entry, 'lineHeight')
+    ) {
+      lineHeight = entry.lineHeight
+    }
+  }
+
+  return lineHeight
+}
+
+const assertDynamicTextLineHeight = (
+  node: PdfElementNode,
+  inheritedLineHeight?: unknown,
+): void => {
+  const localLineHeight = ownLineHeight(node.style)
+  const lineHeight = localLineHeight ?? inheritedLineHeight
+
+  if (
+    node.type === PDF_PRIMITIVES.Text
+    && typeof node.props.render === 'function'
+    && lineHeight !== undefined
+  ) {
+    throw new NuxtPdfError(
+      PDF_ERROR_CODES.LayoutError,
+      'Dynamic PdfText cannot inherit a lineHeight style. Move lineHeight from PdfPage or PdfView to static PdfText styles; the current PDF layout engine otherwise produces invalid page-text geometry.',
+    )
+  }
+
+  for (const child of node.children) {
+    if ('children' in child) {
+      assertDynamicTextLineHeight(child, lineHeight)
+    }
+  }
+}
 
 const compact = (values: Record<string, unknown>) => Object.fromEntries(
   Object.entries(values).filter(([, value]) => value !== undefined && value !== null),
@@ -79,6 +125,8 @@ export const renderDocument = async (
       `Expected a DOCUMENT root, received ${document.type}.`,
     )
   }
+
+  assertDynamicTextLineHeight(document as unknown as PdfElementNode)
 
   const fontStore = options.fontStore ?? createPdfFontStore()
   let layout: SafeDocumentNode

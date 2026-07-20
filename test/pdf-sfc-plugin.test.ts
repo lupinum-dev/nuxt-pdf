@@ -8,6 +8,12 @@ import {
   createPdfSfcPlugin,
   PdfSfcCompileError,
 } from '../src/build/pdf-sfc-plugin'
+import { mountPdfComponent } from '../src/runtime/renderer/render-component'
+import {
+  PDF_PRIMITIVES,
+  type PdfDynamicTextRender,
+  type PdfElementNode,
+} from '../src/runtime/renderer/types'
 
 const fixturesDirectory = resolve('test/fixtures/pdf-sfc')
 const invoiceFile = join(fixturesDirectory, 'InvoiceDocument.vue')
@@ -64,6 +70,44 @@ definePdf({
     expect(component.__nuxtPdf.title).toBe('Runtime metadata')
     expect(component.__nuxtPdf.filename({ id: '42' })).toBe('invoice-42.pdf')
     expect(component.__nuxtPdf.scenarios).toEqual({ long: { id: 'long' } })
+  })
+
+  it('preserves dynamic page text callbacks through SFC compilation', async () => {
+    const filename = resolve('test/fixtures/pdf-sfc/dynamic-footer.vue')
+    const source = `
+<script setup lang="ts">
+definePdf({})
+</script>
+<template>
+  <PdfDocument>
+    <PdfPage size="A4">
+      <PdfText
+        fixed
+        :render="({ pageNumber, totalPages }) => \`Page \${pageNumber} of \${totalPages}\`"
+        :style="{ bottom: 22, left: 42, position: 'absolute', right: 42, textAlign: 'center' }"
+      />
+    </PdfPage>
+  </PdfDocument>
+</template>
+`
+    const result = await compilePdfSfc(source, filename, 'template')
+    const outputFile = join(temporaryDirectory, 'dynamic-footer.mjs')
+
+    await writeFile(outputFile, result.code)
+    const component = (await import(`${pathToFileURL(outputFile).href}?v=2`)).default
+    const mounted = await mountPdfComponent(component)
+    const page = mounted.document.children[0] as PdfElementNode
+    const footer = page.children[0] as PdfElementNode
+
+    expect(page.type).toBe(PDF_PRIMITIVES.Page)
+    expect(footer.props.fixed).toBe(true)
+    expect(footer.props.render).toBeTypeOf('function')
+    expect((footer.props.render as PdfDynamicTextRender)({
+      pageNumber: 1,
+      totalPages: 2,
+    })).toBe('Page 1 of 2')
+
+    mounted.unmount()
   })
 
   it('compiles discovered components with typed props and slots but no metadata', async () => {

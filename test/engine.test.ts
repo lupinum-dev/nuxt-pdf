@@ -2,6 +2,7 @@ import type { DocumentNode } from '@react-pdf/layout'
 import * as P from '@react-pdf/primitives'
 import { describe, expect, it } from 'vitest'
 import { renderDocument } from '../src/runtime/server/engine/render-document'
+import { parsePdf } from './utils/pdf'
 
 const createDocument = (fontFamily = 'Helvetica'): DocumentNode => ({
   type: P.Document,
@@ -30,6 +31,48 @@ const createDocument = (fontFamily = 'Helvetica'): DocumentNode => ({
   ],
 } as DocumentNode)
 
+const createDynamicPageDocument = (lineHeight?: number): DocumentNode => ({
+  type: P.Document,
+  props: {},
+  children: [1, 2].map(pageNumber => ({
+    type: P.Page,
+    box: {},
+    style: { lineHeight, padding: 32 },
+    props: { size: 'A4' },
+    children: [
+      {
+        type: P.Text,
+        box: {},
+        style: { fontFamily: 'Helvetica', fontSize: 12 },
+        props: {},
+        children: [{ type: P.TextInstance, value: `Body ${pageNumber}` }],
+      },
+      {
+        type: P.Text,
+        box: {},
+        style: {
+          bottom: 22,
+          fontFamily: 'Helvetica',
+          fontSize: 8,
+          left: 42,
+          position: 'absolute',
+          right: 42,
+          textAlign: 'center',
+        },
+        props: {
+          fixed: true,
+          render: ({
+            pageNumber: currentPage,
+            totalPages,
+          }: { pageNumber: number, totalPages?: number }) =>
+            `Page ${currentPage} of ${totalPages}`,
+        },
+        children: [],
+      },
+    ],
+  })),
+} as DocumentNode)
+
 describe('React PDF engine pipeline', () => {
   it('lays out and serializes a compatible document tree', async () => {
     const result = await renderDocument(createDocument())
@@ -55,6 +98,24 @@ describe('React PDF engine pipeline', () => {
 
     await expect(renderDocument(invalid)).rejects.toMatchObject({
       code: 'PDF_FONT_ERROR',
+    })
+  })
+
+  it('renders dynamic totals on explicit pages', async () => {
+    const result = await renderDocument(createDynamicPageDocument())
+    const pdf = await parsePdf(result.bytes)
+
+    expect(pdf.pageCount).toBe(2)
+    expect(pdf.pages[0]?.text).toContain('Page 1 of 2')
+    expect(pdf.pages[1]?.text).toContain('Page 2 of 2')
+  })
+
+  it('rejects inherited line height before it can hide dynamic page text', async () => {
+    await expect(renderDocument(createDynamicPageDocument(1.45))).rejects.toMatchObject({
+      code: 'PDF_LAYOUT_ERROR',
+      message: expect.stringContaining(
+        'Move lineHeight from PdfPage or PdfView to static PdfText styles',
+      ),
     })
   })
 })
