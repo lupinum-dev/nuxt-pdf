@@ -104,10 +104,17 @@ const createContext = (props: DocumentMetadata, compress: boolean) => new PDFDoc
   }),
 })
 
-export const renderDocument = async (
+// Single-pass layout seam. Validates the root, applies the dynamic lineHeight
+// shield, and runs the upstream layout pipeline once. The multi-pass loop
+// (layout-passes.ts) calls this once per pass — re-normalizing each time because
+// re-patching the mounted tree resets dynamic-text styles to their literals — and
+// serializes only the converged result via `serializePdfLayout`. `renderDocument`
+// composes both for the ordinary one-shot path; both share this one source of
+// truth for layout error mapping and the lineHeight shield.
+export const layoutPdfTree = async (
   document: DocumentNode,
-  options: PdfEngineOptions = {},
-): Promise<PdfEngineResult> => {
+  fontStore: PdfFontStore,
+): Promise<SafeDocumentNode> => {
   if (document.type !== 'DOCUMENT') {
     throw new NuxtPdfError(
       PDF_ERROR_CODES.TreeInvalid,
@@ -117,11 +124,8 @@ export const renderDocument = async (
 
   normalizeDynamicTextLineHeight(document as unknown as PdfElementNode)
 
-  const fontStore = options.fontStore ?? createPdfFontStore()
-  let layout: SafeDocumentNode
-
   try {
-    layout = await runLayout(
+    return await runLayout(
       document,
       fontStore as unknown as FontStore,
     )
@@ -137,18 +141,22 @@ export const renderDocument = async (
       { cause: error },
     )
   }
+}
 
+// Serialization seam. Paints one already-laid-out document to PDF bytes.
+export const serializePdfLayout = async (
+  props: DocumentMetadata,
+  layout: SafeDocumentNode,
+  compress: boolean,
+): Promise<Uint8Array> => {
   try {
-    const context = createContext(document.props, options.compress ?? true)
+    const context = createContext(props, compress)
     const stream = renderPDF(
       context as unknown as Parameters<typeof renderPDF>[0],
       layout,
     ) as unknown as NodeJS.ReadableStream
 
-    return {
-      bytes: await collectStream(stream),
-      layout,
-    }
+    return await collectStream(stream)
   }
   catch (error) {
     throw new NuxtPdfError(
@@ -157,4 +165,19 @@ export const renderDocument = async (
       { cause: error },
     )
   }
+}
+
+export const renderDocument = async (
+  document: DocumentNode,
+  options: PdfEngineOptions = {},
+): Promise<PdfEngineResult> => {
+  const fontStore = options.fontStore ?? createPdfFontStore()
+  const layout = await layoutPdfTree(document, fontStore)
+  const bytes = await serializePdfLayout(
+    document.props,
+    layout,
+    options.compress ?? true,
+  )
+
+  return { bytes, layout }
 }
