@@ -30,6 +30,28 @@ export interface PdfPreviewRequest {
   path?: string
   rootPath?: string
   scenario?: string
+  /** Token of a parked viewer render the raw route should serve verbatim. */
+  render?: string
+}
+
+// A viewer render is briefly parked here so the embedded iframe serves the
+// EXACT bytes the diagnostics panel describes — without it, a non-deterministic
+// template would show one render while the stats describe another. Dev-only,
+// bounded FIFO; a miss (evicted or direct raw link) falls back to a fresh render.
+const parkedRenders = new Map<string, Uint8Array>()
+const PARKED_RENDER_LIMIT = 8
+let parkedSequence = 0
+
+const parkRender = (bytes: Uint8Array): string => {
+  parkedSequence += 1
+  const token = String(parkedSequence)
+  parkedRenders.set(token, bytes)
+  while (parkedRenders.size > PARKED_RENDER_LIMIT) {
+    const oldest = parkedRenders.keys().next().value
+    if (oldest === undefined) break
+    parkedRenders.delete(oldest)
+  }
+  return token
 }
 
 const escapeHtml = (value: string): string => value
@@ -161,10 +183,12 @@ const rawUrl = (
   rootPath: string,
   key: string,
   scenario?: string,
+  renderToken?: string,
 ): string => {
-  const query = scenario === undefined
-    ? ''
-    : `?scenario=${encodeURIComponent(scenario)}`
+  const params = new URLSearchParams()
+  if (scenario !== undefined) params.set('scenario', scenario)
+  if (renderToken !== undefined) params.set('render', renderToken)
+  const query = params.size > 0 ? `?${params.toString()}` : ''
   return `${rootPath}/${encodeTemplatePath(key)}.pdf${query}`
 }
 
@@ -268,8 +292,9 @@ const viewerPage = async (
   try {
     const render = await template.renderForPreview(props)
     title = render.title || template.key
+    const token = parkRender(render.bytes)
     body = diagnosticsPanel(render)
-      + `<iframe title="${escapeHtml(title)}" src="${escapeHtml(rawUrl(rootPath, template.key, scenario))}"></iframe>`
+      + `<iframe title="${escapeHtml(title)}" src="${escapeHtml(rawUrl(rootPath, template.key, scenario, token))}"></iframe>`
   }
   catch (error) {
     title = template.key
@@ -343,6 +368,20 @@ export const renderPdfPreview = async (
 
   if (!raw) return viewerPage(template, props, rootPath, request.scenario)
 
+  const parked = request.render === undefined
+    ? undefined
+    : parkedRenders.get(request.render)
+  if (parked) {
+    return new Response(parked as BodyInit, {
+      headers: {
+        'content-type': 'application/pdf',
+        'content-disposition': 'inline',
+        'cache-control': 'no-store',
+        'x-content-type-options': 'nosniff',
+      },
+    })
+  }
+
   try {
     const result = await template.render(props)
     return result.response({
@@ -384,5 +423,6 @@ export default defineEventHandler(async (event) => {
   return renderPdfPreview(pdf as unknown as PdfPreviewRegistry, {
     ...route,
     scenario: typeof query.scenario === 'string' ? query.scenario : undefined,
+    render: typeof query.render === 'string' ? query.render : undefined,
   })
 })

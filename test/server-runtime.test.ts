@@ -382,7 +382,7 @@ describe('development PDF preview', () => {
     expect(index.status).toBe(200)
     expect(await index.text()).toContain('href="/_pdf/invoice"')
     expect(page.status).toBe(200)
-    expect(await page.text()).toContain('src="/_pdf/invoice.pdf"')
+    expect(await page.text()).toMatch(/src="\/_pdf\/invoice\.pdf\?render=\d+"/)
   })
 
   it('renders raw scenario bytes through the template render path', async () => {
@@ -450,8 +450,42 @@ describe('development PDF preview', () => {
     expect(long).toMatch(/class="active" aria-current="page">long</)
 
     // The iframe source swaps with the scenario.
-    expect(def).toContain('src="/_pdf/invoice.pdf"')
-    expect(long).toContain('src="/_pdf/invoice.pdf?scenario=long"')
+    expect(def).toMatch(/src="\/_pdf\/invoice\.pdf\?render=\d+"/)
+    expect(long).toMatch(/src="\/_pdf\/invoice\.pdf\?scenario=long&(amp;)?render=\d+"/)
+  })
+
+  it('serves the exact diagnosed bytes to the iframe via the parked render', async () => {
+    const diagnosedBytes = new TextEncoder().encode('%PDF-diagnosed-render')
+    const { render, template } = createPreviewTemplate({
+      sampleData: { id: 'sample' },
+      renderForPreview: async () => ({
+        ...previewRender(),
+        bytes: diagnosedBytes,
+      }),
+    })
+    const registry = { invoice: template }
+
+    const viewer = await renderPdfPreview(registry, { path: 'invoice' })
+    const token = /render=(\d+)/.exec(await viewer.text())?.[1]
+    expect(token).toBeDefined()
+
+    // The tokened raw route serves the very bytes the diagnostics describe —
+    // no second render happens for the embedded viewer.
+    const raw = await renderPdfPreview(registry, {
+      path: 'invoice.pdf',
+      render: token,
+    })
+    expect(raw.headers.get('content-type')).toBe('application/pdf')
+    expect(new Uint8Array(await raw.arrayBuffer())).toEqual(diagnosedBytes)
+    expect(render).not.toHaveBeenCalled()
+
+    // A missing/evicted token falls back to a fresh render.
+    const fallback = await renderPdfPreview(registry, {
+      path: 'invoice.pdf',
+      render: '999999',
+    })
+    expect(fallback.status).toBe(200)
+    expect(render).toHaveBeenCalledTimes(1)
   })
 
   it('reports render diagnostics including passes and collected warnings', async () => {
