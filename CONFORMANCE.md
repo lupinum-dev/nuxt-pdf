@@ -124,11 +124,14 @@ and exposes it through one composable and existing props. The tested boundary:
   auto-injected into a PDF SFC that uses it (verified by compiling the real
   `playground/pdfs/report.vue` and by inject/skip unit tests).
 - **Activation gate.** The multi-pass loop runs only when a template calls
-  `usePdfPageNumbers()` during mount **or** the mounted tree contains a `PdfLink`
-  whose `src`/`href` starts with `#`. Every other document renders through the
-  single-pass path at no added cost — verified by a spy asserting the multi-pass
-  entry point is not called for a plain document and is called once for an
-  internal-link document.
+  `usePdfPageNumbers()` during mount — the only feature that consumes resolved
+  page numbers. Internal `#id` links do **not** activate it: a named destination
+  resolves by name in a single pass. Every other document — links included —
+  renders through the single-pass path at no added cost, verified by a spy
+  asserting the multi-pass entry point is not called for a plain document nor for
+  a link-only document whose destination still resolves. Calling
+  `usePdfPageNumbers()` outside a PDF render throws instead of returning a map
+  that could be mistaken for first-pass state.
 - **Convergence.** The loop is a fixed point: it re-lays-out the same mounted
   tree, feeding each pass's `id → page` map back through the composable, until the
   map it produces equals the map it was laid out with. An ordinary document
@@ -141,9 +144,12 @@ and exposes it through one composable and existing props. The tested boundary:
   a named destination; a `PdfLink` `src="#id"` jumps to it. When the id sits on a
   node that spans a page boundary, both the printed number and the jump target
   resolve to the section's **first** page (a deliberate divergence from React PDF,
-  whose last-writer-wins destination table points at the last page). Verified by a
-  page-spanning regression fixture asserting both the printed number and the pdfjs
-  destination.
+  whose last-writer-wins destination table points at the last page). This holds on
+  both render paths — verified by page-spanning regression fixtures asserting the
+  printed number and the pdfjs destination independently, through the multi-pass
+  loop and through the single-pass path. The anchoring is copy-on-write, so a
+  `fixed` node repeated on every page (which pagination represents as one shared
+  node object) keeps its destination, anchored at its first page.
 - **Internal links** are verified paired against React PDF on non-splitting
   targets (where first- and last-page resolution agree): matching `Link`
   annotations and matching named-destination pages.
@@ -154,7 +160,9 @@ and exposes it through one composable and existing props. The tested boundary:
   the multi-pass loop: two independent renders produce an identical outline, and
   the loop resets each pass's authored `bookmark` so the in-place resolution
   `resolveBookmarks` performs cannot accumulate a stale hierarchy — a fixture
-  whose bookmark ancestry shifts across passes fails without the reset.
+  whose bookmark ancestry shifts across passes fails without the reset, and the
+  snapshot is merged before every pass, so a bookmark that first appears mid-loop
+  (behind a resolved page number) is captured with its authored value too.
 - A **reviewed raster baseline** of a realistic report's TOC page, following the
   same `UPDATE_PDF_BASELINES` policy and thresholds as the other paired fixtures.
 

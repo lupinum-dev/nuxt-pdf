@@ -17,9 +17,14 @@ export type PdfBaseProps = {
   fixed?: boolean
   break?: boolean
   debug?: boolean
-  bookmark?: PdfBookmark
   minPresenceAhead?: number
   style?: PdfStyleValue
+}
+
+// Outline entries are typed only where they are claimed and tested
+// (Page/View/Text/Image); see CONFORMANCE.md.
+type PdfBookmarkProp = {
+  bookmark?: PdfBookmark
 }
 
 export type PdfDocumentProps = {
@@ -60,7 +65,7 @@ export type PdfDocumentProps = {
   }
 }
 
-export type PdfPageProps = PdfBaseProps & {
+export type PdfPageProps = PdfBaseProps & PdfBookmarkProp & {
   wrap?: boolean
   size?:
     | number
@@ -72,11 +77,11 @@ export type PdfPageProps = PdfBaseProps & {
   dpi?: number
 }
 
-export type PdfViewProps = PdfBaseProps & {
+export type PdfViewProps = PdfBaseProps & PdfBookmarkProp & {
   wrap?: boolean
 }
 
-export type PdfTextProps = PdfBaseProps & {
+export type PdfTextProps = PdfBaseProps & PdfBookmarkProp & {
   wrap?: boolean
   widows?: number
   orphans?: number
@@ -94,7 +99,7 @@ export type PdfImageSource
     | { data: Uint8Array, format: 'png' | 'jpg' }
     | { uri: string, format?: 'png' | 'jpg' }
 
-export type PdfImageProps = PdfBaseProps & {
+export type PdfImageProps = PdfBaseProps & PdfBookmarkProp & {
   src?: PdfImageSource
   source?: PdfImageSource
   cache?: boolean
