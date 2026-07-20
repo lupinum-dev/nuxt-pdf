@@ -11,7 +11,8 @@ const forbidden = new Set([
 const projects = JSON.parse(execFileSync(
   'pnpm',
   ['list', '--prod', '--depth', 'Infinity', '--json'],
-  { encoding: 'utf8' },
+  // The full production tree JSON exceeds execFileSync's default 1MB buffer.
+  { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
 ))
 
 const found = new Set()

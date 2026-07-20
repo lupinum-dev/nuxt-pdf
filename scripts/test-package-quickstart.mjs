@@ -57,6 +57,20 @@ const installedDependencyOverrides = () => {
   ))
   const overrides = new Map()
 
+  // Compare the trailing semver of an override value (`1.2.3` or
+  // `npm:alias@1.2.3`) numerically; a higher tuple wins.
+  const versionOf = value => value.slice(value.lastIndexOf('@') + 1)
+  const isHigher = (candidate, existing) => {
+    const left = versionOf(candidate).split('.').map(Number)
+    const right = versionOf(existing).split('.').map(Number)
+    for (let index = 0; index < Math.max(left.length, right.length); index += 1) {
+      const a = left[index] ?? 0
+      const b = right[index] ?? 0
+      if (a !== b) return a > b
+    }
+    return false
+  }
+
   const addOverride = (selector, name, dependency) => {
     const version = dependency.version
     if (!version || version.startsWith('link:')) return
@@ -64,12 +78,15 @@ const installedDependencyOverrides = () => {
       ? `npm:${dependency.from}@${version}`
       : version
 
+    // A pnpm workspace can resolve the same `parent@version>child` edge to
+    // several versions across peer-variant instances (the docs workspace pulls
+    // a different Nuxt/unimport stack than the module). Every candidate is
+    // already in the offline store, so any pins install offline; pick the
+    // highest deterministically rather than failing the gate.
     const existing = overrides.get(selector)
-    assert(
-      existing === undefined || existing === value,
-      `Installed dependency graph disagrees for ${selector}: ${existing} and ${value}.`,
-    )
-    overrides.set(selector, value)
+    if (existing === undefined || isHigher(value, existing)) {
+      overrides.set(selector, value)
+    }
   }
 
   const visit = (parentName, parentVersion, dependencies = {}) => {
@@ -334,7 +351,7 @@ try {
   const tarball = join(temporaryDirectory, basename(report.filename))
 
   assert(report.name === '@lupinum/nuxt-pdf', `Quickstart packed the wrong package: ${report.name}.`)
-  assert(report.version === '0.1.0', `Quickstart packed the wrong version: ${report.version}.`)
+  assert(report.version === '0.2.0', `Quickstart packed the wrong version: ${report.version}.`)
 
   await writeFixture(appDir, tarball)
 
