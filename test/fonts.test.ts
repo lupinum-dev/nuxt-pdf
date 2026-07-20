@@ -124,7 +124,9 @@ describe('local PDF fonts', () => {
     await expect(bundlePdfFonts(
       [{ family: 'Roboto', src }],
       { fontRoots: [fontRoot] },
-    )).rejects.toThrow(/relative local path|parent path segments/)
+    )).rejects.toThrow(
+      /relative local path|parent path segments|remote fonts are disabled/,
+    )
   })
 
   it('rejects a symlink that resolves outside the explicit font root', async () => {
