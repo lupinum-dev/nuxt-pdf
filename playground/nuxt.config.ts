@@ -1,6 +1,11 @@
 export default defineNuxtConfig({
   modules: ['nuxt-pdf'],
-  devtools: { enabled: true },
+  css: ['~/assets/css/playground.css'],
   compatibilityDate: '2026-07-20',
-  pdf: {},
+  pdf: {
+    fonts: [{
+      family: 'Fieldnote Sans',
+      src: 'Roboto-Regular.ttf',
+    }],
+  },
 })
