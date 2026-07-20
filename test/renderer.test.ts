@@ -27,6 +27,7 @@ import {
   PdfStop,
   PdfSvg,
   PdfText,
+  PdfTspan,
   PdfView,
 } from '../src/runtime/components'
 import { mountPdfComponent } from '../src/runtime/renderer'
@@ -473,6 +474,28 @@ describe('Vue PDF SVG nesting', () => {
     expect(elementChild(group, 0).type).toBe(PDF_PRIMITIVES.Rect)
     expect(warning).toHaveBeenCalledWith(
       'Invalid PDF nesting: <PdfG> cannot contain <PdfDefs>. The <PdfDefs> child was ignored.',
+    )
+
+    mounted.unmount()
+  })
+
+  it('rejects Tspan outside Text, where upstream would draw nothing', async () => {
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const mounted = await mountSvgSubtree(() => h(PdfG, null, {
+      default: () => [
+        h(PdfText, { key: 'text' }, {
+          default: () => h(PdfTspan, null, () => 'kept'),
+        }),
+        h(PdfTspan, { key: 'orphan' }, () => 'dropped'),
+      ],
+    }))
+
+    const group = elementChild(svgOf(mounted), 0)
+    expect(group.children).toHaveLength(1)
+    expect(elementChild(group, 0).type).toBe(PDF_PRIMITIVES.Text)
+    expect(elementChild(elementChild(group, 0), 0).type).toBe(PDF_PRIMITIVES.Tspan)
+    expect(warning).toHaveBeenCalledWith(
+      'Invalid PDF nesting: <PdfG> cannot contain <PdfTspan>. The <PdfTspan> child was ignored.',
     )
 
     mounted.unmount()

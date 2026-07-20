@@ -68,6 +68,23 @@ export const showcase = {
     { offset: '0', stopColor: '#e63946' },
     { offset: '1', stopColor: '#457b9d', stopOpacity: '0.85' },
   ],
+  radialGradient: {
+    id: 'glow',
+    cx: '0.5',
+    cy: '0.5',
+    r: '0.5',
+  },
+  radialGradientStops: [
+    { offset: '0', stopColor: '#ffd166' },
+    { offset: '1', stopColor: '#ef476f' },
+  ],
+  radialRect: {
+    x: 110,
+    y: 60,
+    width: 80,
+    height: 30,
+    fill: 'url(#glow)',
+  },
   clipPath: { id: 'badge' },
   clipCircle: { cx: 45, cy: 45, r: 38 },
   gradientRect: {

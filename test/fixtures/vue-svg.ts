@@ -12,6 +12,7 @@ import {
   PdfPath,
   PdfPolygon,
   PdfPolyline,
+  PdfRadialGradient,
   PdfRect,
   PdfStop,
   PdfSvg,
@@ -54,12 +55,18 @@ export const VueSvgDocument = defineComponent({
                       h(PdfStop, { key: `stop-${index}`, ...stop }),
                     ),
                   }),
+                  h(PdfRadialGradient, showcase.radialGradient, {
+                    default: () => showcase.radialGradientStops.map((stop, index) =>
+                      h(PdfStop, { key: `radial-stop-${index}`, ...stop }),
+                    ),
+                  }),
                   h(PdfClipPath, showcase.clipPath, {
                     default: () => h(PdfCircle, showcase.clipCircle),
                   }),
                 ],
               }),
               h(PdfRect, showcase.gradientRect),
+              h(PdfRect, showcase.radialRect),
               h(PdfCircle, showcase.circle),
               h(PdfEllipse, showcase.ellipse),
               h(PdfLine, showcase.line),

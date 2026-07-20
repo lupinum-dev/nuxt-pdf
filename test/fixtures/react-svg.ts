@@ -12,6 +12,7 @@ import {
   Path,
   Polygon,
   Polyline,
+  RadialGradient,
   Rect,
   Stop,
   Svg,
@@ -63,12 +64,20 @@ export const createReactSvgDocument = () => h(
           ),
         ),
         h(
+          RadialGradient,
+          showcase.radialGradient,
+          ...showcase.radialGradientStops.map((stop, index) =>
+            h(Stop, { key: `radial-stop-${index}`, ...stop }),
+          ),
+        ),
+        h(
           ClipPath,
           showcase.clipPath,
           h(Circle, showcase.clipCircle),
         ),
       ),
       h(Rect, showcase.gradientRect),
+      h(Rect, showcase.radialRect),
       h(Circle, showcase.circle),
       h(Ellipse, showcase.ellipse),
       h(Line, showcase.line),

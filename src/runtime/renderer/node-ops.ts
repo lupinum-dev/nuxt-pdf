@@ -46,13 +46,14 @@ const SVG_SHAPES = [
   PDF_PRIMITIVES.Polygon,
 ] as const
 
-// G accepts shapes, nested groups, images, and svg text.
+// G accepts shapes, nested groups, images, and svg text. Tspan is deliberately
+// absent: upstream renderSvg only draws Tspan inside Text, so a direct Tspan
+// child would silently produce no output.
 const G_CHILDREN = new Set<PdfElementType>([
   ...SVG_SHAPES,
   PDF_PRIMITIVES.G,
   PDF_PRIMITIVES.Image,
   PDF_PRIMITIVES.Text,
-  PDF_PRIMITIVES.Tspan,
 ])
 
 const NO_CHILDREN: ReadonlySet<PdfElementType> = new Set()
