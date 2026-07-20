@@ -13,21 +13,23 @@ import {
   type PdfElementNode,
 } from '../../renderer/types'
 import {
-  NuxtPdfError,
-  PDF_ERROR_CODES,
-} from '../../shared/errors'
+  PDF_ASSET_ERROR_CODES,
+  PdfAssetError,
+  type PdfAssetErrorCode,
+} from './errors'
+import {
+  fetchRemoteResource,
+  matchesAllowlist,
+  type RemoteAssetPolicy,
+} from './remote'
+
+export {
+  PDF_ASSET_ERROR_CODES,
+  PdfAssetError,
+  type PdfAssetErrorCode,
+} from './errors'
 
 export const DEFAULT_MAX_PDF_IMAGE_BYTES = 10 * 1024 * 1024
-
-export const PDF_ASSET_ERROR_CODES = {
-  Blocked: PDF_ERROR_CODES.AssetBlocked,
-  Invalid: PDF_ERROR_CODES.AssetInvalid,
-  LimitExceeded: PDF_ERROR_CODES.LimitExceeded,
-} as const
-
-export type PdfAssetErrorCode = (
-  typeof PDF_ASSET_ERROR_CODES
-)[keyof typeof PDF_ASSET_ERROR_CODES]
 
 export type PdfImageFormat = 'jpg' | 'png'
 
@@ -50,17 +52,7 @@ export interface LoadPdfImageAssetOptions {
 export interface ResolvePdfImageAssetsOptions {
   assets: PdfImageAssetMap
   maxBytes?: number
-}
-
-export class PdfAssetError extends NuxtPdfError {
-  constructor(
-    code: PdfAssetErrorCode,
-    message: string,
-    options: { cause?: unknown } = {},
-  ) {
-    super(code, message, options)
-    this.name = 'PdfAssetError'
-  }
+  remote?: RemoteAssetPolicy
 }
 
 type ResolvedPdfImageAsset = Readonly<{
@@ -68,10 +60,9 @@ type ResolvedPdfImageAsset = Readonly<{
   format: PdfImageFormat
 }>
 
-type ImageReplacement = {
+type ImageTarget = {
   node: PdfElementNode
   prop: 'source' | 'src'
-  value: ResolvedPdfImageAsset
 }
 
 const hasOwn = (value: object, key: PropertyKey): boolean =>
@@ -388,17 +379,50 @@ const resolveLocalImage = (
   return validateImageBytes(asset.data, maxBytes, assetFormat)
 }
 
-const resolveImageSource = (
+const isRemoteCandidate = (source: string): boolean =>
+  /^https?:/i.test(source)
+
+const resolveRemoteImage = async (
+  url: string,
+  remote: RemoteAssetPolicy | undefined,
+  inflight: Map<string, Promise<Buffer>> | undefined,
+): Promise<ResolvedPdfImageAsset> => {
+  if (!remote) {
+    return blocked(
+      `Remote PDF image fetching is disabled. Set pdf.remote.allow to fetch "${url}".`,
+    )
+  }
+
+  if (!matchesAllowlist(url, remote)) {
+    return blocked(
+      `The PDF image "${url}" is not permitted by pdf.remote.allow.`,
+    )
+  }
+
+  const bytes = await fetchRemoteResource(url, {
+    policy: remote,
+    maxBytes: remote.maxImageBytes,
+    inflight,
+  })
+
+  return validateImageBytes(bytes, remote.maxImageBytes)
+}
+
+const resolveImageSource = async (
   source: unknown,
   assets: PdfImageAssetMap,
   maxBytes: number,
-): ResolvedPdfImageAsset => {
+  remote: RemoteAssetPolicy | undefined,
+  inflight: Map<string, Promise<Buffer>> | undefined,
+): Promise<ResolvedPdfImageAsset> => {
   if (typeof source === 'function') {
     return blocked('Dynamic PDF image source functions are blocked.')
   }
 
   if (typeof source === 'string') {
-    return resolveLocalImage(source, assets, maxBytes)
+    return isRemoteCandidate(source)
+      ? resolveRemoteImage(source, remote, inflight)
+      : resolveLocalImage(source, assets, maxBytes)
   }
 
   const bytes = asBuffer(source)
@@ -417,6 +441,14 @@ const resolveImageSource = (
   if (hasOwn(record, 'uri')) {
     if (typeof record.uri !== 'string') {
       return invalid('The PDF image URI is invalid.')
+    }
+
+    if (isRemoteCandidate(record.uri)) {
+      if (Object.keys(record).some(key => key !== 'uri')) {
+        return blocked('PDF image request options are blocked for remote assets.')
+      }
+
+      return resolveRemoteImage(record.uri, remote, inflight)
     }
 
     const allowedKeys = new Set(['format', 'uri'])
@@ -481,7 +513,8 @@ export const resolvePdfImageAssets = async (
     return invalid('A generated PDF image asset map is required.')
   }
 
-  const replacements: ImageReplacement[] = []
+  const inflight = new Map<string, Promise<Buffer>>()
+  const targets: ImageTarget[] = []
 
   for (const node of collectImageNodes(document)) {
     if (hasOwn(node.props, 'srcSet') && node.props.srcSet !== undefined) {
@@ -496,17 +529,22 @@ export const resolvePdfImageAssets = async (
       return invalid('Each PDF image must have exactly one src or source prop.')
     }
 
-    const prop = hasSrc ? 'src' : 'source'
-    replacements.push({
-      node,
-      prop,
-      value: resolveImageSource(node.props[prop], options.assets, maxBytes),
-    })
+    targets.push({ node, prop: hasSrc ? 'src' : 'source' })
   }
 
-  for (const replacement of replacements) {
-    replacement.node.props[replacement.prop] = replacement.value
-  }
+  const resolved = await Promise.all(targets.map(target =>
+    resolveImageSource(
+      target.node.props[target.prop],
+      options.assets,
+      maxBytes,
+      options.remote,
+      inflight,
+    ),
+  ))
+
+  targets.forEach((target, index) => {
+    target.node.props[target.prop] = resolved[index]!
+  })
 
   return document
 }
