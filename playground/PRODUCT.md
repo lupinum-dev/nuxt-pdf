@@ -26,7 +26,7 @@ Avoid the untouched Nuxt starter, generic dashboard cards, decorative gradients,
 - Explain the system through concrete invoice data, not feature claims.
 - Keep controls familiar and make every action's result explicit.
 - Use one quiet visual language so the generated PDF remains the focal artifact.
-- Show only capabilities that ship in `0.1.0`.
+- Show only capabilities that ship in `0.2.0`.
 
 ## Accessibility & Inclusion
 

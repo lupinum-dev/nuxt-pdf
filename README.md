@@ -5,10 +5,13 @@ application. Nuxt PDF uses Vue for authoring and the framework-neutral React
 PDF layout, font, and serialization packages for rendering; React itself is
 not a production dependency.
 
-`0.1.0` is an external alpha with a deliberately narrow contract: one Nuxt
-module, one document tree, one Node server renderer, and a small set of tested
-PDF primitives. See [CONFORMANCE.md](./CONFORMANCE.md) for the exact evidence
-and limitations behind the compatibility claim.
+`0.2.0` is an external alpha: still one Nuxt module, one document tree, and one
+Node server renderer, with a contract that has widened from 0.1.0's core layout
+primitives to SVG drawing, a multi-pass table of contents, internal links,
+bookmarks, opt-in remote resources, shipped testing utilities, and enforced
+render limits — each backed by an executable fixture. See
+[CONFORMANCE.md](./CONFORMANCE.md) for the exact evidence and limitations behind
+the compatibility claim.
 
 ## Requirements
 
@@ -17,7 +20,7 @@ and limitations behind the compatibility claim.
 - Vue `^3.5.0`
 
 Nuxt 3, Node 20, browser rendering, and edge rendering are not claimed by
-`0.1.0`.
+`0.2.0`.
 
 ## Ten-minute quickstart
 
@@ -286,8 +289,32 @@ Then use the family in a PDF style object:
 
 Resources are signature-checked, size-checked, realpath-contained, and
 embedded into the server build. Absolute paths, traversal, symlink escapes,
-remote URLs, and runtime filesystem fallbacks are rejected. Remote images and
-fonts are intentionally unsupported in `0.1.0`.
+and runtime filesystem fallbacks are rejected. Remote URLs fail closed unless
+you opt in with an explicit `pdf.remote.allow` allowlist (see below).
+
+## Remote images and fonts (opt-in)
+
+Remote fetching is off by default. Configure an `https`-only allowlist to let
+the module — never the engine — fetch and embed allowlisted resources:
+
+```ts
+export default defineNuxtConfig({
+  modules: ['@lupinum/nuxt-pdf'],
+  pdf: {
+    remote: {
+      allow: ['https://assets.example.com/pdf/'],
+    },
+  },
+})
+```
+
+Each entry is an `https://` URL prefix naming an explicit host (or a single
+leading `*.` subdomain wildcard) plus a path-segment prefix. The allowlist is
+re-checked on every redirect hop, byte
+caps and signature validation match local assets, and fetches are credential-less
+`GET`s with a per-hop timeout. Remote fonts embed at build time; remote images
+resolve at render time with per-render deduplication. See
+[CONFORMANCE.md](./CONFORMANCE.md) for the full tested boundary.
 
 ## Testing your PDFs
 

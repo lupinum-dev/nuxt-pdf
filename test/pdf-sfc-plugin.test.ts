@@ -237,12 +237,12 @@ definePdf({})
     {
       filename: 'styled.vue',
       source: `<script setup>\ndefinePdf({})\n</script>\n<template><PdfDocument /></template>\n<style>ignored</style>`,
-      message: 'styled.vue:5:8 <style> blocks are not supported in PDF components in 0.1.0.',
+      message: 'styled.vue:5:8 <style> blocks are not supported in PDF components in 0.2.0.',
     },
     {
       filename: 'custom.vue',
       source: `<script setup>\ndefinePdf({})\n</script>\n<template><PdfDocument /></template>\n<docs>ignored</docs>`,
-      message: 'custom.vue:5:7 <docs> custom blocks are not supported in PDF components in 0.1.0.',
+      message: 'custom.vue:5:7 <docs> custom blocks are not supported in PDF components in 0.2.0.',
     },
   ])('rejects unsupported blocks with file and location', async ({ filename, source, message }) => {
     const file = resolve(`test/fixtures/pdf-sfc/${filename}`)

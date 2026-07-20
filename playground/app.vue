@@ -51,7 +51,7 @@ export default defineEventHandler(async () => {
           class="release-dot"
           aria-hidden="true"
         />
-        External alpha · 0.1.0
+        External alpha · 0.2.0
       </div>
     </header>
 

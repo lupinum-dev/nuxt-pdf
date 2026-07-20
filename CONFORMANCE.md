@@ -1,11 +1,11 @@
-# Nuxt PDF 0.1.0 conformance
+# Nuxt PDF 0.2.0 conformance
 
 Nuxt PDF claims behavioral compatibility for a deliberately small, tested
 corpus. It does not claim full React PDF API or test-suite compatibility.
 
 ## Version boundary
 
-| Layer | 0.1.0 boundary |
+| Layer | 0.2.0 boundary |
 |---|---|
 | Node.js | `^22.12.0`, `^24.11.0`, or `>=26.0.0` |
 | Nuxt | `^4.4.8` |
@@ -163,7 +163,7 @@ reviewed baselines.
 
 ### Vue and Nuxt authoring
 
-The 0.1.0 tests verify:
+The 0.2.0 tests verify:
 
 - `PdfDocument`, `PdfPage`, `PdfView`, `PdfText`, `PdfImage`, `PdfLink`, and
   `PdfNote`;
@@ -264,8 +264,8 @@ or filesystem sandbox claim.
 ### Opt-in remote resources
 
 Remote fetching is off by default: with `pdf.remote` absent the module performs
-zero network I/O and every URL image or font source fails closed, exactly as in
-0.1.0. When an operator configures `pdf.remote.allow`, the module — never React
+zero network I/O and every URL image or font source fails closed, exactly as
+when the feature is absent. When an operator configures `pdf.remote.allow`, the module — never React
 PDF's engine — fetches allowlisted resources and converts them to the same
 embedded form as local assets before layout or the font store sees a URL. The
 tested boundary guarantees:
@@ -361,7 +361,7 @@ the same shipped code — there is one parser, not two. Claimed:
 Verified end-to-end against a real rendered template, including assertion
 failure messages, in `test/test-utils-public.test.ts`.
 
-## Explicitly not claimed in 0.1.0
+## Explicitly not claimed in 0.2.0
 
 - Full React PDF component, hook, browser-helper, or test-suite parity.
 - React runtime compatibility or React-shaped dynamic callback results.
