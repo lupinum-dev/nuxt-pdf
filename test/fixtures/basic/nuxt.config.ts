@@ -7,6 +7,7 @@ export default defineNuxtConfig({
   vite: {
     server: {
       hmr: false,
+      ws: false,
     },
   },
   pdf: {
