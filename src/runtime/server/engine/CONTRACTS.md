@@ -110,6 +110,35 @@ A fresh `FontStore` contains the standard PDF fonts. Additional local fonts are 
 
 Protected by the local-font conformance fixture. Asset policy, path validation, and registration ownership live outside the engine and must run before layout.
 
+## Remote resource boundary
+
+Both of React PDF's remote fetch seams are structurally unreachable under every
+configuration, because our code converts any remote URL into embedded bytes (an
+image `{data, format}` buffer) or a `data:font/...` URL **before** layout or the
+font store runs.
+
+- **Image seam.** `@react-pdf/image` `resolve.ts` `fetchRemoteFile` calls global
+  `fetch(src.uri, {method, headers, body, credentials})` and reads
+  `response.arrayBuffer()` with no allowlist, timeout, byte cap, or redirect
+  control, selected by `resolveImageFromUrl` for any non-`file:` URL. Our
+  `resolvePdfImageAssets` replaces every image source with a validated buffer,
+  so layout always takes the `resolveImageFromData` branch and never reaches
+  `fetchRemoteFile`.
+- **Font seam.** `@react-pdf/font` `font-source.ts` `fetchFont` calls global
+  `fetch(src, options)` when `isUrl(this.src)` is true. Our `createPdfFontStore`
+  only registers `data:font/(otf|ttf);base64,...` sources, so `FontSource._load`
+  always takes the data-URL branch and never reaches `fetchFont`.
+
+When `pdf.remote` is configured, the fetching is done by our own
+`fetchRemoteResource` (`assets/remote.ts`): https-only allowlist match re-checked
+on every manual redirect hop, `GET` with no headers/credentials, a per-hop
+`AbortController` timeout, and a streamed byte cap. It returns raw bytes that the
+image or font caller validates with the same signature checks as local assets.
+Remote images are resolved at render time (their `src` is a dynamic prop);
+remote fonts are resolved at build time inside `bundlePdfFonts`, keeping the
+render path zero-network. The engine's own fetch code stays dead. Protected by
+`test/remote.test.ts`.
+
 ## Deliberately unused contracts
 
 - React reconciler and renderer lifecycle
