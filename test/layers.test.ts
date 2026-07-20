@@ -21,7 +21,7 @@ const baseCertificate = join(
 
 describe('Nuxt PDF layer precedence', async () => {
   await setup({
-    dev: true,
+    dev: false,
     rootDir: fixtureRoot,
   })
 
