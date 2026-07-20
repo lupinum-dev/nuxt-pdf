@@ -50,7 +50,8 @@
     "@react-pdf/primitives": "4.3.0",
     "@react-pdf/render": "4.5.1",
     "@vue/compiler-sfc": "3.5.40",
-    "esbuild": "0.28.1"
+    "esbuild": "0.28.1",
+    "h3": "1.15.11"
   },
   "peerDependencies": {
     "nuxt": "^4.4.8",

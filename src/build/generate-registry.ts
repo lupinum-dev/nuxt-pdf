@@ -105,7 +105,7 @@ export const generatePdfRegistryTypes = (
   const lines = [
     `declare module ${quote(moduleId)} {`,
     '  import type { Component } from \'vue\'',
-    `  import type { PdfRenderResult, PdfTemplateDefinition } from ${quote(options.runtimeImport)}`,
+    `  import type { PdfRenderResult, PdfTemplate } from ${quote(options.runtimeImport)}`,
     '',
     '  type ComponentProps<T extends Component> =',
     '    T extends new (...args: any[]) => { $props: infer Props extends object }',
@@ -127,7 +127,7 @@ export const generatePdfRegistryTypes = (
 
   ordered.forEach((template, index) => {
     lines.push(
-      `    readonly ${quote(template.propertyKey)}: PdfTemplateDefinition<PdfProps${index}>`,
+      `    readonly ${quote(template.propertyKey)}: PdfTemplate<PdfProps${index}>`,
     )
   })
 
@@ -150,7 +150,7 @@ export const generatePdfRegistryTypes = (
 
     ordered.forEach((template, index) => {
       lines.push(
-        `  export function getPdfTemplate(name: ${quote(template.canonicalKey)}): PdfTemplateDefinition<PdfProps${index}>`,
+        `  export function getPdfTemplate(name: ${quote(template.canonicalKey)}): PdfTemplate<PdfProps${index}>`,
       )
     })
   }

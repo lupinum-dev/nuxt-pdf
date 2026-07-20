@@ -215,16 +215,16 @@ describe('PDF registry generation', () => {
 
     expect(source).toContain('declare module "#pdf"')
     expect(source).toContain(
-      'import type { PdfRenderResult, PdfTemplateDefinition } from "#pdf-runtime"',
+      'import type { PdfRenderResult, PdfTemplate } from "#pdf-runtime"',
     )
     expect(source).toContain(
-      'readonly "reportsMonthly": PdfTemplateDefinition<PdfProps1>',
+      'readonly "reportsMonthly": PdfTemplate<PdfProps1>',
     )
     expect(source).toContain(
       'renderPdf(name: "reports/monthly", props: PdfProps1)',
     )
     expect(source).toContain(
-      'getPdfTemplate(name: "invoice"): PdfTemplateDefinition<PdfProps0>',
+      'getPdfTemplate(name: "invoice"): PdfTemplate<PdfProps0>',
     )
     expect(source).toContain(
       'pdfTemplateKeys: readonly ["invoice", "reports/monthly"]',
