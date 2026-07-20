@@ -15,6 +15,17 @@ export type PdfElementType = Exclude<
   typeof PDF_PRIMITIVES.TextInstance
 >
 
+export const PDF_PRIMITIVE_NAMES: Record<PdfElementType, string> = {
+  [PDF_PRIMITIVES.Document]: 'PdfDocument',
+  [PDF_PRIMITIVES.Page]: 'PdfPage',
+  [PDF_PRIMITIVES.View]: 'PdfView',
+  [PDF_PRIMITIVES.Text]: 'PdfText',
+  [PDF_PRIMITIVES.Image]: 'PdfImage',
+  [PDF_PRIMITIVES.Link]: 'PdfLink',
+  [PDF_PRIMITIVES.Note]: 'PdfNote',
+  [PDF_PRIMITIVES.Tspan]: 'Tspan',
+}
+
 export type PdfStyle = Record<string, unknown>
 export type PdfStyleValue = PdfStyle | PdfStyle[]
 

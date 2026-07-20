@@ -14,6 +14,7 @@ import layoutDocument, {
 import * as UpstreamPrimitives from '@react-pdf/primitives'
 import {
   PdfDocument,
+  PdfNote,
   PdfPage,
   PdfText,
   PdfView,
@@ -252,6 +253,77 @@ describe('Vue PDF host renderer', () => {
     expect(warning).toHaveBeenCalledWith(
       'Invalid \'not allowed\' string child outside <PdfText>.',
     )
+
+    mounted.unmount()
+  })
+
+  it('warns once and excludes unsupported primitive nesting', async () => {
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, null, {
+          default: () => h(PdfView, null, {
+            default: () => [
+              h(PdfPage, { key: 'invalid-page' }),
+              h(PdfText, { key: 'valid-text' }, () => 'Still valid'),
+            ],
+          }),
+        }),
+      }),
+    )
+
+    const mounted = await mountPdfComponent(Fixture)
+    const view = elementChild(elementChild(mounted.document, 0), 0)
+
+    expect(view.children).toHaveLength(1)
+    expect(textChild(elementChild(view, 0)).value).toBe('Still valid')
+    expect(warning).toHaveBeenCalledOnce()
+    expect(warning).toHaveBeenCalledWith(
+      'Invalid PDF nesting: <PdfView> cannot contain <PdfPage>. The <PdfPage> child was ignored.',
+    )
+
+    mounted.unmount()
+  })
+
+  it.each([
+    'aria-label',
+    'class',
+    'data-testid',
+    'role',
+  ])('rejects the DOM-only "$attribute" attribute', async (attribute) => {
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, null, {
+          default: () => h(PdfText, {
+            [attribute]: 'web-only',
+          }, () => 'PDF text'),
+        }),
+      }),
+    )
+
+    await expect(mountPdfComponent(Fixture)).rejects.toThrow(
+      `DOM-only attribute "${attribute}" is not supported on <PdfText>. Use PDF props and styles instead.`,
+    )
+  })
+
+  it('retains PdfNote text and minPresenceAhead on the canonical tree', async () => {
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, null, {
+          default: () => h(PdfView, { minPresenceAhead: 48 }, {
+            default: () => h(PdfNote, null, () => 'Reviewer note'),
+          }),
+        }),
+      }),
+    )
+
+    const mounted = await mountPdfComponent(Fixture)
+    const view = elementChild(elementChild(mounted.document, 0), 0)
+    const note = elementChild(view, 0)
+
+    expect(view.props.minPresenceAhead).toBe(48)
+    expect(note.type).toBe(PDF_PRIMITIVES.Note)
+    expect(textChild(note).value).toBe('Reviewer note')
 
     mounted.unmount()
   })

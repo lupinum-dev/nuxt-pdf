@@ -1,6 +1,7 @@
 import type { RendererOptions } from 'vue'
 import {
   PDF_PRIMITIVES,
+  PDF_PRIMITIVE_NAMES,
   type PdfDynamicPageProps,
   type PdfDynamicTextRender,
   type PdfHostElement,
@@ -10,6 +11,23 @@ import {
 
 const BOOLEAN_PROPS = new Set(['break', 'debug', 'fixed', 'wrap'])
 const EVENT_PROP = /^on[A-Z]/
+const DOM_ONLY_PROP = /^(?:aria-|data-)/
+const DOM_ONLY_PROPS = new Set([
+  'class',
+  'className',
+  'contenteditable',
+  'contentEditable',
+  'draggable',
+  'hidden',
+  'innerHTML',
+  'role',
+  'slot',
+  'spellcheck',
+  'tabindex',
+  'tabIndex',
+  'textContent',
+  'translate',
+])
 
 const wrapDynamicText = (render: PdfDynamicTextRender) =>
   (props: PdfDynamicPageProps): string | null => {
@@ -42,6 +60,12 @@ export const patchPdfProp: RendererOptions<
   if (EVENT_PROP.test(key)) {
     throw new TypeError(
       `Vue event prop "${key}" is not supported on PDF primitives.`,
+    )
+  }
+
+  if (DOM_ONLY_PROP.test(key) || DOM_ONLY_PROPS.has(key)) {
+    throw new TypeError(
+      `DOM-only attribute "${key}" is not supported on <${PDF_PRIMITIVE_NAMES[element.type]}>. Use PDF props and styles instead.`,
     )
   }
 

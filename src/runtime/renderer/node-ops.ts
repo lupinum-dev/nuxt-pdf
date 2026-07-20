@@ -3,6 +3,7 @@ import { patchPdfProp } from './patch-prop'
 import {
   PDF_COMMENT,
   PDF_PRIMITIVES,
+  PDF_PRIMITIVE_NAMES,
   isPdfCommentNode,
   isPdfElementNode,
   isPdfElementType,
@@ -10,6 +11,7 @@ import {
   type PdfCommentNode,
   type PdfDocumentNode,
   type PdfElementNode,
+  type PdfElementType,
   type PdfHostElement,
   type PdfHostNode,
   type PdfNode,
@@ -24,6 +26,34 @@ const TEXT_CONTAINERS = new Set<string>([
   PDF_PRIMITIVES.Note,
 ])
 
+const PAGE_CHILDREN = new Set<PdfElementType>([
+  PDF_PRIMITIVES.View,
+  PDF_PRIMITIVES.Text,
+  PDF_PRIMITIVES.Image,
+  PDF_PRIMITIVES.Link,
+  PDF_PRIMITIVES.Note,
+])
+
+const ELEMENT_CHILDREN: Record<PdfElementType, ReadonlySet<PdfElementType>> = {
+  [PDF_PRIMITIVES.Document]: new Set([PDF_PRIMITIVES.Page]),
+  [PDF_PRIMITIVES.Page]: PAGE_CHILDREN,
+  [PDF_PRIMITIVES.View]: PAGE_CHILDREN,
+  [PDF_PRIMITIVES.Text]: new Set([
+    PDF_PRIMITIVES.Text,
+    PDF_PRIMITIVES.Image,
+    PDF_PRIMITIVES.Link,
+    PDF_PRIMITIVES.Tspan,
+  ]),
+  [PDF_PRIMITIVES.Image]: new Set(),
+  [PDF_PRIMITIVES.Link]: new Set([
+    PDF_PRIMITIVES.View,
+    PDF_PRIMITIVES.Image,
+    PDF_PRIMITIVES.Text,
+  ]),
+  [PDF_PRIMITIVES.Note]: new Set(),
+  [PDF_PRIMITIVES.Tspan]: new Set(),
+}
+
 export type PdfRendererWarning = (message: string) => void
 
 export const createPdfRoot = (): PdfRoot => ({
@@ -37,6 +67,7 @@ export const createPdfNodeOps = (
   const childOrder = new WeakMap<PdfHostElement, PdfHostNode[]>()
   const parents = new WeakMap<PdfHostNode, PdfHostElement>()
   const warnedOrphans = new WeakSet<PdfTextInstance>()
+  const warnedInvalidChildren = new WeakSet<PdfElementNode>()
 
   const childrenOf = (parent: PdfHostElement): PdfHostNode[] => {
     let children = childOrder.get(parent)
@@ -54,6 +85,18 @@ export const createPdfNodeOps = (
 
     warnedOrphans.add(node)
     warn(`Invalid '${node.value}' string child outside <PdfText>.`)
+  }
+
+  const warnAboutInvalidChild = (
+    parent: PdfElementNode,
+    child: PdfElementNode,
+  ) => {
+    if (warnedInvalidChildren.has(child)) return
+
+    warnedInvalidChildren.add(child)
+    warn(
+      `Invalid PDF nesting: <${PDF_PRIMITIVE_NAMES[parent.type]}> cannot contain <${PDF_PRIMITIVE_NAMES[child.type]}>. The <${PDF_PRIMITIVE_NAMES[child.type]}> child was ignored.`,
+    )
   }
 
   const syncRoot = (root: PdfRoot, children: PdfHostNode[]) => {
@@ -86,6 +129,14 @@ export const createPdfNodeOps = (
 
     for (const child of children) {
       if (isPdfCommentNode(child)) continue
+
+      if (
+        isPdfElementNode(child)
+        && !ELEMENT_CHILDREN[element.type].has(child.type)
+      ) {
+        warnAboutInvalidChild(element, child)
+        continue
+      }
 
       if (isPdfTextInstance(child)) {
         if (child.value === '') continue
