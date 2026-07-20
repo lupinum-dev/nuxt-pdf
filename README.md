@@ -121,6 +121,27 @@ The `/_pdf` routes are registered only in development. Restart `nuxt dev`, or
 run `nuxt prepare`, after first enabling the module so Nuxt writes the typed
 `#pdf` registry.
 
+## Development preview
+
+`/_pdf` is where you live while building a document. The index lists every
+template as a card with its source file, scenario count, and quick links to the
+preview and the raw PDF. Each viewer page:
+
+- offers the sample data and every named scenario as tabs that swap the embedded
+  PDF, with the active one highlighted (an unknown `?scenario=` still 404s with
+  the available names);
+- renders a diagnostics strip for that render — duration, output size, page
+  count, and layout passes — plus every warning the render emitted (in
+  development these are collected for the panel; production still logs them with
+  `console.warn`);
+- replaces the document with a readable error panel — code, template, file, and
+  message, no stack dump — when a render fails; and
+- has a `Refresh` link that re-renders. Nuxt already restarts on template
+  changes, so there is no websocket or HMR layer.
+
+The whole preview is server-rendered HTML with no client build step and is
+absent from production builds.
+
 ## Authoring model
 
 PDF templates live in `pdfs/**/*.vue`. `pdfs/components`, `pdfs/assets`, and
