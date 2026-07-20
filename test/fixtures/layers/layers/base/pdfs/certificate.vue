@@ -1,4 +1,6 @@
 <script setup lang="ts">
+defineOptions({ name: 'BaseCertificatePdf' })
+
 type CertificateProps = {
   recipient: string
 }
@@ -14,7 +16,10 @@ definePdf<CertificateProps>({
 
 <template>
   <PdfDocument>
-    <PdfPage size="A4" :style="{ padding: 48 }">
+    <PdfPage
+      size="A4"
+      :style="{ padding: 48 }"
+    >
       <PdfText>BASE CERTIFICATE: {{ props.recipient }}</PdfText>
     </PdfPage>
   </PdfDocument>

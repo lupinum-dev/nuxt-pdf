@@ -1,4 +1,6 @@
 <script setup lang="ts">
+defineOptions({ name: 'BaseInvoicePdf' })
+
 type InvoiceProps = {
   baseMessage: string
 }
@@ -14,7 +16,10 @@ definePdf<InvoiceProps>({
 
 <template>
   <PdfDocument>
-    <PdfPage size="A4" :style="{ padding: 48 }">
+    <PdfPage
+      size="A4"
+      :style="{ padding: 48 }"
+    >
       <PdfText>BASE INVOICE: {{ props.baseMessage }}</PdfText>
     </PdfPage>
   </PdfDocument>
