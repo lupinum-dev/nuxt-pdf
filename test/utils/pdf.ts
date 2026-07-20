@@ -163,6 +163,26 @@ export async function parsePdf(data: PdfData): Promise<ParsedPdf> {
   })
 }
 
+export interface PdfOutlineItem {
+  title: string
+  children: PdfOutlineItem[]
+}
+
+/** Read the PDF outline (bookmark tree) as a title-only nested structure. */
+export async function getPdfOutline(data: PdfData): Promise<PdfOutlineItem[]> {
+  return withPdfDocument(data, async (document) => {
+    interface RawOutlineItem { title?: unknown, items?: unknown }
+    const simplify = (items: readonly RawOutlineItem[]): PdfOutlineItem[] =>
+      items.map(item => ({
+        title: typeof item.title === 'string' ? item.title : '',
+        children: Array.isArray(item.items) ? simplify(item.items as RawOutlineItem[]) : [],
+      }))
+
+    const outline = await document.getOutline() as RawOutlineItem[] | null
+    return outline ? simplify(outline) : []
+  })
+}
+
 /** Rasterize every PDF page independently for deterministic page-level diffs. */
 export async function rasterizePdf(
   data: PdfData,
