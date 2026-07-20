@@ -12,6 +12,7 @@ import {
 const fixturesDirectory = resolve('test/fixtures/pdf-sfc')
 const invoiceFile = join(fixturesDirectory, 'InvoiceDocument.vue')
 const lineItemFile = join(fixturesDirectory, 'LineItem.vue')
+const invoiceDataFile = join(fixturesDirectory, 'invoice-data.ts')
 
 let temporaryDirectory: string
 
@@ -98,6 +99,7 @@ definePdf({
     expect(plugin.resolveId('./LineItem.vue', invoiceId!)).toMatch(
       /^\0nuxt-pdf:sfc:.*\.mjs$/,
     )
+    expect(plugin.resolveId('./invoice-data', invoiceId!)).toBe(invoiceDataFile)
     expect(plugin.resolveId('./Unknown.vue', invoiceId!)).toBeNull()
   })
 

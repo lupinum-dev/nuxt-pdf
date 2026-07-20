@@ -1,6 +1,7 @@
 import { Buffer } from 'node:buffer'
+import { existsSync, statSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
-import { dirname, isAbsolute, resolve } from 'node:path'
+import { dirname, extname, isAbsolute, resolve } from 'node:path'
 import {
   babelParse,
   compileScript,
@@ -100,8 +101,11 @@ export const createPdfSfcPlugin = (
   resolveId(source, importer) {
     const filename = resolvePdfImport(source, importer)
 
-    return filename && options.files.has(filename)
-      ? virtualPdfId(filename)
+    if (!filename) return null
+    if (options.files.has(filename)) return virtualPdfId(filename)
+
+    return importer?.startsWith(VIRTUAL_PREFIX)
+      ? resolveRelativeModule(filename)
       : null
   },
   async load(id) {
@@ -129,6 +133,38 @@ export const createPdfSfcPlugin = (
     return compilePdfSfc(source, filename, kind, options.isProduction)
   },
 })
+
+const MODULE_EXTENSIONS = [
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+  '.json',
+] as const
+
+function resolveRelativeModule(filename: string): string | null {
+  const candidates = extname(filename)
+    ? [filename]
+    : [
+        ...MODULE_EXTENSIONS.map(extension => `${filename}${extension}`),
+        ...MODULE_EXTENSIONS.map(extension => resolve(filename, `index${extension}`)),
+      ]
+
+  for (const candidate of candidates) {
+    if (candidate.endsWith('.vue') || !existsSync(candidate)) continue
+
+    try {
+      if (statSync(candidate).isFile()) return candidate
+    }
+    catch {
+      // The normal module resolver will provide the final missing-import error.
+    }
+  }
+
+  return null
+}
 
 function resolvePdfImport(source: string, importer?: string): string | undefined {
   if (source.startsWith('\0') || source.includes('?')) return undefined
