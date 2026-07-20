@@ -71,12 +71,18 @@ input as immutable for every node it re-parents:
   the same mounted document leave `page.box` an empty object.
 - **The one in-place mutation is `resolveBookmarks`.** It assigns
   `child.props.bookmark = newHierarchy` on the original node's props
-  (`resolveBookmarks.ts:52`), executing before `resolveStyles` copies. This is
-  idempotent enough for re-layout (`getBookmarkValue` returns an already-resolved
-  bookmark object unchanged) but it **does** write derived state back onto the
-  canonical tree. The TOC loop does not use `bookmark` props; any future feature
-  that combines bookmarks with multi-pass layout must clone bookmark-carrying
-  nodes per pass or reset `props.bookmark` between passes.
+  (`resolveBookmarks.ts:52`), executing before `resolveStyles` copies, so it
+  **does** write derived state back onto the canonical tree. `newHierarchy` is
+  `{ ref, parent, ...bookmark }`: when `bookmark` is already a resolved object
+  (as it is on the second pass), the spread carries the previous pass's `ref` and
+  `parent` forward, so re-layout is **not** idempotent whenever a node's stable
+  bookmark reference is not re-patched (a string bookmark, or a hoisted object).
+  `renderDocumentMultiPass` therefore snapshots every bookmark-carrying node's
+  authored `props.bookmark` before the loop and restores it before every pass
+  (`layout-passes.ts` `snapshotBookmarks`/`restoreBookmarks`). resolveBookmarks
+  only reassigns the reference (never mutates the object), so restoring the
+  captured reference is a complete reset. Protected by `test/bookmarks.test.ts`,
+  whose ancestry-shift fixture fails without the reset.
 
 Because the mounted tree is otherwise untouched, the loop feeds each pass's
 `id → page` map back through a reactive prop and our renderer **re-patches the
@@ -89,15 +95,35 @@ capped at `maxPasses` (default 5) and raises `PDF_LIMIT_EXCEEDED`.
 
 ### Named destination / internal link contract
 
-A node's `id` prop becomes a PDF named destination anchored at the node's final
-page and `box.top` (`render/src/operations/setDestination.ts:10`, called from
-`renderNode.ts` for every node). A `Link` whose `src` (or `href`) starts with `#`
-renders as a `goTo` to that name rather than an external `link`
+A node's `id` prop becomes a PDF named destination anchored at the node's page
+and `box.top` (`render/src/operations/setDestination.ts:10`, called from
+`renderNode.ts` for **every** node). A `Link` whose `src` (or `href`) starts with
+`#` renders as a `goTo` to that name rather than an external `link`
 (`render/src/operations/setLink.ts:7,13`). pdfjs reports the resulting Link
-annotation's `dest` as the raw id string. The multi-pass loop reads the same
-`id`s off the paginated `SafeDocumentNode` (`layout.children` is the final ordered
-page list) to build the `id → page` map, so the printed TOC numbers and the jump
-targets share one source of truth. Protected by `test/toc-multipass.test.ts`.
+annotation's `dest` as the raw id string.
+
+**First-page ownership (a Nuxt-PDF divergence).** Pagination splits a node that
+crosses a page boundary into a fragment on every page it touches, each keeping
+`props.id`. Upstream calls `setDestination` for all of them and pdfkit's NameTree
+is last-writer-wins, so React PDF's destination for a page-spanning `id` points
+at the section's **last** page. Nuxt PDF instead anchors every destination at the
+section's **first** page, because a table-of-contents entry names where a section
+*begins*. Two seams enforce this, both in `render-document.ts`:
+
+- `extractDestinationPages` is **first-writer-wins** over the ordered page list
+  (`layout.children`), so the `id → page` map the multi-pass loop feeds back (and
+  the printed TOC number) is the earliest page an id appears on.
+- `serializePdfLayout` runs `anchorDestinationsAtFirstPage`, which walks the
+  final pages in order and deletes `props.id` from every fragment of an
+  already-seen id **before** painting, so the single surviving `setDestination`
+  call — and therefore the NameTree entry the click jumps to — targets the first
+  fragment. This runs for the single-pass and multi-pass paths alike, mutating
+  only the derived, disposable layout.
+
+The printed TOC number and the jump target thus share one source of truth.
+Protected by `test/toc-multipass-attack.test.ts` (the page-spanning regression),
+`test/toc-multipass.test.ts`, and `test/internal-links.test.ts` (paired with
+React on non-splitting targets, where first- and last-page resolution agree).
 
 ## Dynamic text contract
 

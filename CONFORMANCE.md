@@ -112,6 +112,52 @@ The 0.1.0 tests verify:
 - absence of React PDF engine code from the Nuxt client bundle and React
   renderer runtimes from production dependencies.
 
+### Table of contents, internal links, and bookmarks
+
+Nuxt PDF resolves table-of-contents page numbers with a multi-pass layout loop
+and exposes it through one composable and existing props. The tested boundary:
+
+- **`usePdfPageNumbers()`** — an auto-imported composable returning a readonly,
+  reactive `Record<string, number | undefined>` mapping each destination `id` to
+  the 1-based page it finally lands on. On the first pass every entry is
+  `undefined`, so templates must tolerate a missing number. The composable is
+  auto-injected into a PDF SFC that uses it (verified by compiling the real
+  `playground/pdfs/report.vue` and by inject/skip unit tests).
+- **Activation gate.** The multi-pass loop runs only when a template calls
+  `usePdfPageNumbers()` during mount **or** the mounted tree contains a `PdfLink`
+  whose `src`/`href` starts with `#`. Every other document renders through the
+  single-pass path at no added cost — verified by a spy asserting the multi-pass
+  entry point is not called for a plain document and is called once for an
+  internal-link document.
+- **Convergence.** The loop is a fixed point: it re-lays-out the same mounted
+  tree, feeding each pass's `id → page` map back through the composable, until the
+  map it produces equals the map it was laid out with. An ordinary document
+  converges in two passes. A document whose layout depends on the numbers it
+  prints (a TOC entry whose height changes with its page number) never converges
+  and, after `maxPasses` (a validated positive integer on `definePdf`, default 5),
+  raises a `PDF_LIMIT_EXCEEDED` `NuxtPdfError` attributed to the template key and
+  file through the same boundary as every other render failure.
+- **Named destinations resolve to a section's first page.** A node's `id` becomes
+  a named destination; a `PdfLink` `src="#id"` jumps to it. When the id sits on a
+  node that spans a page boundary, both the printed number and the jump target
+  resolve to the section's **first** page (a deliberate divergence from React PDF,
+  whose last-writer-wins destination table points at the last page). Verified by a
+  page-spanning regression fixture asserting both the printed number and the pdfjs
+  destination.
+- **Internal links** are verified paired against React PDF on non-splitting
+  targets (where first- and last-page resolution agree): matching `Link`
+  annotations and matching named-destination pages.
+- **Bookmarks (outline).** The upstream `bookmark` prop (a string or
+  `{ title, expanded, … }`) on `PdfPage`/`PdfView`/`PdfText`/`PdfImage` builds a
+  nested PDF outline. Verified paired against React PDF via pdfjs `getOutline`
+  (React PDF is the oracle for the bookmark→outline mechanics), and combined with
+  the multi-pass loop: two independent renders produce an identical outline, and
+  the loop resets each pass's authored `bookmark` so the in-place resolution
+  `resolveBookmarks` performs cannot accumulate a stale hierarchy — a fixture
+  whose bookmark ancestry shifts across passes fails without the reset.
+- A **reviewed raster baseline** of a realistic report's TOC page, following the
+  same `UPDATE_PDF_BASELINES` policy and thresholds as the other paired fixtures.
+
 ### Local resources
 
 The module validates and embeds configured resources during the Nuxt build.
@@ -189,7 +235,14 @@ rebinding protection beyond the allowlist, and any cross-render caching.
   claimed above.
 - Browser CSS, HTML printing, a PDF stylesheet compiler, or paged-media CSS.
 - A first-class table layout engine, charts, forms, signing, editing, or PDF
-  merging.
+  merging. A table of contents is authored from ordinary components; there is no
+  TOC component or automatic heading collection.
+- Bookmark destination geometry (`top`/`left`/`zoom`/`fit`) and outline click
+  actions beyond title text and parent/child nesting; the outline is verified by
+  its title hierarchy via pdfjs `getOutline`.
+- Multi-pass resolution of anything other than destination page numbers, and
+  convergence for documents whose geometry depends on the numbers they print
+  (these fail closed with `PDF_LIMIT_EXCEEDED`, they are not made to converge).
 - Tagged PDF, PDF/UA, archival, or other accessibility/compliance profiles.
 - Deterministic PDF bytes across operating systems or PDF viewers.
 - Hard render cancellation, worker isolation, concurrency guarantees, output

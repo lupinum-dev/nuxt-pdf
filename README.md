@@ -159,6 +159,37 @@ definePdf<Props>({
 A scenario is available at `/_pdf/report?scenario=long`. Unknown scenarios
 return a 404 with the available names.
 
+## Table of contents, links, and bookmarks
+
+Give any primitive an `id` to make it a named destination, and link to it with
+`<PdfLink src="#id">`. To print the page a destination lands on, call the
+auto-imported `usePdfPageNumbers()` composable — it returns a readonly, reactive
+map from `id` to its 1-based page:
+
+```vue
+<script setup lang="ts">
+const pageNumbers = usePdfPageNumbers()
+</script>
+
+<template>
+  <PdfLink :src="`#${section.id}`">
+    {{ section.title }} … {{ pageNumbers[section.id] ?? '' }}
+  </PdfLink>
+</template>
+```
+
+Reading the composable (or including any internal `#` link) turns on a
+multi-pass layout: the document is laid out repeatedly, feeding the resolved page
+numbers back in, until they stabilize — an ordinary table of contents settles in
+two passes. On the first pass the numbers are `undefined`, so keep a fallback.
+Numbers and links always resolve to the page a section **starts** on, even when
+the section spans pages. A document whose layout depends on the numbers it prints
+fails with `PDF_LIMIT_EXCEEDED`; raise the cap with `definePdf({ maxPasses })`.
+
+Add a `bookmark` (`"Title"` or `{ title, expanded }`) to any primitive to build
+the PDF outline; nesting follows the component tree. `playground/pdfs/report.vue`
+demonstrates the whole feature.
+
 ## Typed server registry
 
 Nuxt generates an inspectable `#pdf` module from the discovered templates.
