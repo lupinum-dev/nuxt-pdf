@@ -122,12 +122,12 @@ definePdf<ReportProps>({
         :style="{ backgroundColor: '#315D3B', height: 8, left: 0, position: 'absolute', right: 0, top: 0 }"
       />
 
-      <!-- The section id + bookmark wrap the whole section, so the id anchors at
-           the section start even when the body spans pages and the subsection
-           bookmarks nest under the section in the outline. -->
+      <!-- The id-bearing wrapper anchors the destination at the section start
+           even when the body spans pages; subsection bookmarks nest under it
+           in the outline. No `break` needed — each section already begins on
+           its own PdfPage. -->
       <PdfView
         :id="section.id"
-        break
         :bookmark="{ title: section.title, expanded: true }"
       >
         <PdfView :style="{ marginBottom: 18 }">

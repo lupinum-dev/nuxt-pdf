@@ -344,21 +344,35 @@ const SplitDoc = defineComponent({
   },
 })
 
+// The first-page guarantee has two independent mechanisms — first-writer-wins
+// extraction and the serialization-time destination anchoring — so each gets
+// its OWN test: a regression in one must fail its own assertion even if the
+// other also regresses (a single sequential test would mask the second half).
 describe('ATTACK 2 — id on a page-spanning container points at the section START', () => {
-  it('points the TOC entry and named destination at the page where the section STARTS', async () => {
+  const renderSplitDoc = async () => {
     const m = await mountPdfComponent(SplitDoc, { resolved: {} })
-    const result = await renderDocumentMultiPass(mountedSource(m))
-    const parsed = await parsePdf(result.bytes)
-    const startPage = parsed.pages.find(p => p.text.includes('big line 1'))!.number
-    const endPage = parsed.pages.find(p => p.text.includes('big line 80'))!.number
-    expect(endPage).toBeGreaterThan(startPage) // section genuinely spans pages
+    try {
+      const result = await renderDocumentMultiPass(mountedSource(m))
+      const parsed = await parsePdf(result.bytes)
+      const startPage = parsed.pages.find(p => p.text.includes('big line 1'))!.number
+      const endPage = parsed.pages.find(p => p.text.includes('big line 80'))!.number
+      expect(endPage).toBeGreaterThan(startPage) // section genuinely spans pages
+      return { result, parsed, startPage }
+    }
+    finally {
+      m.unmount()
+    }
+  }
 
-    // The TOC entry and the named destination both point at the section START.
-    // `extractDestinationPages` is first-writer-wins and serialization anchors the
-    // destination at the first fragment, so a section spanning pages 2–3 prints "2"
-    // and its click jumps to page 2, not the last fragment's page.
+  it('extracts the printed TOC number from the section START page', async () => {
+    const { result, parsed, startPage } = await renderSplitDoc()
+
     expect(result.pages.big).toBe(startPage)
     expect(parsed.pages[0]!.text).toContain(`Big Section ..... ${startPage}`)
+  })
+
+  it('anchors the named destination at the section START page', async () => {
+    const { result, startPage } = await renderSplitDoc()
 
     installPdfCanvasGlobals()
     const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
@@ -367,6 +381,5 @@ describe('ATTACK 2 — id on a page-spanning container points at the section STA
     const destPage = (await doc.getPageIndex(dest[0])) + 1
     await doc.destroy()
     expect(destPage).toBe(startPage)
-    m.unmount()
   })
 })

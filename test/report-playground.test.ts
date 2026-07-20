@@ -54,7 +54,12 @@ describe('playground report.vue (shipped TOC + bookmarks)', () => {
     const methodStart = parsed.pages.find(p => p.text.includes('Sampling') && p.text.includes('paragraph 1.'))!.number
     const resultsStart = parsed.pages.find(p => p.text.includes('Counts') && p.text.includes('paragraph 1.'))!.number
     expect(resultsStart).toBeGreaterThan(methodStart + 1)
-    expect(tocText).toContain(String(methodStart))
+
+    // Each TOC entry pairs ITS title with ITS located page number (a bare
+    // toContain(number) would pass even with swapped labels).
+    for (const [title, page] of [['Method', methodStart], ['Results', resultsStart]] as const) {
+      expect(tocText).toMatch(new RegExp(`${title}[\\s.·]*${page}\\b`))
+    }
 
     // Internal links exist on the TOC page and target the section ids.
     const tocLinks = parsed.pages[0]!.annotations.filter(a => a.subtype === 'Link')
