@@ -11,26 +11,25 @@ import {
 
 export { extractDestinationPages, type DestinationPageMap }
 
-// SPIKE (internal, not publicly exported). Proves the multi-pass layout
-// architecture that a table of contents with correct page numbers requires.
-//
-// The loop is a fixed-point iteration over the existing single-pass pipeline:
+// The shipped multi-pass layout loop that resolves table-of-contents page
+// numbers. It is a fixed-point iteration over the existing single-pass pipeline:
 //
 //   feed(map) → layoutPdfTree → extract id→page map → repeat until stable → serialize ONCE
 //
 // The document is authored once and mounted once. Between passes the id→page map
-// is fed back into the LIVE Vue tree through a reactive prop; our custom renderer
-// re-patches the same node objects in place (proven by node-identity assertions
-// in test/toc-multipass.test.ts — no re-mount per pass). `layoutDocument` treats
-// its input as immutable for every non-bookmark node (Object.assign copies at
-// each step; see CONTRACTS.md "Layout purity contract"), so the same mounted tree
-// is safe to lay out repeatedly without cloning.
+// is fed back into the LIVE Vue tree; our custom renderer re-patches the same
+// node objects in place (proven by node-identity assertions in
+// test/toc-multipass.test.ts — no re-mount per pass). `layoutDocument` treats its
+// input as immutable for every non-bookmark node (Object.assign copies at each
+// step; see CONTRACTS.md "Layout purity contract"), so the same mounted tree is
+// safe to lay out repeatedly without cloning. registry.ts gates entry to this
+// loop on `usePdfPageNumbers()` usage or an internal `#` link.
 
 /**
  * A mountable document whose page-number feedback can be re-fed between passes.
- * The spike backs this with a MountedPdfComponent whose fixture reads the map
- * from a reactive prop; productization would back it with a provided ref that a
- * `usePdfPageNumbers()` composable exposes (see the API sketch).
+ * In production the registry backs `feed` with `MountedPdfComponent.feedPageNumbers`,
+ * which pushes the map into the reactive record the `usePdfPageNumbers()`
+ * composable exposes; engine tests back it with a reactive prop through `update`.
  */
 export interface MultiPassSource {
   /** The live mounted document root; re-patched in place by `feed`. */
