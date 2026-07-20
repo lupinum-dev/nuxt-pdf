@@ -3,6 +3,7 @@
   "exclude": [
     "build.config.ts",
     "dist",
+    "docs",
     "node_modules",
     "playground",
     "test/fixtures",

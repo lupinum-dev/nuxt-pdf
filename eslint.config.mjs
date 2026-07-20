@@ -16,5 +16,7 @@ export default createConfigForNuxt({
   },
 })
   .append(
-    // your custom flat config here...
+    // The docs app follows the ginko-docs layer's own style conventions and
+    // typechecks/builds inside its own project; keep it out of the root gates.
+    { ignores: ['docs/**'] },
   )
