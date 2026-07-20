@@ -15,17 +15,25 @@ import {
   discoverPdfTemplates,
   type PdfTemplateLayer,
 } from './build/discover-templates'
-import { bundlePdfFonts } from './build/fonts'
+import { bundlePdfFonts, DEFAULT_MAX_PDF_FONT_BYTES } from './build/fonts'
 import {
   generatePdfRegistryTypes,
   generatePdfRuntimeRegistry,
 } from './build/generate-registry'
 import { createPdfSfcPlugin } from './build/pdf-sfc-plugin'
-import { loadPdfImageAsset } from './runtime/server/assets/resolve-asset'
+import {
+  normalizeRemoteAssetPolicy,
+  type RemoteAssetOptions,
+} from './runtime/server/assets/remote'
+import {
+  DEFAULT_MAX_PDF_IMAGE_BYTES,
+  loadPdfImageAsset,
+} from './runtime/server/assets/resolve-asset'
 import type { PdfFontDeclaration } from './runtime/server/fonts'
 
 export interface ModuleOptions {
   fonts?: readonly PdfFontDeclaration[]
+  remote?: RemoteAssetOptions
 }
 
 const quote = (value: string): string => JSON.stringify(value)
@@ -118,7 +126,11 @@ export default defineNuxtModule<ModuleOptions>({
     const fontRoots = await existingDirectories(
       layers.map(layer => join(layer.rootDir, 'pdfs', 'fonts')),
     )
-    const fonts = await bundlePdfFonts(options.fonts ?? [], { fontRoots })
+    const remote = normalizeRemoteAssetPolicy(options.remote, {
+      maxImageBytes: DEFAULT_MAX_PDF_IMAGE_BYTES,
+      maxFontBytes: DEFAULT_MAX_PDF_FONT_BYTES,
+    })
+    const fonts = await bundlePdfFonts(options.fonts ?? [], { fontRoots, remote })
     const pdfSfcFiles = new Map<string, 'component' | 'template'>(
       componentFiles.map(file => [file, 'component']),
     )
@@ -136,6 +148,7 @@ export default defineNuxtModule<ModuleOptions>({
       getContents: () => generatePdfRuntimeRegistry(templates, {
         assets,
         fonts,
+        remote,
         runtimeImport,
       }),
     })

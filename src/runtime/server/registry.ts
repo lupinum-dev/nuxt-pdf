@@ -16,6 +16,7 @@ import {
   resolvePdfImageAssets,
   type PdfImageAssetMap,
 } from './assets/resolve-asset'
+import type { RemoteAssetPolicy } from './assets/remote'
 import { renderDocument } from './engine/render-document'
 import {
   createPdfFontStore,
@@ -29,6 +30,7 @@ const EMPTY_ASSETS = Object.freeze({})
 export interface PdfTemplateRuntimeOptions {
   assets?: PdfImageAssetMap
   fonts?: readonly BundledPdfFontDescriptor[]
+  remote?: RemoteAssetPolicy
 }
 
 type PdfTemplateIdentity = Pick<PdfTemplate<object>, 'key' | 'render'>
@@ -154,6 +156,7 @@ const renderTemplate = async <Props extends object>(
     applyDocumentMetadata(mounted.document, metadata)
     await resolvePdfImageAssets(mounted.document, {
       assets: options.assets ?? EMPTY_ASSETS,
+      remote: options.remote,
     })
 
     const result = await renderDocument(

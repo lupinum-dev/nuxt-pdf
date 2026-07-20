@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer'
+import type { RemoteAssetPolicy } from '../runtime/server/assets/remote'
 import type { PdfTemplate } from './discover-templates'
 
 export type PdfRegistryGenerationOptions = {
@@ -13,6 +14,7 @@ export type PdfRegistryGenerationOptions = {
     fontWeight?: number
     src: string
   }[]
+  remote?: RemoteAssetPolicy
   runtimeImport: string
 }
 
@@ -32,8 +34,9 @@ const runtimeOptionsSource = (
 ): string[] => {
   const assets = options.assets ?? []
   const fonts = options.fonts ?? []
+  const { remote } = options
 
-  if (assets.length === 0 && fonts.length === 0) return []
+  if (assets.length === 0 && fonts.length === 0 && !remote) return []
 
   const lines = ['', 'const __pdfRuntimeOptions = Object.freeze({']
 
@@ -53,6 +56,10 @@ const runtimeOptionsSource = (
       lines.push(`    Object.freeze(${JSON.stringify(font)}),`)
     }
     lines.push('  ]),')
+  }
+
+  if (remote) {
+    lines.push(`  remote: Object.freeze(${JSON.stringify(remote)}),`)
   }
 
   lines.push('})')
