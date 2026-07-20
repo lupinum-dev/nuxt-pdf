@@ -304,4 +304,60 @@ describe('multi-pass + bookmarks', () => {
       b.unmount()
     }
   }, 30_000)
+
+  it('handles a bookmark that first appears mid-loop behind a resolved page number', async () => {
+    // Pass 1 feeds an empty map, so the bookmark (and a spacer that changes the
+    // target's page) do not exist yet. Pass 2 mounts them, its layout resolves
+    // the bookmark, AND the spacer moves the target — forcing a pass 3 that
+    // re-lays-out the already-resolved bookmark. The per-pass snapshot must
+    // have recorded the bookmark's AUTHORED value when it first appeared (not
+    // only at loop start), or pass 3 would spread the stale resolved
+    // {ref, parent} object into the outline.
+    const LateBookmarkDoc = defineComponent({
+      props: { resolved: { type: Object, default: () => ({}) } },
+      setup(props: { resolved: Record<string, number | undefined> }) {
+        return () =>
+          h(PdfDocument, {}, {
+            default: () => [
+              h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
+                default: () => h(PdfLink, { src: '#late', style: { fontSize: 13 } }, {
+                  default: () => `Late section ..... ${props.resolved.late ?? ''}`,
+                }),
+              }),
+              h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
+                default: () => [
+                  ...(props.resolved.late === undefined
+                    ? []
+                    : [h(PdfView, { style: { height: 780 } }, {
+                        default: () => h(PdfText, {}, { default: () => 'spacer' }),
+                      })]),
+                  h(
+                    PdfView,
+                    props.resolved.late === undefined
+                      ? {}
+                      : { bookmark: { title: 'Late chapter' } },
+                    { default: () => h(PdfText, { id: 'late' }, { default: () => 'HEADING late' }) },
+                  ),
+                ],
+              }),
+            ],
+          })
+      },
+    })
+
+    const mounted = await mountPdfComponent(LateBookmarkDoc, { resolved: {} })
+    try {
+      const result = await renderDocumentMultiPass(mountedSource(mounted))
+
+      // Pass 1: {} → late=2. Pass 2: spacer+bookmark appear, late moves → 3.
+      // Pass 3: stable. The bookmark was laid out twice (passes 2 and 3).
+      expect(result.passes).toBe(3)
+      expect(result.pages.late).toBe(3)
+      const outline = await getPdfOutline(result.bytes)
+      expect(outline.map(item => item.title)).toEqual(['Late chapter'])
+    }
+    finally {
+      mounted.unmount()
+    }
+  }, 30_000)
 })
