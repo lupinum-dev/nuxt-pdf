@@ -83,6 +83,84 @@ within SVG: `Marker` (`markerStart`/`markerMid`/`markerEnd`), non-default
 `gradientUnits` and `preserveAspectRatio` beyond the tested defaults, and SVG
 image files as an image source.
 
+### Behavioural conformance corpus
+
+A themed corpus under `test/corpus/` renders each fixture through both React PDF
+(`renderToBuffer`) and the Vue renderer from one shared, renderer-agnostic data
+module, so any divergence is the renderer boundary. Claims are proven by
+extracted text, per-page marker positions, laid-out box geometry, annotation and
+catalog reads, and — for genuinely visual claims — React/Vue raster parity plus
+reviewed baselines.
+
+**Pagination** (`test/corpus/pagination.test.ts`):
+
+- `wrap={false}` does not paginate: the single page grows taller than A4 to hold
+  all overflow (nothing clipped or dropped), and Vue's grown MediaBox equals
+  React's exactly (reviewed raster baseline);
+- `break` on nested wrapped Views lands each block on its own page;
+- `minPresenceAhead` pushes a bottom-of-page heading onto the next page to rejoin
+  its block, versus the control that strands it;
+- `orphans`/`widows` split a wrapped paragraph at the same line boundary as React;
+- a `fixed` header and footer repeat on every page of a multi-page flow while the
+  body advances; and
+- dynamic page-number footers (`{ pageNumber, totalPages }`) are correct on every
+  page of a wrapped flow — proven against a page-count-derived computed oracle
+  because React PDF diverges on dynamic-text line spacing (see the kernel note).
+
+**Text** (`test/corpus/text.test.ts`):
+
+- a custom `hyphenationCallback` introduces break opportunities so a long token
+  wraps with trailing hyphen glyphs, versus a disabled callback that leaves it
+  unbroken and overflowing;
+- `letterSpacing` widens glyph advances and changes wrapping;
+- `textAlign` left/center/right shifts line origins and `justify` fills interior
+  lines while the last line keeps its natural advance (raster parity);
+- nested style inheritance and inline `fontFamily` switching resolve the correct
+  embedded font per run and inherit colour across wraps (raster parity);
+- German umlauts, eszett, and Latin-extended diacritics round-trip through text
+  extraction; and
+- `maxLines` with `textOverflow: 'ellipsis'` clamps to the line count and appends
+  the ellipsis (U+2026).
+
+**Images** (`test/corpus/images.test.ts`):
+
+- JPEG file paths, base64 `data:` URLs, and `{ data, format }` buffer sources all
+  decode and render;
+- explicit width+height, single-dimension aspect scaling, and percent width
+  against the page content box size the laid-out box (reviewed baseline);
+- `objectFit` `contain` letterboxes and `cover` crops while the box stays fixed
+  (reviewed baseline); and
+- an image in a `fixed` header repeats once per page.
+
+**Styles and layout** (`test/corpus/styles.test.ts`):
+
+- flexbox — `row`/`column` direction, `flexGrow`, `flexBasis`+`flexShrink`,
+  `justifyContent: space-between`, `alignItems: center`, and `gap`;
+- percent width/height against page and nested parent boxes;
+- resolved margin/padding/border on every edge and border-box offset;
+- style-array flattening with `false`/`null`/`undefined` entries filtered, equal to
+  the merged object form;
+- `fontFamily`/`fontSize`/`color` cascading through nested Views into Text with
+  own-value override; and
+- `backgroundColor`, `opacity` alpha-blending, a stroked `border`, and a
+  `rotate`/`scale`/`translate` `transform` that paints transformed while the layout
+  box stays invariant (raster parity for the painted claims). React's own resolved
+  layout tree (`onRender`) is the geometry oracle; every scenario asserts identical
+  ordered boxes and an independent numeric oracle on both sides.
+
+**Annotations, metadata, and page setup** (`test/corpus/annotations.test.ts`):
+
+- external `https` and `mailto` `PdfLink` annotations round-trip their `url` and
+  `unsafeUrl` verbatim;
+- `PdfNote` renders as a `Text` sticky-note annotation carrying its contents;
+- document metadata (title, author, subject, keywords, creator, producer,
+  creation date, language, PDF version) round-trips through the info dictionary;
+- `pdfVersion` and `pageLayout` flow into the catalog (`TwoColumnLeft`, format
+  version `1.5`); and
+- A4, Letter, custom `[w, h]` and `{ width, height }`, landscape, and
+  `px`-with-`dpi` page sizes resolve to the same MediaBox as React and as a
+  hand-computed oracle.
+
 ### Vue and Nuxt authoring
 
 The 0.1.0 tests verify:
@@ -265,6 +343,10 @@ failure messages, in `test/test-utils-public.test.ts`.
 - SVG image files (as an image source), SVG `Marker`, and non-default
   `gradientUnits`/`preserveAspectRatio`. SVG drawing primitives are otherwise
   claimed above.
+- A layout effect for `wordSpacing`. It is accepted and inherited as a style but
+  never consumed by the `@react-pdf/layout` + textkit pipeline this module drives
+  (only pdfkit's own text layout reads it, which the render step bypasses), so it
+  changes neither wrapping nor glyph advances. `letterSpacing` is honored.
 - Browser CSS, HTML printing, a PDF stylesheet compiler, or paged-media CSS.
 - A first-class table layout engine, charts, forms, signing, editing, or PDF
   merging. A table of contents is authored from ordinary components; there is no
