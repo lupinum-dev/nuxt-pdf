@@ -43,6 +43,42 @@ Renderer tests separately cover insertion, removal, keyed movement, prop and
 text updates, primitive resolution, rejection of invalid roots, and exclusion
 of orphan text from the document tree.
 
+### SVG drawing primitives
+
+A second paired React/Vue fixture (`test/svg-conformance.test.ts`) draws through
+the same layout and render engine and verifies:
+
+- `PdfSvg`, `PdfG`, `PdfPath`, `PdfRect`, `PdfCircle`, `PdfEllipse`, `PdfLine`,
+  `PdfPolyline`, `PdfPolygon`, `PdfDefs`, `PdfClipPath`, `PdfLinearGradient`,
+  `PdfRadialGradient`, `PdfStop`, and `PdfTspan`;
+- `PdfSvg` as a flex leaf in normal page flow, measured from its `viewBox`
+  aspect ratio, alongside paragraph text;
+- basic shapes with numeric coercion and the `rx`/`ry` mutual default on rects;
+- a `PdfG` `transform` (translate + rotate) with presentation inheritance
+  (`fill` set on the group cascading to child shapes);
+- a `PdfDefs` `PdfLinearGradient` referenced by `fill="url(#id)"`, proving def
+  indexing and `url()` substitution;
+- a `PdfDefs` `PdfClipPath` referenced by `clipPath="url(#id)"`;
+- SVG text: a `PdfSvg` `PdfText` with `x`/`y` and two `PdfTspan` children,
+  proving tspan joining and x-chaining, with its content preserved as extracted
+  page text; and
+- equivalent extracted page text plus a thresholded page raster comparison
+  against React output and a reviewed committed baseline.
+
+Renderer tests separately cover the SVG nesting rules: which primitives each
+container accepts, `PdfSvg` as a valid child of `PdfPage` and `PdfView`, the
+rejection of `PdfSvg` directly inside `PdfText`, leaf shapes staying childless,
+and coercion of kebab-case SVG attributes (`stroke-width`) to the camelCase
+prop names (`strokeWidth`) the engine reads.
+
+SVG props are camelCase and, on SVG nodes, override `style`; `transform` is a
+prop on SVG primitives (unlike `PdfView`, where it is a style key). A `url(#id)`
+reference resolves only against a `PdfDefs` child in the same `PdfSvg` subtree;
+a dangling reference yields no fill, which differs from browser SVG. Not claimed
+within SVG: `Marker` (`markerStart`/`markerMid`/`markerEnd`), non-default
+`gradientUnits` and `preserveAspectRatio` beyond the tested defaults, and SVG
+image files as an image source.
+
 ### Vue and Nuxt authoring
 
 The 0.1.0 tests verify:
@@ -94,7 +130,9 @@ or filesystem sandbox claim.
 - Browser-side or edge-runtime rendering. The engine is Node server-only.
 - Nuxt 3, Node 20, or versions outside the table above.
 - Remote images or fonts, redirects, host allowlists, or authenticated fetches.
-- SVG image files or SVG drawing primitives.
+- SVG image files (as an image source), SVG `Marker`, and non-default
+  `gradientUnits`/`preserveAspectRatio`. SVG drawing primitives are otherwise
+  claimed above.
 - Browser CSS, HTML printing, a PDF stylesheet compiler, or paged-media CSS.
 - A first-class table layout engine, charts, forms, signing, editing, or PDF
   merging.

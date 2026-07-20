@@ -59,6 +59,43 @@ During pagination, layout invokes dynamic callbacks first with `pageNumber`, and
 
 Protected by callback and page-number conformance tests, plus a geometry-equality test asserting the dynamic footer matches the static equivalent while body text keeps its inherited `lineHeight`. Expanding dynamic results requires a new explicit layout seam or an upstream change; it must not be implemented with a React-shaped compatibility object.
 
+## SVG contract
+
+The Vue SVG primitives create the same host nodes the engine already draws; no
+engine code is involved beyond the pinned `@react-pdf/layout` and
+`@react-pdf/render` packages. The relied-on facts:
+
+- **Svg is a self-contained flex leaf.** `resolveDimensions` gives an `SVG` node
+  a Yoga measure function derived from its `viewBox` aspect ratio
+  (`layout/src/svg/measureSvg.ts`), so it lays out like an `Image` in normal
+  page flow, and `renderNode` does not recurse into svg children — `renderSvg`
+  walks the subtree itself (`render/src/primitives/renderNode.ts`). Therefore
+  `SVG` is a valid child of `PAGE`/`VIEW` even though the upstream
+  `layout/src/types/{view,page}.ts` child unions omit `SvgNode`. That omission
+  is an incomplete advisory type, not a runtime rule; `node-ops.ts` deliberately
+  adds `Svg` to `PAGE_CHILDREN` on the evidence of the measure function. A future
+  reader must not "correct" this back to match the upstream union.
+- **SVG props are camelCase and override style.** `resolveSvg` keys off exact
+  camelCase prop names (`strokeWidth`, `fillOpacity`, `stopColor`, `viewBox`,
+  `gradientTransform`) via `parseProps`/`pickStyleProps`, and merges
+  `Object.assign({}, style, props)` so props win over style. `transform` is a
+  *prop* on SVG nodes (parsed by `resolveSvg`), unlike `View`, where it is a
+  style key. The thin SVG components coerce kebab-case attribute names to these
+  camelCase keys (`compactSvgProps`) so static template attributes are not
+  silently dropped; `data-`/`aria-` names are left untouched so `patchPdfProp`
+  still rejects them.
+- **`url(#id)` references resolve within one Svg subtree.** `getDefs` indexes
+  `DEFS` children by `props.id`; `replaceDefs` substitutes matches for
+  `fill`/`clipPath` `url(#id)` references and detaches the `DEFS` subtree. A
+  dangling reference yields `undefined` (no fill), which differs from browsers.
+- **Scope exclusions.** `Marker` (and `markerStart`/`Mid`/`End`) has additional
+  `resolveSvg` container logic that is intentionally not exposed; the `Defs`
+  child set and prop types exclude it. `List`, `Canvas`, `ImageBackground`, and
+  form primitives are also out of scope.
+
+Protected by `test/svg-conformance.test.ts` (semantic + raster parity against
+React) and the SVG nesting/casing tests in `test/renderer.test.ts`.
+
 ## PDFKit contract
 
 `@react-pdf/pdfkit` exports a readable `PDFDocument` constructor but publishes no TypeScript declaration. Nuxt PDF carries a narrow ambient declaration for only the constructor and readable-stream behavior it uses.
