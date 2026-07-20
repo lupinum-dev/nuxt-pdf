@@ -38,9 +38,10 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:dependencies": "node scripts/check-production-dependencies.mjs",
+    "test:production": "vitest run --config vitest.production.config.ts",
     "test:watch": "vitest watch",
-    "test:types": "vue-tsc --noEmit && pnpm --dir playground exec vue-tsc --noEmit",
-    "verify": "pnpm lint && pnpm test:types && pnpm test:dependencies && pnpm test && pnpm build && pnpm dev:build"
+    "test:types": "vue-tsc --noEmit && nuxt prepare test/fixtures/basic && vue-tsc --noEmit -p test/fixtures/basic/tsconfig.json && pnpm --dir playground exec vue-tsc --noEmit",
+    "verify": "pnpm lint && pnpm test:types && pnpm test:dependencies && pnpm test && pnpm test:production && pnpm build && pnpm dev:build"
   },
   "dependencies": {
     "@nuxt/kit": "^4.4.8",

@@ -2,7 +2,6 @@ import type { PdfTemplate } from './discover-templates'
 
 export type PdfRegistryGenerationOptions = {
   runtimeImport: string
-  moduleId?: string
 }
 
 const compareText = (left: string, right: string): number => {
@@ -51,10 +50,6 @@ const validateOptions = (options: PdfRegistryGenerationOptions) => {
   if (options.runtimeImport.trim() === '') {
     throw new TypeError('runtimeImport is required to generate the PDF registry.')
   }
-
-  if (options.moduleId != null && options.moduleId.trim() === '') {
-    throw new TypeError('moduleId cannot be empty.')
-  }
 }
 
 export const generatePdfRuntimeRegistry = (
@@ -88,7 +83,6 @@ export const generatePdfRuntimeRegistry = (
     'export const renderPdf = registry.renderPdf',
     'export const getPdfTemplate = registry.getPdfTemplate',
     'export const pdfTemplateKeys = registry.pdfTemplateKeys',
-    'export type PdfTemplateKey = typeof pdfTemplateKeys[number]',
     '',
   )
 
@@ -101,48 +95,38 @@ export const generatePdfRegistryTypes = (
 ): string => {
   validateOptions(options)
   const ordered = orderedTemplates(templates)
-  const moduleId = options.moduleId ?? '#pdf'
   const lines = [
-    `declare module ${quote(moduleId)} {`,
-    '  import type { Component } from \'vue\'',
-    `  import type { PdfRenderResult, PdfTemplate } from ${quote(options.runtimeImport)}`,
-    '',
-    '  type ComponentProps<T extends Component> =',
-    '    T extends new (...args: any[]) => { $props: infer Props extends object }',
-    '      ? Props',
-    '      : T extends (props: infer Props extends object, ...args: any[]) => any',
-    '        ? Props',
-    '        : never',
+    `import type { PdfRenderResult, PdfTemplate } from ${quote(options.runtimeImport)}`,
   ]
 
   ordered.forEach((template, index) => {
     lines.push(
       '',
-      `  type PdfComponent${index} = typeof import(${quote(importPath(template.filePath))})['default']`,
-      `  type PdfProps${index} = ComponentProps<PdfComponent${index}>`,
+      `type PdfComponent${index} = typeof import(${quote(importPath(template.filePath))})['default']`,
+      `type PdfProps${index} = InstanceType<PdfComponent${index}>['$props']`,
     )
   })
 
-  lines.push('', '  export const pdf: {')
+  lines.push('', 'export declare const pdf: {')
 
   ordered.forEach((template, index) => {
     lines.push(
-      `    readonly ${quote(template.propertyKey)}: PdfTemplate<PdfProps${index}>`,
+      `  readonly ${quote(template.propertyKey)}: PdfTemplate<PdfProps${index}>`,
     )
   })
 
-  lines.push('  }', '')
+  lines.push('}', '')
 
   if (ordered.length === 0) {
     lines.push(
-      '  export function renderPdf(name: never, props: never): Promise<PdfRenderResult>',
-      '  export function getPdfTemplate(name: never): never',
+      'export declare function renderPdf(name: never, props: never): Promise<PdfRenderResult>',
+      'export declare function getPdfTemplate(name: never): never',
     )
   }
   else {
     ordered.forEach((template, index) => {
       lines.push(
-        `  export function renderPdf(name: ${quote(template.canonicalKey)}, props: PdfProps${index}): Promise<PdfRenderResult>`,
+        `export declare function renderPdf(name: ${quote(template.canonicalKey)}, props: PdfProps${index}): Promise<PdfRenderResult>`,
       )
     })
 
@@ -150,16 +134,15 @@ export const generatePdfRegistryTypes = (
 
     ordered.forEach((template, index) => {
       lines.push(
-        `  export function getPdfTemplate(name: ${quote(template.canonicalKey)}): PdfTemplate<PdfProps${index}>`,
+        `export declare function getPdfTemplate(name: ${quote(template.canonicalKey)}): PdfTemplate<PdfProps${index}>`,
       )
     })
   }
 
   lines.push(
     '',
-    `  export const pdfTemplateKeys: readonly [${ordered.map(template => quote(template.canonicalKey)).join(', ')}]`,
-    '  export type PdfTemplateKey = typeof pdfTemplateKeys[number]',
-    '}',
+    `export declare const pdfTemplateKeys: readonly [${ordered.map(template => quote(template.canonicalKey)).join(', ')}]`,
+    'export type PdfTemplateKey = typeof pdfTemplateKeys[number]',
     '',
   )
 

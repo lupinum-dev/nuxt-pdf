@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   canonicalKeyFromRelativePath,
+  discoverPdfComponentFiles,
   discoverPdfTemplates,
   normalizePdfTemplateCandidates,
   propertyKeyFromCanonicalKey,
@@ -111,6 +112,12 @@ describe('PDF template discovery', () => {
       },
     ])
     expect(discovered[1]?.filePath).toBe(join(project, 'pdfs/invoice.vue'))
+    expect(await discoverPdfComponentFiles([
+      { rootDir: project },
+      { rootDir: base },
+    ])).toEqual([
+      join(project, 'pdfs/components/LineItem.vue'),
+    ])
   })
 
   it('fails on canonical and property collisions', () => {
@@ -213,7 +220,6 @@ describe('PDF registry generation', () => {
   it('generates typed property access and canonical overloads without a loose string API', () => {
     const source = generatePdfRegistryTypes(templates, options)
 
-    expect(source).toContain('declare module "#pdf"')
     expect(source).toContain(
       'import type { PdfRenderResult, PdfTemplate } from "#pdf-runtime"',
     )

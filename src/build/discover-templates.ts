@@ -230,3 +230,19 @@ export const discoverPdfTemplates = async (
 
   return normalizePdfTemplateCandidates(candidates)
 }
+
+export const discoverPdfComponentFiles = async (
+  layers: readonly PdfTemplateLayer[],
+): Promise<string[]> => {
+  const files = new Set<string>()
+
+  for (const layer of layers) {
+    const directory = join(resolve(layer.rootDir), 'pdfs', 'components')
+
+    for (const relativePath of await findVueFiles(directory)) {
+      files.add(join(directory, ...relativePath.split('/')))
+    }
+  }
+
+  return [...files].sort(compareText)
+}

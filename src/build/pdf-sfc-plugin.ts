@@ -23,7 +23,15 @@ export type PdfSfcPluginOptions = {
 
 export type PdfSfcTransformResult = {
   code: string
-  map: Record<string, unknown> | null
+  map: {
+    file?: string
+    mappings: string
+    names: string[]
+    sourceRoot?: string
+    sources: string[]
+    sourcesContent?: string[]
+    version: number
+  } | null
 }
 
 export type PdfSfcPlugin = {
@@ -190,7 +198,9 @@ export async function compilePdfSfc(
 
     return {
       code: result.code,
-      map: result.map ? JSON.parse(result.map) as Record<string, unknown> : null,
+      map: result.map
+        ? JSON.parse(result.map) as PdfSfcTransformResult['map']
+        : null,
     }
   }
   catch (error) {
