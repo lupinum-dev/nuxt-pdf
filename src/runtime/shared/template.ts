@@ -47,6 +47,27 @@ export interface PdfRenderResult {
   response(init?: PdfResponseInit): Promise<Response>
 }
 
+/**
+ * Measured facts about one dev-preview render. Dev-only and never part of the
+ * public render contract; declared here (engine-free) so the dev preview route
+ * can reference it without dragging the server engine into type resolution.
+ */
+export interface PdfPreviewDiagnostics {
+  durationMs: number
+  byteLength: number
+  pageCount: number
+  passes: number
+  warnings: readonly string[]
+}
+
+/** The bytes plus diagnostics the dev preview needs. Dev-only; never public API. */
+export interface PdfPreviewRender {
+  bytes: Uint8Array
+  title?: string
+  filename?: string
+  diagnostics: PdfPreviewDiagnostics
+}
+
 export interface PdfTemplate<Props extends object = Record<string, unknown>> {
   readonly key: string
   readonly definition: Readonly<PdfDefinition<Props>>

@@ -166,6 +166,10 @@ const visitPageNodes = (
 const documentPages = (layout: SafeDocumentNode): PdfNode[] =>
   ((layout as unknown as PdfElementNode).children ?? []) as PdfNode[]
 
+/** The number of laid-out pages in a serialized document. */
+export const countPages = (layout: SafeDocumentNode): number =>
+  documentPages(layout).length
+
 const nodeId = (node: PdfElementNode): string | undefined => {
   const id = node.props?.id
   return typeof id === 'string' && id.length > 0 ? id : undefined

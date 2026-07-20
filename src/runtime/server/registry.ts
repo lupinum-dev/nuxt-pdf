@@ -8,6 +8,7 @@ import {
   PDF_DEFINITION_PROPERTY,
   type PdfComponent,
   type PdfDefinition,
+  type PdfPreviewRender,
   type PdfRenderResult,
   type PdfTemplate,
   type ResolvedPdfMetadata,
@@ -17,13 +18,15 @@ import {
   type PdfImageAssetMap,
 } from './assets/resolve-asset'
 import type { RemoteAssetPolicy } from './assets/remote'
-import { renderDocument } from './engine/render-document'
+import { countPages, renderDocument } from './engine/render-document'
 import { renderDocumentMultiPass } from './engine/layout-passes'
 import {
   createPdfFontStore,
   type BundledPdfFontDescriptor,
 } from './fonts'
 import { createPdfRenderResult } from './result'
+
+export type { PdfPreviewDiagnostics, PdfPreviewRender } from '../shared/template'
 
 const EMPTY_SCENARIOS = Object.freeze({})
 const EMPTY_ASSETS = Object.freeze({})
@@ -188,6 +191,13 @@ const applyDocumentMetadata = (
   if (metadata.language !== undefined) document.props.language = metadata.language
 }
 
+interface TemplateRenderOutput {
+  bytes: Uint8Array
+  /** Layout passes actually run: 1 for the single-pass path, ≥ 2 for multi-pass. */
+  passes: number
+  pageCount: number
+}
+
 const renderTemplate = async <Props extends object>(
   key: string,
   component: Component,
@@ -195,10 +205,13 @@ const renderTemplate = async <Props extends object>(
   metadata: ResolvedPdfMetadata,
   options: PdfTemplateRuntimeOptions,
   maxPasses: number | undefined,
-): Promise<Uint8Array> => {
+  // The warning sink. Production passes `console.warn` (unchanged behavior); the
+  // dev preview passes a collector so it can display the same prefixed messages.
+  warnSink: (message: string) => void,
+): Promise<TemplateRenderOutput> => {
   let mounted: Awaited<ReturnType<typeof mountPdfComponent>> | undefined
   const warn = (message: string): void =>
-    console.warn(`${templatePrefix(key, options.file)}: ${message}`)
+    warnSink(`${templatePrefix(key, options.file)}: ${message}`)
 
   try {
     mounted = await mountPdfComponent(
@@ -233,11 +246,15 @@ const renderTemplate = async <Props extends object>(
         },
         { fontStore, maxPasses },
       )
-      return result.bytes
+      return {
+        bytes: result.bytes,
+        passes: result.passes,
+        pageCount: countPages(result.layout),
+      }
     }
 
     const result = await renderDocument(document, { fontStore })
-    return result.bytes
+    return { bytes: result.bytes, passes: 1, pageCount: countPages(result.layout) }
   }
   finally {
     mounted?.unmount()
@@ -262,6 +279,9 @@ export const createPdfTemplate = <Props extends object>(
 
   return Object.freeze({
     key,
+    // The source file, exposed for the dev preview's template attribution. Not
+    // part of the public `PdfTemplate` type; consumed only by the dev preview.
+    file: options.file,
     definition,
     get sampleData() {
       return definition.sampleData
@@ -290,17 +310,58 @@ export const createPdfTemplate = <Props extends object>(
         }
 
         const metadata = resolveMetadata(ref, definition, props)
-        const bytesPromise = renderTemplate(
+        const { bytes } = await renderTemplate(
           key,
           component,
           props,
           metadata,
           options,
           definition.maxPasses,
+          console.warn,
         )
-        await bytesPromise
 
-        return createPdfRenderResult(bytesPromise, metadata.filename)
+        return createPdfRenderResult(bytes, metadata.filename)
+      }
+      catch (error) {
+        throw enrichTemplateError(error, key, options.file)
+      }
+    },
+    // Dev-preview render entry. Runs the SAME pipeline as `render()` but collects
+    // the warnings (instead of `console.warn`), times the render, and returns the
+    // page count and layout-pass count so the preview can show diagnostics. The
+    // public `PdfRenderResult` type is untouched; this is a separate internal
+    // entry, registered only on the dev preview route.
+    async renderForPreview(props: Props): Promise<PdfPreviewRender> {
+      try {
+        if (!isObject(props)) {
+          throw templateError(ref, 'render props must be an object.')
+        }
+
+        const metadata = resolveMetadata(ref, definition, props)
+        const warnings: string[] = []
+        const start = performance.now()
+        const { bytes, passes, pageCount } = await renderTemplate(
+          key,
+          component,
+          props,
+          metadata,
+          options,
+          definition.maxPasses,
+          message => warnings.push(message),
+        )
+
+        return {
+          bytes,
+          title: metadata.title,
+          filename: metadata.filename,
+          diagnostics: {
+            durationMs: performance.now() - start,
+            byteLength: bytes.byteLength,
+            pageCount,
+            passes,
+            warnings,
+          },
+        }
       }
       catch (error) {
         throw enrichTemplateError(error, key, options.file)
