@@ -13,6 +13,11 @@ import {
   sep,
   win32,
 } from 'node:path'
+import {
+  fetchRemoteResource,
+  matchesAllowlist,
+  type RemoteAssetPolicy,
+} from '../runtime/server/assets/remote'
 import type {
   BundledPdfFontDescriptor,
   PdfFontDataUrl,
@@ -27,6 +32,7 @@ export const DEFAULT_MAX_PDF_FONT_BYTES = 5 * 1024 * 1024
 export interface BundlePdfFontsOptions {
   fontRoots: readonly string[]
   maxBytes?: number
+  remote?: RemoteAssetPolicy
 }
 
 type PreparedFontRoot = {
@@ -209,33 +215,79 @@ const normalizeFontWeight = (
   return weight
 }
 
+type ResolvedFontSource
+  = | { readonly kind: 'local', readonly source: string }
+    | { readonly kind: 'remote', readonly url: string }
+
+type ValidatedFont = Omit<BundledPdfFontDescriptor, 'src'> & ResolvedFontSource
+
+const validateFontSource = (
+  src: unknown,
+  remote: RemoteAssetPolicy | undefined,
+): ResolvedFontSource => {
+  if (typeof src === 'string' && /^https?:/i.test(src.trim())) {
+    const url = src.trim()
+    if (!remote) {
+      throw fontError(
+        url,
+        'remote fonts are disabled. Set pdf.remote.allow to fetch this URL.',
+      )
+    }
+    if (!matchesAllowlist(url, remote)) {
+      throw fontError(url, 'the URL is not permitted by pdf.remote.allow.')
+    }
+    return { kind: 'remote', url }
+  }
+
+  return { kind: 'local', source: validateRelativeSource(src) }
+}
+
 const validateDeclaration = (
   declaration: PdfFontDeclaration,
-): Omit<BundledPdfFontDescriptor, 'src'> & { source: string } => {
-  const source = validateRelativeSource(declaration?.src)
+  remote: RemoteAssetPolicy | undefined,
+): ValidatedFont => {
+  const resolved = validateFontSource(declaration?.src, remote)
+  const label = resolved.kind === 'local' ? resolved.source : resolved.url
   if (typeof declaration.family !== 'string' || declaration.family.trim() === '') {
-    throw fontError(source, 'family must be a non-empty string.')
+    throw fontError(label, 'family must be a non-empty string.')
   }
   const family = declaration.family.trim()
   if (Object.prototype.hasOwnProperty.call(Object.prototype, family)) {
-    throw fontError(source, `family "${family}" is a reserved object key.`)
+    throw fontError(label, `family "${family}" is a reserved object key.`)
   }
   if (STANDARD_FONT_FAMILIES.has(family)) {
-    throw fontError(source, `family "${family}" is reserved by a standard PDF font.`)
+    throw fontError(label, `family "${family}" is reserved by a standard PDF font.`)
   }
   if (
     declaration.fontStyle !== undefined
     && !FONT_STYLES.has(declaration.fontStyle)
   ) {
-    throw fontError(source, `unsupported fontStyle "${declaration.fontStyle}".`)
+    throw fontError(label, `unsupported fontStyle "${declaration.fontStyle}".`)
   }
 
   return {
     family,
     fontStyle: declaration.fontStyle,
-    fontWeight: normalizeFontWeight(source, declaration.fontWeight),
-    source,
+    fontWeight: normalizeFontWeight(label, declaration.fontWeight),
+    ...resolved,
   }
+}
+
+const detectFontFormat = (bytes: Uint8Array): 'otf' | 'ttf' | undefined => {
+  if (bytes.byteLength < 12) return undefined
+
+  const isTrueType = bytes[0] === 0x00
+    && bytes[1] === 0x01
+    && bytes[2] === 0x00
+    && bytes[3] === 0x00
+  const isOpenType = bytes[0] === 0x4F
+    && bytes[1] === 0x54
+    && bytes[2] === 0x54
+    && bytes[3] === 0x4F
+
+  if (isTrueType) return 'ttf'
+  if (isOpenType) return 'otf'
+  return undefined
 }
 
 const fontFormat = (
@@ -250,20 +302,31 @@ const fontFormat = (
     throw fontError(source, 'the file is too small to be a TTF or OTF font.')
   }
 
-  const isTrueType = bytes[0] === 0x00
-    && bytes[1] === 0x01
-    && bytes[2] === 0x00
-    && bytes[3] === 0x00
-  const isOpenType = bytes[0] === 0x4F
-    && bytes[1] === 0x54
-    && bytes[2] === 0x54
-    && bytes[3] === 0x4F
-
-  if (!isTrueType && !isOpenType) {
+  const format = detectFontFormat(bytes)
+  if (!format) {
     throw fontError(source, 'the file has an unsupported TTF or OTF signature.')
   }
 
-  return isTrueType ? 'ttf' : 'otf'
+  return format
+}
+
+const readRemoteFont = async (
+  url: string,
+  remote: RemoteAssetPolicy,
+  inflight: Map<string, Promise<Buffer>>,
+): Promise<PdfFontDataUrl> => {
+  const bytes = await fetchRemoteResource(url, {
+    policy: remote,
+    maxBytes: remote.maxFontBytes,
+    inflight,
+  })
+
+  const format = detectFontFormat(bytes)
+  if (!format) {
+    throw fontError(url, 'the remote source has an unsupported TTF or OTF signature.')
+  }
+
+  return `data:font/${format};base64,${Buffer.from(bytes).toString('base64')}`
 }
 
 const readFont = async (
@@ -305,12 +368,16 @@ export const bundlePdfFonts = async (
   }
   if (declarations.length === 0) return Object.freeze([])
 
-  const roots = await prepareFontRoots(options.fontRoots)
+  let preparedRoots: PreparedFontRoot[] | undefined
+  const getRoots = async (): Promise<PreparedFontRoot[]> =>
+    (preparedRoots ??= await prepareFontRoots(options.fontRoots))
+  const inflight = new Map<string, Promise<Buffer>>()
   const result: BundledPdfFontDescriptor[] = []
   const registrations = new Set<string>()
 
   for (const declaration of declarations) {
-    const validated = validateDeclaration(declaration)
+    const validated = validateDeclaration(declaration, options.remote)
+    const label = validated.kind === 'local' ? validated.source : validated.url
     const registration = [
       validated.family,
       validated.fontStyle ?? 'normal',
@@ -318,17 +385,23 @@ export const bundlePdfFonts = async (
     ].join('\0')
     if (registrations.has(registration)) {
       throw fontError(
-        validated.source,
+        label,
         `duplicates family "${validated.family}" with the same style and weight.`,
       )
     }
 
-    const filePath = await resolveFontFile(validated.source, roots)
-    const src = await readFont(validated.source, filePath, maxBytes)
-    const { source: _source, ...descriptor } = validated
+    let src: PdfFontDataUrl
+    if (validated.kind === 'local') {
+      const filePath = await resolveFontFile(validated.source, await getRoots())
+      src = await readFont(validated.source, filePath, maxBytes)
+    }
+    else {
+      src = await readRemoteFont(validated.url, options.remote!, inflight)
+    }
 
+    const { family, fontStyle, fontWeight } = validated
     registrations.add(registration)
-    result.push(Object.freeze({ ...descriptor, src }))
+    result.push(Object.freeze({ family, fontStyle, fontWeight, src }))
   }
 
   return Object.freeze(result)
