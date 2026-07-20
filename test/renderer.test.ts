@@ -4,6 +4,7 @@ import {
   h,
   resolveComponent,
   type PropType,
+  type VNodeChild,
 } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import FontStore from '@react-pdf/font'
@@ -13,9 +14,18 @@ import layoutDocument, {
 } from '@react-pdf/layout'
 import * as UpstreamPrimitives from '@react-pdf/primitives'
 import {
+  PdfCircle,
+  PdfClipPath,
+  PdfDefs,
   PdfDocument,
+  PdfG,
+  PdfLinearGradient,
   PdfNote,
   PdfPage,
+  PdfPath,
+  PdfRect,
+  PdfStop,
+  PdfSvg,
   PdfText,
   PdfView,
 } from '../src/runtime/components'
@@ -78,6 +88,21 @@ describe('Vue PDF host renderer', () => {
       Image: UpstreamPrimitives.Image,
       Link: UpstreamPrimitives.Link,
       Note: UpstreamPrimitives.Note,
+      Tspan: UpstreamPrimitives.Tspan,
+      Svg: UpstreamPrimitives.Svg,
+      G: UpstreamPrimitives.G,
+      Path: UpstreamPrimitives.Path,
+      Rect: UpstreamPrimitives.Rect,
+      Circle: UpstreamPrimitives.Circle,
+      Ellipse: UpstreamPrimitives.Ellipse,
+      Line: UpstreamPrimitives.Line,
+      Polyline: UpstreamPrimitives.Polyline,
+      Polygon: UpstreamPrimitives.Polygon,
+      Defs: UpstreamPrimitives.Defs,
+      ClipPath: UpstreamPrimitives.ClipPath,
+      LinearGradient: UpstreamPrimitives.LinearGradient,
+      RadialGradient: UpstreamPrimitives.RadialGradient,
+      Stop: UpstreamPrimitives.Stop,
       TextInstance: UpstreamPrimitives.TextInstance,
     })
 
@@ -337,5 +362,221 @@ describe('Vue PDF host renderer', () => {
     await expect(mountPdfComponent(InvalidRoot)).rejects.toThrow(
       'A PDF component must render exactly one PdfDocument at its root.',
     )
+  })
+})
+
+describe('Vue PDF SVG nesting', () => {
+  const mountSvgSubtree = (child: () => VNodeChild) => {
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, null, {
+          default: () => h(PdfSvg, { viewBox: '0 0 100 100' }, {
+            default: child,
+          }),
+        }),
+      }),
+    )
+    return mountPdfComponent(Fixture)
+  }
+
+  const svgOf = (mounted: { document: PdfElementNode }): PdfElementNode =>
+    elementChild(elementChild(mounted.document, 0), 0)
+
+  it('accepts shapes, groups, defs, and text inside an Svg', async () => {
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const mounted = await mountSvgSubtree(() => [
+      h(PdfPath, { d: 'M0 0 L10 10' }),
+      h(PdfRect, { x: 0, y: 0, width: 10, height: 10 }),
+      h(PdfCircle, { cx: 5, cy: 5, r: 4 }),
+      h(PdfG, null, { default: () => h(PdfRect, { width: 2, height: 2 }) }),
+      h(PdfDefs, null, {
+        default: () => h(PdfClipPath, { id: 'c' }, {
+          default: () => h(PdfCircle, { cx: 1, cy: 1, r: 1 }),
+        }),
+      }),
+      h(PdfText, { x: 1, y: 1 }, () => 'label'),
+    ])
+
+    const svg = svgOf(mounted)
+    expect(svg.type).toBe(PDF_PRIMITIVES.Svg)
+    expect(svg.children.map(child => (child as PdfElementNode).type)).toEqual([
+      PDF_PRIMITIVES.Path,
+      PDF_PRIMITIVES.Rect,
+      PDF_PRIMITIVES.Circle,
+      PDF_PRIMITIVES.G,
+      PDF_PRIMITIVES.Defs,
+      PDF_PRIMITIVES.Text,
+    ])
+    expect(warning).not.toHaveBeenCalled()
+
+    mounted.unmount()
+  })
+
+  it.each([
+    { host: 'PdfPage', wrap: false },
+    { host: 'PdfView', wrap: true },
+  ])('accepts an Svg as a child of $host', async ({ wrap }) => {
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const svg = () => h(PdfSvg, { viewBox: '0 0 10 10' }, {
+      default: () => h(PdfRect, { width: 5, height: 5 }),
+    })
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, null, {
+          default: () => (wrap ? h(PdfView, null, { default: svg }) : svg()),
+        }),
+      }),
+    )
+
+    const mounted = await mountPdfComponent(Fixture)
+    const page = elementChild(mounted.document, 0)
+    const svgNode = wrap ? elementChild(elementChild(page, 0), 0) : elementChild(page, 0)
+
+    expect(svgNode.type).toBe(PDF_PRIMITIVES.Svg)
+    expect(warning).not.toHaveBeenCalled()
+
+    mounted.unmount()
+  })
+
+  it('rejects Defs inside a G', async () => {
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const mounted = await mountSvgSubtree(() => h(PdfG, null, {
+      default: () => [
+        h(PdfRect, { key: 'kept', width: 1, height: 1 }),
+        h(PdfDefs, { key: 'dropped' }),
+      ],
+    }))
+
+    const group = elementChild(svgOf(mounted), 0)
+    expect(group.children).toHaveLength(1)
+    expect(elementChild(group, 0).type).toBe(PDF_PRIMITIVES.Rect)
+    expect(warning).toHaveBeenCalledWith(
+      'Invalid PDF nesting: <PdfG> cannot contain <PdfDefs>. The <PdfDefs> child was ignored.',
+    )
+
+    mounted.unmount()
+  })
+
+  it('lets Defs hold gradients and clip paths but rejects raw shapes', async () => {
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const mounted = await mountSvgSubtree(() => h(PdfDefs, null, {
+      default: () => [
+        h(PdfLinearGradient, { key: 'grad', id: 'g' }),
+        h(PdfClipPath, { key: 'clip', id: 'c' }),
+        h(PdfRect, { key: 'raw', width: 1, height: 1 }),
+      ],
+    }))
+
+    const defs = elementChild(svgOf(mounted), 0)
+    expect(defs.children.map(child => (child as PdfElementNode).type)).toEqual([
+      PDF_PRIMITIVES.LinearGradient,
+      PDF_PRIMITIVES.ClipPath,
+    ])
+    expect(warning).toHaveBeenCalledWith(
+      'Invalid PDF nesting: <PdfDefs> cannot contain <PdfRect>. The <PdfRect> child was ignored.',
+    )
+
+    mounted.unmount()
+  })
+
+  it('lets ClipPath hold shapes but rejects text', async () => {
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const mounted = await mountSvgSubtree(() => h(PdfDefs, null, {
+      default: () => h(PdfClipPath, { id: 'c' }, {
+        default: () => [
+          h(PdfRect, { key: 'kept', width: 1, height: 1 }),
+          h(PdfText, { key: 'dropped' }, () => 'no text in clip'),
+        ],
+      }),
+    }))
+
+    const clip = elementChild(elementChild(svgOf(mounted), 0), 0)
+    expect(clip.children).toHaveLength(1)
+    expect(elementChild(clip, 0).type).toBe(PDF_PRIMITIVES.Rect)
+    expect(warning).toHaveBeenCalledWith(
+      'Invalid PDF nesting: <PdfClipPath> cannot contain <PdfText>. The <PdfText> child was ignored.',
+    )
+
+    mounted.unmount()
+  })
+
+  it('restricts gradients to Stop children', async () => {
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const mounted = await mountSvgSubtree(() => h(PdfDefs, null, {
+      default: () => h(PdfLinearGradient, { id: 'g' }, {
+        default: () => [
+          h(PdfStop, { key: 'kept', offset: '0', stopColor: '#000' }),
+          h(PdfRect, { key: 'dropped', width: 1, height: 1 }),
+        ],
+      }),
+    }))
+
+    const gradient = elementChild(elementChild(svgOf(mounted), 0), 0)
+    expect(gradient.children).toHaveLength(1)
+    expect(elementChild(gradient, 0).type).toBe(PDF_PRIMITIVES.Stop)
+    expect(warning).toHaveBeenCalledWith(
+      'Invalid PDF nesting: <PdfLinearGradient> cannot contain <PdfRect>. The <PdfRect> child was ignored.',
+    )
+
+    mounted.unmount()
+  })
+
+  it('rejects an Svg placed directly inside a PdfText', async () => {
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, null, {
+          default: () => h(PdfText, null, {
+            default: () => h(PdfSvg, { key: 'dropped', viewBox: '0 0 1 1' }),
+          }),
+        }),
+      }),
+    )
+
+    const mounted = await mountPdfComponent(Fixture)
+    const text = elementChild(elementChild(mounted.document, 0), 0)
+
+    expect(text.children).toEqual([])
+    expect(warning).toHaveBeenCalledWith(
+      'Invalid PDF nesting: <PdfText> cannot contain <PdfSvg>. The <PdfSvg> child was ignored.',
+    )
+
+    mounted.unmount()
+  })
+
+  it('coerces kebab-case SVG attributes to the camelCase engine props', async () => {
+    const mounted = await mountSvgSubtree(() => h(PdfRect, {
+      'width': 10,
+      'height': 10,
+      'stroke-width': 2,
+      'fill-opacity': '0.5',
+      'stroke-linecap': 'round',
+    }))
+
+    const rect = elementChild(svgOf(mounted), 0)
+    expect(rect.props).toMatchObject({
+      width: 10,
+      height: 10,
+      strokeWidth: 2,
+      fillOpacity: '0.5',
+      strokeLinecap: 'round',
+    })
+    expect(rect.props).not.toHaveProperty('stroke-width')
+
+    mounted.unmount()
+  })
+
+  it('keeps leaf shapes childless even when given slotted content', async () => {
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const mounted = await mountSvgSubtree(() => h(PdfPath, { d: 'M0 0 L1 1' }, {
+      default: () => h(PdfRect, { width: 1, height: 1 }),
+    }))
+
+    const path = elementChild(svgOf(mounted), 0)
+    expect(path.type).toBe(PDF_PRIMITIVES.Path)
+    expect(path.children).toEqual([])
+    expect(warning).not.toHaveBeenCalled()
+
+    mounted.unmount()
   })
 })
