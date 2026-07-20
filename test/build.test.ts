@@ -251,7 +251,7 @@ describe('PDF registry generation', () => {
     expect(source).not.toContain('/project/pdfs/fonts')
   })
 
-  it('generates typed property access and canonical overloads without a loose string API', () => {
+  it('generates typed property access and an explicit dynamic escape hatch', () => {
     const source = generatePdfRegistryTypes(templates, options)
 
     expect(source).toContain(
@@ -269,7 +269,12 @@ describe('PDF registry generation', () => {
     expect(source).toContain(
       'pdfTemplateKeys: readonly ["invoice", "reports/monthly"]',
     )
-    expect(source).not.toContain('name: string')
+    expect(source).toContain(
+      'renderPdf(name: string, props: Record<string, unknown>, escapeHatch: { readonly unsafe: true })',
+    )
+    expect(source).not.toContain(
+      'renderPdf(name: string, props: Record<string, unknown>):',
+    )
   })
 
   it('rejects ambiguous registry input', () => {

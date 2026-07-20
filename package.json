@@ -1,5 +1,5 @@
 {
-  "name": "nuxt-pdf",
+  "name": "@lupinum/nuxt-pdf",
   "version": "0.1.0",
   "description": "Author and render PDFs with Vue components in Nuxt",
   "repository": "github:Mat4m0/nuxt-pdf",
@@ -13,22 +13,18 @@
     }
   },
   "main": "./dist/module.mjs",
-  "typesVersions": {
-    "*": {
-      ".": [
-        "./dist/types.d.mts"
-      ]
-    }
-  },
+  "types": "./dist/types.d.mts",
   "files": [
-    "dist"
+    "dist",
+    "CONFORMANCE.md",
+    "THIRD_PARTY_NOTICES.md"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": "^22.12.0 || ^24.11.0 || >=26.0.0"
   },
-  "workspaces": [
-    "playground"
-  ],
   "scripts": {
     "prepack": "nuxt-module-build build",
     "dev": "npm run dev:prepare && nuxt dev playground",

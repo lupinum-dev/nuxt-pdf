@@ -1,5 +1,5 @@
 export default defineNuxtConfig({
-  modules: ['nuxt-pdf'],
+  modules: ['@lupinum/nuxt-pdf'],
   css: ['~/assets/css/playground.css'],
   compatibilityDate: '2026-07-20',
   pdf: {

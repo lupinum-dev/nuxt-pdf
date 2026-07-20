@@ -18,6 +18,14 @@ void renderPdf('invoice', {
   number: 'INV-TYPED',
 })
 
+declare const dynamicName: string
+declare const dynamicProps: Record<string, unknown>
+
+void renderPdf(dynamicName, dynamicProps, { unsafe: true })
+
+// @ts-expect-error Dynamic names require the explicit unknown-props escape hatch.
+void renderPdf(dynamicName, dynamicProps)
+
 // @ts-expect-error Required template props remain required.
 void pdf.invoice.render({ customer: 'Ada' })
 

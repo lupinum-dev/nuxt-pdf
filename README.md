@@ -1,84 +1,274 @@
-<!--
-Get your module up and running quickly.
+# Nuxt PDF
 
-Find and replace all on all files (CMD+SHIFT+F):
-- Name: My Module
-- Package name: my-module
-- Description: My new Nuxt module
--->
+Author server-rendered PDFs as ordinary Vue components inside a Nuxt
+application. Nuxt PDF uses Vue for authoring and the framework-neutral React
+PDF layout, font, and serialization packages for rendering; React itself is
+not a production dependency.
 
-# My Module
+`0.1.0` is an external alpha with a deliberately narrow contract: one Nuxt
+module, one document tree, one Node server renderer, and a small set of tested
+PDF primitives. See [CONFORMANCE.md](./CONFORMANCE.md) for the exact evidence
+and limitations behind the compatibility claim.
 
-[![npm version][npm-version-src]][npm-version-href]
-[![npm downloads][npm-downloads-src]][npm-downloads-href]
-[![License][license-src]][license-href]
-[![Nuxt][nuxt-src]][nuxt-href]
+## Requirements
 
-My new Nuxt module for doing amazing things.
+- Node.js `^22.12.0`, `^24.11.0`, or `>=26.0.0`
+- Nuxt `^4.4.8`
+- Vue `^3.5.0`
 
-- [✨ &nbsp;Release Notes](/CHANGELOG.md)
-<!-- - [🏀 Online playground](https://stackblitz.com/github/your-org/my-module?file=playground%2Fapp.vue) -->
-<!-- - [📖 &nbsp;Documentation](https://example.com) -->
+Nuxt 3, Node 20, browser rendering, and edge rendering are not claimed by
+`0.1.0`.
 
-## Features
+## Ten-minute quickstart
 
-<!-- Highlight some of the features your module provide here -->
-- ⛰ &nbsp;Foo
-- 🚠 &nbsp;Bar
-- 🌲 &nbsp;Baz
-
-## Quick Setup
-
-Install the module to your Nuxt application with one command:
+Install the module in an existing Nuxt 4 application:
 
 ```bash
-npx nuxt module add my-module
+pnpm add @lupinum/nuxt-pdf
 ```
 
-That's it! You can now use My Module in your Nuxt app ✨
+Add it to `nuxt.config.ts`:
 
+```ts
+export default defineNuxtConfig({
+  modules: ['@lupinum/nuxt-pdf'],
+})
+```
 
-## Contribution
+Create `pdfs/invoice.vue` at the project root:
 
-<details>
-  <summary>Local development</summary>
-  
-  ```bash
-  # Install dependencies
-  npm install
-  
-  # Generate type stubs
-  npm run dev:prepare
-  
-  # Develop with the playground
-  npm run dev
-  
-  # Build the playground
-  npm run dev:build
-  
-  # Run ESLint
-  npm run lint
-  
-  # Run Vitest
-  npm run test
-  npm run test:watch
-  
-  # Release new version
-  npm run release
-  ```
+```vue
+<script setup lang="ts">
+type InvoiceProps = {
+  invoice: {
+    customer: string
+    number: string
+    total: string
+  }
+}
 
-</details>
+const props = defineProps<InvoiceProps>()
 
+definePdf<InvoiceProps>({
+  title: ({ invoice }) => `Invoice ${invoice.number}`,
+  filename: ({ invoice }) => `invoice-${invoice.number}.pdf`,
+  language: 'en-GB',
+  sampleData: {
+    invoice: {
+      customer: 'Ada Lovelace',
+      number: 'INV-001',
+      total: 'EUR 1,250.00',
+    },
+  },
+})
+</script>
 
-<!-- Badges -->
-[npm-version-src]: https://img.shields.io/npm/v/my-module/latest.svg?style=flat&colorA=020420&colorB=00DC82
-[npm-version-href]: https://npmjs.com/package/my-module
+<template>
+  <PdfDocument>
+    <PdfPage
+      size="A4"
+      :style="{ color: '#17201b', fontSize: 11, padding: 48 }"
+    >
+      <PdfText :style="{ fontSize: 24, marginBottom: 24 }">
+        Invoice {{ props.invoice.number }}
+      </PdfText>
+      <PdfText>{{ props.invoice.customer }}</PdfText>
+      <PdfText :style="{ marginTop: 12 }">
+        Total: {{ props.invoice.total }}
+      </PdfText>
+      <PdfText
+        fixed
+        :style="{
+          bottom: 24,
+          color: '#68736b',
+          fontSize: 8,
+          position: 'absolute',
+          right: 48,
+        }"
+        :render="({ pageNumber, totalPages }) =>
+          `Page ${pageNumber} of ${totalPages}`"
+      />
+    </PdfPage>
+  </PdfDocument>
+</template>
+```
 
-[npm-downloads-src]: https://img.shields.io/npm/dm/my-module.svg?style=flat&colorA=020420&colorB=00DC82
-[npm-downloads-href]: https://npm.chart.dev/my-module
+Create `server/api/invoice.get.ts`:
 
-[license-src]: https://img.shields.io/npm/l/my-module.svg?style=flat&colorA=020420&colorB=00DC82
-[license-href]: https://npmjs.com/package/my-module
+```ts
+import { pdf } from '#pdf'
 
-[nuxt-src]: https://img.shields.io/badge/Nuxt-020420?logo=nuxt
-[nuxt-href]: https://nuxt.com
+export default defineEventHandler(async () => {
+  const result = await pdf.invoice.render({
+    invoice: {
+      customer: 'Ada Lovelace',
+      number: 'INV-001',
+      total: 'EUR 1,250.00',
+    },
+  })
+
+  return result.response()
+})
+```
+
+Start Nuxt and open:
+
+- `http://localhost:3000/_pdf` for the template index;
+- `http://localhost:3000/_pdf/invoice` for the browser preview; or
+- `http://localhost:3000/api/invoice` for the production-style route.
+
+The `/_pdf` routes are registered only in development. Restart `nuxt dev`, or
+run `nuxt prepare`, after first enabling the module so Nuxt writes the typed
+`#pdf` registry.
+
+## Authoring model
+
+PDF templates live in `pdfs/**/*.vue`. `pdfs/components`, `pdfs/assets`, and
+`pdfs/fonts` are reserved supporting directories and are not registered as
+documents.
+
+The alpha exposes seven thin primitives:
+
+- `PdfDocument`
+- `PdfPage`
+- `PdfView`
+- `PdfText`
+- `PdfImage`
+- `PdfLink`
+- `PdfNote`
+
+Composition is normal Vue: use typed props, interpolation, `v-if`, keyed
+`v-for`, local components, and slots. Styles are React PDF style objects, not
+browser CSS. Invalid primitive nesting and DOM-only attributes fail early with
+targeted diagnostics.
+
+`definePdf` accepts static metadata plus preview data:
+
+```ts
+definePdf<Props>({
+  title: props => `Report ${props.id}`,
+  filename: props => `report-${props.id}.pdf`,
+  language: 'en-GB',
+  sampleData: { id: 'sample' },
+  scenarios: {
+    long: { id: 'long-report' },
+  },
+})
+```
+
+A scenario is available at `/_pdf/report?scenario=long`. Unknown scenarios
+return a 404 with the available names.
+
+## Typed server registry
+
+Nuxt generates an inspectable `#pdf` module from the discovered templates.
+Property access and literal template names infer each SFC's props:
+
+```ts
+import { pdf, renderPdf } from '#pdf'
+
+await pdf.invoice.render({ invoice })
+await renderPdf('invoice', { invoice })
+```
+
+Runtime strings require the explicit unknown-props escape hatch:
+
+```ts
+await renderPdf(templateName, untypedProps, { unsafe: true })
+```
+
+That marker does not validate the props; it only makes the loss of static
+typing visible at the call site. Unknown template names still fail with
+`PDF_TEMPLATE_NOT_FOUND`.
+
+One render result can be converted without rendering the document again:
+
+```ts
+const result = await pdf.invoice.render({ invoice })
+
+await result.toUint8Array()
+await result.toBuffer()
+await result.toStream()
+await result.response({
+  disposition: 'inline',
+  filename: 'invoice.pdf',
+})
+```
+
+`response()` always sets `content-type: application/pdf` and sanitizes the
+download filename before writing `content-disposition`.
+
+## Local images and fonts
+
+Place PNG or JPEG files in `pdfs/assets` and reference the path relative to
+that directory:
+
+```vue
+<PdfImage
+  src="brand/logo.png"
+  :style="{ height: 40, objectFit: 'contain', width: 120 }"
+/>
+```
+
+Place TTF or OTF files in `pdfs/fonts` and register them in `nuxt.config.ts`:
+
+```ts
+export default defineNuxtConfig({
+  modules: ['@lupinum/nuxt-pdf'],
+  pdf: {
+    fonts: [{
+      family: 'Invoice Sans',
+      src: 'InvoiceSans-Regular.ttf',
+      fontWeight: 400,
+      fontStyle: 'normal',
+    }],
+  },
+})
+```
+
+Then use the family in a PDF style object:
+
+```vue
+<PdfPage :style="{ fontFamily: 'Invoice Sans' }">
+```
+
+Resources are signature-checked, size-checked, realpath-contained, and
+embedded into the server build. Absolute paths, traversal, symlink escapes,
+remote URLs, and runtime filesystem fallbacks are rejected. Remote images and
+fonts are intentionally unsupported in `0.1.0`.
+
+## Alpha boundary
+
+Nuxt PDF is currently designed for invoices, reports, certificates, tickets,
+and similar server-generated documents. The release does not include a table
+engine, CSS compiler, HTML printing, DevTools studio, browser renderer, remote
+asset fetcher, deterministic PDF bytes, forms, signing, tagged PDF, SVG
+primitives, or an independent layout engine.
+
+Dynamic text callbacks are synchronous and must return a string or number.
+Apply `lineHeight` directly to static `PdfText` nodes; inheriting it from a
+`PdfPage` or `PdfView` into dynamic text is rejected with `PDF_LAYOUT_ERROR`
+because the pinned upstream layout engine produces invalid geometry for that
+combination.
+
+For the complete tested behavior and exact lower-engine versions, read
+[CONFORMANCE.md](./CONFORMANCE.md) and
+[CONTRACTS.md](./src/runtime/server/engine/CONTRACTS.md).
+
+## Development
+
+```bash
+pnpm install
+pnpm dev
+pnpm verify
+```
+
+`pnpm verify` is the release gate: lint, types, dependency boundaries, unit and
+conformance tests, Nuxt development and production fixtures, package build,
+playground production build, raster baselines, tarball contents, and the fresh
+application smoke test.
+
+## License
+
+MIT. React PDF-derived fixture attribution and bundled test-font notices are
+recorded in [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).

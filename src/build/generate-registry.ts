@@ -182,6 +182,10 @@ export const generatePdfRegistryTypes = (
       )
     })
 
+    lines.push(
+      'export declare function renderPdf(name: string, props: Record<string, unknown>, escapeHatch: { readonly unsafe: true }): Promise<PdfRenderResult>',
+    )
+
     lines.push('')
 
     ordered.forEach((template, index) => {

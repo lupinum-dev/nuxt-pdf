@@ -8,7 +8,7 @@
     "generate": "nuxt generate"
   },
   "dependencies": {
-    "nuxt-pdf": "workspace:*",
+    "@lupinum/nuxt-pdf": "workspace:*",
     "nuxt": "^4.4.8"
   }
 }
