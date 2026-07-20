@@ -29,6 +29,7 @@ const EMPTY_ASSETS = Object.freeze({})
 
 export interface PdfTemplateRuntimeOptions {
   assets?: PdfImageAssetMap
+  file?: string
   fonts?: readonly BundledPdfFontDescriptor[]
   remote?: RemoteAssetPolicy
 }
@@ -60,6 +61,38 @@ const templateError = (
   `Invalid PDF template "${key}": ${message}`,
   { cause, templateKey: key },
 )
+
+const templatePrefix = (key: string, file?: string): string =>
+  file === undefined
+    ? `PDF template "${key}"`
+    : `PDF template "${key}" (${file})`
+
+// The single attribution boundary. Every failure surfaced from a template's
+// render() passes through here and is re-stamped with the template key, the
+// source file, and a prefixed message. The engine and renderer stay
+// template-agnostic, so this is the only place a prefix is applied — nested
+// re-wrapping cannot occur.
+const enrichTemplateError = (
+  error: unknown,
+  key: string,
+  file?: string,
+): NuxtPdfError => {
+  const prefix = templatePrefix(key, file)
+
+  if (error instanceof NuxtPdfError) {
+    return new NuxtPdfError(error.code, `${prefix}: ${error.message}`, {
+      cause: error,
+      templateKey: key,
+      templateFile: file,
+    })
+  }
+
+  return new NuxtPdfError(
+    PDF_ERROR_CODES.RenderError,
+    `${prefix}: ${error instanceof Error ? error.message : String(error)}`,
+    { cause: error, templateKey: key, templateFile: file },
+  )
+}
 
 const validateDefinition = <Props extends object>(
   key: string,
@@ -147,11 +180,14 @@ const renderTemplate = async <Props extends object>(
   options: PdfTemplateRuntimeOptions,
 ): Promise<Uint8Array> => {
   let mounted: Awaited<ReturnType<typeof mountPdfComponent>> | undefined
+  const warn = (message: string): void =>
+    console.warn(`${templatePrefix(key, options.file)}: ${message}`)
 
   try {
     mounted = await mountPdfComponent(
       component,
       props as Record<string, unknown>,
+      warn,
     )
     applyDocumentMetadata(mounted.document, metadata)
     await resolvePdfImageAssets(mounted.document, {
@@ -164,23 +200,6 @@ const renderTemplate = async <Props extends object>(
       { fontStore: createPdfFontStore(options.fonts) },
     )
     return result.bytes
-  }
-  catch (error) {
-    if (error instanceof NuxtPdfError) {
-      if (error.templateKey === key) throw error
-
-      throw new NuxtPdfError(
-        error.code,
-        `PDF template "${key}": ${error.message}`,
-        { cause: error, templateKey: key },
-      )
-    }
-
-    throw new NuxtPdfError(
-      PDF_ERROR_CODES.RenderError,
-      `Failed to render PDF template "${key}".`,
-      { cause: error, templateKey: key },
-    )
   }
   finally {
     mounted?.unmount()
@@ -225,21 +244,26 @@ export const createPdfTemplate = <Props extends object>(
       return resolveMetadata(key, definition, props)
     },
     async render(props: Props): Promise<PdfRenderResult> {
-      if (!isObject(props)) {
-        throw templateError(key, 'render props must be an object.')
+      try {
+        if (!isObject(props)) {
+          throw templateError(key, 'render props must be an object.')
+        }
+
+        const metadata = resolveMetadata(key, definition, props)
+        const bytesPromise = renderTemplate(
+          key,
+          component,
+          props,
+          metadata,
+          options,
+        )
+        await bytesPromise
+
+        return createPdfRenderResult(bytesPromise, metadata.filename)
       }
-
-      const metadata = resolveMetadata(key, definition, props)
-      const bytesPromise = renderTemplate(
-        key,
-        component,
-        props,
-        metadata,
-        options,
-      )
-      await bytesPromise
-
-      return createPdfRenderResult(bytesPromise, metadata.filename)
+      catch (error) {
+        throw enrichTemplateError(error, key, options.file)
+      }
     },
   })
 }

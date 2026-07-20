@@ -127,11 +127,12 @@ export const generatePdfRuntimeRegistry = (
   lines.push(...runtimeOptions, '', 'const registry = createPdfRegistry({')
 
   ordered.forEach((template, index) => {
-    const runtimeArgument = runtimeOptions.length > 0
-      ? ', __pdfRuntimeOptions'
+    const runtimeSpread = runtimeOptions.length > 0
+      ? ', ...__pdfRuntimeOptions'
       : ''
+    const templateOptions = `{ file: ${quote(`pdfs/${template.relativePath}`)}${runtimeSpread} }`
     lines.push(
-      `  ${quote(template.propertyKey)}: createPdfTemplate(${quote(template.canonicalKey)}, __pdfTemplate${index}${runtimeArgument}),`,
+      `  ${quote(template.propertyKey)}: createPdfTemplate(${quote(template.canonicalKey)}, __pdfTemplate${index}, ${templateOptions}),`,
     )
   })
 

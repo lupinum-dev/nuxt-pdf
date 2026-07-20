@@ -310,6 +310,27 @@ describe('Vue PDF host renderer', () => {
     mounted.unmount()
   })
 
+  it('routes nesting warnings to a provided warn callback', async () => {
+    const warn = vi.fn()
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, null, {
+          default: () => h(PdfView, null, {
+            default: () => h(PdfPage, { key: 'invalid-page' }),
+          }),
+        }),
+      }),
+    )
+
+    const mounted = await mountPdfComponent(Fixture, {}, warn)
+
+    expect(warn).toHaveBeenCalledWith(
+      'Invalid PDF nesting: <PdfView> cannot contain <PdfPage>. The <PdfPage> child was ignored.',
+    )
+
+    mounted.unmount()
+  })
+
   it.each([
     'aria-label',
     'class',

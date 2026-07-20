@@ -93,6 +93,14 @@ The 0.1.0 tests verify:
   props, extra props, invalid props, and invalid template keys;
 - one render execution shared by byte, buffer, stream, and `Response`
   conversions;
+- template attribution on failure: every error surfaced from a template's
+  `render()` is a `NuxtPdfError` carrying `templateKey` and `templateFile` and a
+  message prefixed with the template name and source file (`pdfs/…`), and
+  invalid-nesting warnings emitted during that render are prefixed with the same
+  template context. Font-resolution failures surface as a single
+  `PDF_LAYOUT_ERROR` (font resolution is a layout sub-stage) whose message
+  preserves React PDF's exact "Font family not registered" text rather than a
+  separate font-error code;
 - safe PDF response headers and filename sanitization;
 - development preview index, viewer, raw PDF, and named scenarios;
 - a production Nitro route rendering through the generated registry;

@@ -6,6 +6,7 @@ import {
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore -- Nuxt generates this server-only virtual module.
 import { pdf } from '#pdf'
+import { NuxtPdfError } from '../shared/errors'
 import type { PdfTemplate } from '../shared/template'
 
 const PREVIEW_ROUTE = '/_pdf'
@@ -237,9 +238,13 @@ export const renderPdfPreview = async (
     })
   }
   catch (error) {
-    const message = error instanceof Error
-      ? error.message
-      : `Failed to render PDF template "${key}".`
+    // The registry has already stamped the message with the template name and
+    // file; surface the error code alongside it so the failing stage is visible.
+    const message = error instanceof NuxtPdfError
+      ? `${error.code}: ${error.message}`
+      : error instanceof Error
+        ? error.message
+        : `Failed to render PDF template "${key}".`
     return errorPage('PDF render failed', message, rootPath, 500)
   }
 }

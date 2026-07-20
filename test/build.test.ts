@@ -213,10 +213,10 @@ describe('PDF registry generation', () => {
       source.indexOf('/project/pdfs/reports/monthly.vue'),
     )
     expect(source).toContain(
-      '"invoice": createPdfTemplate("invoice", __pdfTemplate0)',
+      '"invoice": createPdfTemplate("invoice", __pdfTemplate0, { file: "pdfs/invoice.vue" })',
     )
     expect(source).toContain(
-      '"reportsMonthly": createPdfTemplate("reports/monthly", __pdfTemplate1)',
+      '"reportsMonthly": createPdfTemplate("reports/monthly", __pdfTemplate1, { file: "pdfs/reports/monthly.vue" })',
     )
     expect(source).toContain('export const pdf = registry.pdf')
     expect(source).toContain('export const renderPdf = registry.renderPdf')
@@ -246,7 +246,9 @@ describe('PDF registry generation', () => {
     expect(source).toContain('__pdfBuffer.from("AQID", \'base64\')')
     expect(source).toContain('"brand/logo.png"')
     expect(source).toContain('"Invoice Sans"')
-    expect(source).toContain(', __pdfRuntimeOptions)')
+    expect(source).toContain(
+      '"invoice": createPdfTemplate("invoice", __pdfTemplate0, { file: "pdfs/invoice.vue", ...__pdfRuntimeOptions })',
+    )
     expect(source).not.toContain('/project/pdfs/assets')
     expect(source).not.toContain('/project/pdfs/fonts')
   })

@@ -6,12 +6,14 @@ import {
   PdfDocument,
   PdfPage,
   PdfText,
+  PdfView,
 } from '../src/runtime/components'
 import {
   createPdfRegistry,
   createPdfTemplate,
 } from '../src/runtime/server/registry'
 import { renderPdfPreview } from '../src/runtime/server/preview'
+import { NuxtPdfError } from '../src/runtime/shared/errors'
 import {
   createPdfRenderResult,
   sanitizePdfFilename,
@@ -208,6 +210,88 @@ describe('PDF runtime registry', () => {
       code: 'PDF_TEMPLATE_NOT_FOUND',
       templateKey: 'missing',
     })
+  })
+
+  const templateComponent = (render: () => ReturnType<typeof h>) => {
+    const component = defineComponent(() => render)
+    Object.defineProperty(component, PDF_DEFINITION_PROPERTY, {
+      value: { sampleData: {} } satisfies PdfDefinition<object>,
+    })
+    return component
+  }
+
+  it('attributes font failures to the template file as a layout error', async () => {
+    const component = templateComponent(() =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, { size: 'A4' }, {
+          default: () => h(PdfText, {
+            style: { fontFamily: 'Missing Font' },
+          }, () => 'x'),
+        }),
+      }),
+    )
+    const template = createPdfTemplate('invoice', component, {
+      file: 'pdfs/invoice.vue',
+    })
+
+    const error = await template.render({}).catch((cause: unknown) => cause)
+
+    expect(error).toBeInstanceOf(NuxtPdfError)
+    expect(error).toMatchObject({
+      code: 'PDF_LAYOUT_ERROR',
+      templateKey: 'invoice',
+      templateFile: 'pdfs/invoice.vue',
+    })
+    expect((error as NuxtPdfError).message).toContain('pdfs/invoice.vue')
+    expect((error as NuxtPdfError).message).toContain(
+      'Font family not registered',
+    )
+  })
+
+  it('wraps unknown render failures with template context', async () => {
+    const component = templateComponent(() => {
+      throw new Error('boom in render')
+    })
+    const template = createPdfTemplate('invoice', component, {
+      file: 'pdfs/invoice.vue',
+    })
+
+    const error = await template.render({}).catch((cause: unknown) => cause)
+
+    expect(error).toBeInstanceOf(NuxtPdfError)
+    expect(error).toMatchObject({
+      code: 'PDF_RENDER_ERROR',
+      templateKey: 'invoice',
+      templateFile: 'pdfs/invoice.vue',
+    })
+    expect((error as NuxtPdfError).cause).toBeInstanceOf(Error)
+    expect(((error as NuxtPdfError).cause as Error).message).toBe(
+      'boom in render',
+    )
+  })
+
+  it('prefixes render warnings with the template name and file', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const component = templateComponent(() =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, { size: 'A4' }, {
+          default: () => h(PdfView, null, {
+            default: () => h(PdfPage, { key: 'nested' }),
+          }),
+        }),
+      }),
+    )
+    const template = createPdfTemplate('invoice', component, {
+      file: 'pdfs/invoice.vue',
+    })
+
+    await template.render({})
+
+    expect(warn).toHaveBeenCalledWith(
+      'PDF template "invoice" (pdfs/invoice.vue): Invalid PDF nesting: <PdfView> cannot contain <PdfPage>. The <PdfPage> child was ignored.',
+    )
+
+    warn.mockRestore()
   })
 })
 

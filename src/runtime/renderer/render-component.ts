@@ -30,7 +30,11 @@ import {
   PdfTspan,
   PdfView,
 } from '../components'
-import { createPdfNodeOps, createPdfRoot } from './node-ops'
+import {
+  createPdfNodeOps,
+  createPdfRoot,
+  type PdfRendererWarning,
+} from './node-ops'
 import {
   PDF_PRIMITIVES,
   type PdfDocumentNode,
@@ -38,8 +42,6 @@ import {
   type PdfHostNode,
   type PdfRoot,
 } from './types'
-
-const renderer = createRenderer<PdfHostNode, PdfHostElement>(createPdfNodeOps())
 
 const PDF_COMPONENTS = {
   PdfCircle,
@@ -88,7 +90,11 @@ const requireDocument = (root: PdfRoot): PdfDocumentNode => {
 export const mountPdfComponent = async (
   component: Component,
   initialProps: PdfComponentProps = {},
+  warn?: PdfRendererWarning,
 ): Promise<MountedPdfComponent> => {
+  const renderer = createRenderer<PdfHostNode, PdfHostElement>(
+    createPdfNodeOps(warn),
+  )
   const root = createPdfRoot()
   const currentProps = shallowRef(initialProps)
   const RootComponent = defineComponent({

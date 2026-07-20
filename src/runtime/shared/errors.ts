@@ -1,7 +1,6 @@
 export const PDF_ERROR_CODES = {
   AssetBlocked: 'PDF_ASSET_BLOCKED',
   AssetInvalid: 'PDF_ASSET_INVALID',
-  FontError: 'PDF_FONT_ERROR',
   LayoutError: 'PDF_LAYOUT_ERROR',
   LimitExceeded: 'PDF_LIMIT_EXCEEDED',
   TreeInvalid: 'PDF_TREE_INVALID',
@@ -17,11 +16,13 @@ export type PdfErrorCode = (
 export interface NuxtPdfErrorOptions {
   cause?: unknown
   templateKey?: string
+  templateFile?: string
 }
 
 export class NuxtPdfError extends Error {
   readonly code: PdfErrorCode
   readonly templateKey?: string
+  readonly templateFile?: string
 
   constructor(
     code: PdfErrorCode,
@@ -32,5 +33,6 @@ export class NuxtPdfError extends Error {
     this.name = 'NuxtPdfError'
     this.code = code
     this.templateKey = options.templateKey
+    this.templateFile = options.templateFile
   }
 }
