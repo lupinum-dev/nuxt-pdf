@@ -7,7 +7,7 @@ import {
 // @ts-ignore -- Nuxt generates this server-only virtual module.
 import { pdf } from '#pdf'
 import { NuxtPdfError } from '../shared/errors'
-import type { PdfTemplate } from '../shared/template'
+import type { PdfPreviewRender, PdfTemplate } from '../shared/template'
 
 const PREVIEW_ROUTE = '/_pdf'
 
@@ -16,9 +16,13 @@ type PreviewTemplate = Pick<
   | 'getPreviewProps'
   | 'key'
   | 'render'
-  | 'resolveMetadata'
   | 'scenarioNames'
->
+> & {
+  // Both extra members exist on the object `createPdfTemplate` returns but are
+  // intentionally absent from the public `PdfTemplate` type: they are dev-only.
+  readonly file?: string
+  renderForPreview(props: object): Promise<PdfPreviewRender>
+}
 
 export type PdfPreviewRegistry = Readonly<Record<string, PreviewTemplate>>
 
@@ -54,15 +58,32 @@ const htmlResponse = (
       header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
       h1 { margin: 0; font-size: clamp(1.5rem, 4vw, 2.5rem); letter-spacing: -0.04em; }
       p { color: #b6beb6; line-height: 1.6; }
-      ul { list-style: none; margin: 0; padding: 0; }
-      li { border-top: 1px solid #343a35; }
-      li:last-child { border-bottom: 1px solid #343a35; }
-      li a { display: flex; justify-content: space-between; gap: 16px; padding: 16px 4px; text-decoration: none; }
       code { color: #dce4dc; }
+      .actions { display: flex; align-items: baseline; gap: 16px; }
       nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-      nav a { border: 1px solid #3f493f; border-radius: 999px; padding: 6px 11px; text-decoration: none; }
-      iframe { width: 100%; min-height: calc(100vh - 180px); border: 1px solid #343a35; border-radius: 10px; background: white; }
-      .error { max-width: 720px; border-left: 3px solid #ef786f; padding-left: 18px; }
+      nav a { border: 1px solid #3f493f; border-radius: 999px; padding: 6px 11px; text-decoration: none; color: #dce4dc; }
+      nav a.active { background: #a9e477; border-color: #a9e477; color: #101211; font-weight: 600; }
+      iframe { width: 100%; min-height: calc(100vh - 300px); border: 1px solid #343a35; border-radius: 10px; background: white; }
+      .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+      .card { border: 1px solid #343a35; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
+      .card strong { font-size: 1.05rem; }
+      .card .file { color: #8b948b; font-size: 0.8rem; word-break: break-all; }
+      .card .meta { color: #b6beb6; font-size: 0.85rem; }
+      .card .links { margin-top: 8px; display: flex; gap: 14px; }
+      .diagnostics { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 16px; }
+      .stat { border: 1px solid #343a35; border-radius: 10px; padding: 12px 14px; }
+      .stat .label { color: #8b948b; font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; }
+      .stat .value { font-size: 1.35rem; font-variant-numeric: tabular-nums; margin-top: 4px; }
+      .warnings { border: 1px solid #6b5a1f; background: #1d1a10; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; }
+      .warnings .label { color: #e6c651; font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 8px; }
+      .warnings ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+      .warnings li { color: #e9ddb3; font-size: 0.85rem; line-height: 1.5; }
+      .error { border: 1px solid #6b2f2b; background: #1d1210; border-left: 3px solid #ef786f; border-radius: 10px; padding: 18px 20px; }
+      .error h2 { margin: 0 0 12px; font-size: 1.1rem; color: #f3d7d3; }
+      .error dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0 0 12px; }
+      .error dt { color: #c69a95; font-size: 0.8rem; }
+      .error dd { margin: 0; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.85rem; word-break: break-all; }
+      .error .message { color: #f0d9d6; line-height: 1.6; white-space: pre-wrap; }
     </style>
   </head>
   <body><main>${content}</main></body>
@@ -84,6 +105,11 @@ const templateByKey = (
 ): PreviewTemplate | undefined =>
   Object.values(registry).find(template => template.key === key)
 
+const scenarioCount = (template: PreviewTemplate): string =>
+  template.scenarioNames.length > 0
+    ? `${template.scenarioNames.length} scenario${template.scenarioNames.length === 1 ? '' : 's'}`
+    : 'sample data'
+
 const indexPage = (
   registry: PdfPreviewRegistry,
   rootPath: string,
@@ -98,18 +124,25 @@ const indexPage = (
     )
   }
 
-  const items = templates.map((template) => {
-    const href = `${rootPath}/${encodeTemplatePath(template.key)}`
-    const scenarios = template.scenarioNames.length > 0
-      ? `${template.scenarioNames.length} scenario${template.scenarioNames.length === 1 ? '' : 's'}`
-      : 'sample data'
+  const cards = templates.map((template) => {
+    const base = `${rootPath}/${encodeTemplatePath(template.key)}`
+    const file = template.file
+      ? `<span class="file">${escapeHtml(template.file)}</span>`
+      : ''
 
-    return `<li><a href="${escapeHtml(href)}"><strong>${escapeHtml(template.key)}</strong><span>${scenarios}</span></a></li>`
+    return `<article class="card">`
+      + `<strong>${escapeHtml(template.key)}</strong>`
+      + file
+      + `<span class="meta">${scenarioCount(template)}</span>`
+      + `<span class="links">`
+      + `<a href="${escapeHtml(base)}">Preview</a>`
+      + `<a href="${escapeHtml(`${base}.pdf`)}">Raw PDF</a>`
+      + `</span></article>`
   }).join('')
 
   return htmlResponse(
     'PDF templates',
-    `<header><h1>PDF templates</h1><span>${templates.length}</span></header><ul>${items}</ul>`,
+    `<header><h1>PDF templates</h1><span>${templates.length}</span></header><div class="cards">${cards}</div>`,
   )
 }
 
@@ -120,11 +153,11 @@ const errorPage = (
   status: number,
 ): Response => htmlResponse(
   title,
-  `<div class="error"><p><a href="${escapeHtml(rootPath)}">← All templates</a></p><h1>${escapeHtml(title)}</h1><p>${escapeHtml(message)}</p></div>`,
+  `<header><h1>${escapeHtml(title)}</h1><a href="${escapeHtml(rootPath)}">All templates</a></header><div class="error"><p class="message">${escapeHtml(message)}</p></div>`,
   status,
 )
 
-const previewUrl = (
+const rawUrl = (
   rootPath: string,
   key: string,
   scenario?: string,
@@ -135,34 +168,117 @@ const previewUrl = (
   return `${rootPath}/${encodeTemplatePath(key)}.pdf${query}`
 }
 
-const templatePage = (
+const scenarioNav = (
+  template: PreviewTemplate,
+  rootPath: string,
+  active?: string,
+): string => {
+  const base = `${rootPath}/${encodeTemplatePath(template.key)}`
+  const tab = (label: string, href: string, isActive: boolean): string =>
+    `<a href="${escapeHtml(href)}"${isActive ? ' class="active" aria-current="page"' : ''}>${escapeHtml(label)}</a>`
+
+  const tabs = [
+    tab('Default', base, active === undefined),
+    ...template.scenarioNames.map(name =>
+      tab(name, `${base}?scenario=${encodeURIComponent(name)}`, active === name),
+    ),
+  ].join('')
+
+  return `<nav>${tabs}</nav>`
+}
+
+const formatDuration = (ms: number): string =>
+  ms >= 1000 ? `${(ms / 1000).toFixed(2)} s` : `${Math.round(ms)} ms`
+
+const formatBytes = (bytes: number): string =>
+  bytes >= 1024 * 1024
+    ? `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+    : `${(bytes / 1024).toFixed(1)} KB`
+
+const diagnosticsPanel = (render: PdfPreviewRender): string => {
+  const { diagnostics } = render
+  const stat = (label: string, value: string): string =>
+    `<div class="stat"><div class="label">${label}</div><div class="value">${escapeHtml(value)}</div></div>`
+
+  const stats = [
+    stat('Duration', formatDuration(diagnostics.durationMs)),
+    stat('Size', formatBytes(diagnostics.byteLength)),
+    stat('Pages', String(diagnostics.pageCount)),
+    stat('Layout passes', String(diagnostics.passes)),
+  ].join('')
+
+  const warnings = diagnostics.warnings.length > 0
+    ? `<div class="warnings"><div class="label">${diagnostics.warnings.length} warning${diagnostics.warnings.length === 1 ? '' : 's'}</div><ul>${
+      diagnostics.warnings.map(message => `<li>${escapeHtml(message)}</li>`).join('')
+    }</ul></div>`
+    : ''
+
+  return `<div class="diagnostics">${stats}</div>${warnings}`
+}
+
+const errorDetails = (
+  error: unknown,
+  fallbackKey: string,
+  fallbackFile?: string,
+): string => {
+  const code = error instanceof NuxtPdfError ? error.code : 'PDF_RENDER_ERROR'
+  const name = error instanceof NuxtPdfError && error.templateKey
+    ? error.templateKey
+    : fallbackKey
+  const file = error instanceof NuxtPdfError && error.templateFile
+    ? error.templateFile
+    : fallbackFile
+  const message = error instanceof Error
+    ? error.message
+    : `Failed to render PDF template "${fallbackKey}".`
+
+  const fileRow = file
+    ? `<dt>File</dt><dd>${escapeHtml(file)}</dd>`
+    : ''
+
+  return `<div class="error">`
+    + `<h2>This template failed to render</h2>`
+    + `<dl><dt>Code</dt><dd>${escapeHtml(code)}</dd>`
+    + `<dt>Template</dt><dd>${escapeHtml(name)}</dd>`
+    + fileRow
+    + `</dl><p class="message">${escapeHtml(message)}</p></div>`
+}
+
+const viewerPage = async (
   template: PreviewTemplate,
   props: object,
   rootPath: string,
   scenario?: string,
-): Response => {
+): Promise<Response> => {
+  const base = `${rootPath}/${encodeTemplatePath(template.key)}`
+  const scenarioQuery = scenario === undefined
+    ? ''
+    : `?scenario=${encodeURIComponent(scenario)}`
+  const refreshHref = `${base}${scenarioQuery}${scenarioQuery ? '&' : '?'}_r=${Date.now()}`
+  const nav = scenarioNav(template, rootPath, scenario)
+
+  const actions = `<span class="actions">`
+    + `<a href="${escapeHtml(refreshHref)}">Refresh</a>`
+    + `<a href="${escapeHtml(rawUrl(rootPath, template.key, scenario))}">Raw PDF</a>`
+    + `<a href="${escapeHtml(rootPath)}">All templates</a>`
+    + `</span>`
+
+  let body: string
   let title: string
   try {
-    title = template.resolveMetadata(props).title || template.key
+    const render = await template.renderForPreview(props)
+    title = render.title || template.key
+    body = diagnosticsPanel(render)
+      + `<iframe title="${escapeHtml(title)}" src="${escapeHtml(rawUrl(rootPath, template.key, scenario))}"></iframe>`
   }
   catch (error) {
-    const message = error instanceof Error
-      ? error.message
-      : 'Template metadata could not be evaluated.'
-    return errorPage('Preview failed', message, rootPath, 500)
+    title = template.key
+    body = errorDetails(error, template.key, template.file)
   }
-
-  const scenarioLinks = [
-    `<a href="${escapeHtml(`${rootPath}/${encodeTemplatePath(template.key)}`)}">Default</a>`,
-    ...template.scenarioNames.map(name =>
-      `<a href="${escapeHtml(`${rootPath}/${encodeTemplatePath(template.key)}?scenario=${encodeURIComponent(name)}`)}">${escapeHtml(name)}</a>`,
-    ),
-  ].join('')
-  const rawUrl = previewUrl(rootPath, template.key, scenario)
 
   return htmlResponse(
     title,
-    `<header><h1>${escapeHtml(title)}</h1><a href="${escapeHtml(rootPath)}">All templates</a></header><nav>${scenarioLinks}</nav><iframe title="${escapeHtml(title)}" src="${escapeHtml(rawUrl)}"></iframe>`,
+    `<header><h1>${escapeHtml(title)}</h1>${actions}</header>${nav}${body}`,
   )
 }
 
@@ -225,7 +341,7 @@ export const renderPdfPreview = async (
     )
   }
 
-  if (!raw) return templatePage(template, props, rootPath, request.scenario)
+  if (!raw) return viewerPage(template, props, rootPath, request.scenario)
 
   try {
     const result = await template.render(props)
