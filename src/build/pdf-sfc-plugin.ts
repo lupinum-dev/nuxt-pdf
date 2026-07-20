@@ -20,7 +20,17 @@ export type PdfSfcPluginOptions = {
   /** Absolute filenames discovered by the Nuxt module. The map may be updated in development. */
   files: ReadonlyMap<string, PdfSfcKind>
   isProduction?: boolean
+  /**
+   * Absolute import path to the runtime composables barrel. When a PDF SFC uses
+   * an auto-imported PDF composable (e.g. `usePdfPageNumbers`) without importing
+   * it, the plugin injects the import from here so the self-contained virtual
+   * module resolves it independently of Nuxt's global auto-import transform.
+   */
+  composablesImport?: string
 }
+
+// Auto-imported PDF composables the plugin injects on demand.
+const PDF_COMPOSABLES = ['usePdfPageNumbers'] as const
 
 export type PdfSfcTransformResult = {
   code: string
@@ -64,6 +74,7 @@ const VIRTUAL_SUFFIX = '.mjs'
 const METADATA_KEYS = new Set([
   'filename',
   'language',
+  'maxPasses',
   'sampleData',
   'scenarios',
   'title',
@@ -120,6 +131,7 @@ export const createPdfSfcPlugin = (
       filename,
       kind,
       options.isProduction,
+      options.composablesImport,
     )
   },
   async transform(source, id) {
@@ -130,7 +142,13 @@ export const createPdfSfcPlugin = (
 
     if (!kind) return null
 
-    return compilePdfSfc(source, filename, kind, options.isProduction)
+    return compilePdfSfc(
+      source,
+      filename,
+      kind,
+      options.isProduction,
+      options.composablesImport,
+    )
   },
 })
 
@@ -203,6 +221,7 @@ export async function compilePdfSfc(
   filename: string,
   kind: PdfSfcKind,
   isProduction = false,
+  composablesImport?: string,
 ): Promise<PdfSfcTransformResult> {
   const original = parsePdfSfc(source, filename)
 
@@ -212,6 +231,10 @@ export async function compilePdfSfc(
   const metadata = extractMetadata(source, original, filename, kind)
   const cleaned = parsePdfSfc(metadata.source, filename)
   const componentCode = compileComponent(cleaned, filename, isProduction)
+  const composableImportCode = composableInjection(
+    componentCode,
+    composablesImport,
+  )
   const metadataCode = kind === 'template'
     ? `${COMPONENT_VARIABLE}.${METADATA_PROPERTY} = ${metadata.expression}\n`
     : ''
@@ -219,6 +242,7 @@ export async function compilePdfSfc(
 
   try {
     const result = await transformWithEsbuild([
+      composableImportCode,
       componentCode,
       metadataCode,
       `export default ${COMPONENT_VARIABLE}`,
@@ -575,6 +599,27 @@ function compileComponent(
     template.code,
     `${COMPONENT_VARIABLE}.render = render`,
   ].join('\n')
+}
+
+// Build an import statement for the auto-imported PDF composables a compiled
+// component references but does not already import. Returns `''` when there is
+// nothing to inject or no import path is configured.
+function composableInjection(
+  componentCode: string,
+  composablesImport?: string,
+): string {
+  if (!composablesImport) return ''
+
+  const needed = PDF_COMPOSABLES.filter((name) => {
+    const used = new RegExp(`\\b${name}\\b`).test(componentCode)
+    const imported = new RegExp(`import\\s*\\{[^}]*\\b${name}\\b[^}]*\\}`)
+      .test(componentCode)
+    return used && !imported
+  })
+
+  if (needed.length === 0) return ''
+
+  return `import { ${needed.join(', ')} } from ${JSON.stringify(composablesImport)}`
 }
 
 function scriptLoader(descriptor: SFCDescriptor): 'js' | 'jsx' | 'ts' | 'tsx' {

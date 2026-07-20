@@ -10,6 +10,13 @@ export interface PdfDefinition<Props extends object = Record<string, unknown>> {
   title?: PdfMetadataValue<Props>
   filename?: PdfMetadataValue<Props>
   language?: string
+  /**
+   * Maximum number of layout passes the multi-pass (table-of-contents) loop runs
+   * before it declares the page numbers non-convergent and throws
+   * `PDF_LIMIT_EXCEEDED`. A positive integer; defaults to 5. Only relevant to
+   * documents that read `usePdfPageNumbers()` or link to an internal `#id`.
+   */
+  maxPasses?: number
   sampleData?: Props
   scenarios?: Readonly<Record<string, Props>>
 }

@@ -1,6 +1,7 @@
 import { stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
+  addImports,
   addServerHandler,
   addServerTemplate,
   addTemplate,
@@ -110,6 +111,7 @@ export default defineNuxtModule<ModuleOptions>({
     const runtimeImport = resolver.resolve('./runtime/server/index')
     const sharedImport = resolver.resolve('./runtime/shared/index')
     const componentsImport = resolver.resolve('./runtime/components/index')
+    const composablesImport = resolver.resolve('./runtime/composables/index')
     const previewHandler = resolver.resolve('./runtime/server/preview')
     const layers: PdfTemplateLayer[] = getLayerDirectories(nuxt).map(
       (directories, index) => ({
@@ -182,6 +184,12 @@ export default defineNuxtModule<ModuleOptions>({
     const nitroTsConfig = nitroTypescript.tsConfig ||= {}
     addRegistryTypePath(nitroTsConfig)
 
+    addImports({
+      name: 'usePdfPageNumbers',
+      as: 'usePdfPageNumbers',
+      from: composablesImport,
+    })
+
     addTypeTemplate({
       filename: 'types/nuxt-pdf-authoring.d.ts',
       getContents: () => generateAuthoringTypes(
@@ -203,6 +211,7 @@ export default defineNuxtModule<ModuleOptions>({
         createPdfSfcPlugin({
           files: pdfSfcFiles,
           isProduction: !nuxt.options.dev,
+          composablesImport,
         }),
         ...existingPlugins,
       ]

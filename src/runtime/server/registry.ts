@@ -19,6 +19,10 @@ import {
 import type { RemoteAssetPolicy } from './assets/remote'
 import { renderDocument } from './engine/render-document'
 import {
+  hasInternalLink,
+  renderDocumentMultiPass,
+} from './engine/layout-passes'
+import {
   createPdfFontStore,
   type BundledPdfFontDescriptor,
 } from './fonts'
@@ -123,6 +127,13 @@ const validateDefinition = <Props extends object>(
   if (definition.language !== undefined && typeof definition.language !== 'string') {
     throw templateError(ref, 'language must be a string.')
   }
+  const maxPasses: unknown = definition.maxPasses
+  if (
+    maxPasses !== undefined
+    && (typeof maxPasses !== 'number' || !Number.isInteger(maxPasses) || maxPasses < 1)
+  ) {
+    throw templateError(ref, 'maxPasses must be a positive integer.')
+  }
   if (definition.sampleData !== undefined && !isObject(definition.sampleData)) {
     throw templateError(ref, 'sampleData must be an object.')
   }
@@ -186,6 +197,7 @@ const renderTemplate = async <Props extends object>(
   props: Props,
   metadata: ResolvedPdfMetadata,
   options: PdfTemplateRuntimeOptions,
+  maxPasses: number | undefined,
 ): Promise<Uint8Array> => {
   let mounted: Awaited<ReturnType<typeof mountPdfComponent>> | undefined
   const warn = (message: string): void =>
@@ -203,10 +215,29 @@ const renderTemplate = async <Props extends object>(
       remote: options.remote,
     })
 
-    const result = await renderDocument(
-      mounted.document as unknown as Parameters<typeof renderDocument>[0],
-      { fontStore: createPdfFontStore(options.fonts) },
-    )
+    const document = mounted.document as unknown as Parameters<typeof renderDocument>[0]
+    const fontStore = createPdfFontStore(options.fonts)
+
+    // Gate: a template that reads `usePdfPageNumbers()` or links to an internal
+    // `#id` needs resolved page numbers, so it runs the fixed-point layout loop.
+    // Every other document keeps exactly one layout pass — zero added cost.
+    if (mounted.usesPageNumbers || hasInternalLink(document)) {
+      const live = mounted
+      const result = await renderDocumentMultiPass(
+        {
+          get document() {
+            return live.document as unknown as Parameters<typeof renderDocument>[0]
+          },
+          feed: async (pages) => {
+            await live.feedPageNumbers(pages)
+          },
+        },
+        { fontStore, maxPasses },
+      )
+      return result.bytes
+    }
+
+    const result = await renderDocument(document, { fontStore })
     return result.bytes
   }
   finally {
@@ -266,6 +297,7 @@ export const createPdfTemplate = <Props extends object>(
           props,
           metadata,
           options,
+          definition.maxPasses,
         )
         await bytesPromise
 

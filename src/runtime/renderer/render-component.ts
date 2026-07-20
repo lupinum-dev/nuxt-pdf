@@ -3,9 +3,11 @@ import {
   createVNode,
   defineComponent,
   nextTick,
+  reactive,
   shallowRef,
   type Component,
 } from 'vue'
+import { PDF_PAGE_NUMBERS_KEY } from '../composables/use-pdf-page-numbers'
 import {
   PdfCircle,
   PdfClipPath,
@@ -73,7 +75,11 @@ export type PdfComponentProps = Record<string, unknown>
 export type MountedPdfComponent = {
   readonly document: PdfDocumentNode
   readonly root: PdfRoot
+  /** Whether `usePdfPageNumbers()` was called during mount (flags multi-pass). */
+  readonly usesPageNumbers: boolean
   update(props: PdfComponentProps): Promise<PdfDocumentNode>
+  /** Push a destination `id → page` map into the live tree for the next layout. */
+  feedPageNumbers(pages: Record<string, number>): Promise<PdfDocumentNode>
   unmount(): void
 }
 
@@ -108,6 +114,18 @@ export const mountPdfComponent = async (
     app.component(name, primitive)
   }
 
+  // Back `usePdfPageNumbers()` with a reactive map the render loop feeds each
+  // pass. Injecting it (during setup) flips `pageNumbersUsed`, which the render
+  // path reads to decide between the single-pass and multi-pass pipelines.
+  const pageNumbers = reactive<Record<string, number | undefined>>({})
+  let pageNumbersUsed = false
+  app.provide(PDF_PAGE_NUMBERS_KEY, {
+    pages: pageNumbers,
+    markUsed: () => {
+      pageNumbersUsed = true
+    },
+  })
+
   app.mount(root)
   await nextTick()
   requireDocument(root)
@@ -117,8 +135,19 @@ export const mountPdfComponent = async (
       return requireDocument(root)
     },
     root,
+    get usesPageNumbers() {
+      return pageNumbersUsed
+    },
     async update(props) {
       currentProps.value = props
+      await nextTick()
+      return requireDocument(root)
+    },
+    async feedPageNumbers(pages) {
+      for (const key of Object.keys(pageNumbers)) {
+        if (!(key in pages)) Reflect.deleteProperty(pageNumbers, key)
+      }
+      Object.assign(pageNumbers, pages)
       await nextTick()
       return requireDocument(root)
     },

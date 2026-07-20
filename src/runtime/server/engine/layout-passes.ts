@@ -46,6 +46,25 @@ export interface MultiPassOptions {
   maxPasses?: number
 }
 
+/**
+ * Whether the mounted tree contains a `Link` whose `src`/`href` targets an
+ * internal destination (`#id`). Such a link needs the resolved page number of
+ * its target, so it activates the multi-pass loop even when the template never
+ * calls `usePdfPageNumbers()`. External links (`http…`, `mailto:`) do not.
+ */
+export const hasInternalLink = (document: DocumentNode): boolean => {
+  const visit = (node: PdfNode): boolean => {
+    if (!('props' in node)) return false
+    const element = node as PdfElementNode
+    if (element.type === 'LINK') {
+      const target = element.props.src ?? element.props.href
+      if (typeof target === 'string' && target.startsWith('#')) return true
+    }
+    return element.children.some(visit)
+  }
+  return visit(document as unknown as PdfNode)
+}
+
 export interface MultiPassResult {
   bytes: Uint8Array
   layout: SafeDocumentNode
