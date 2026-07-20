@@ -37,9 +37,10 @@
     "build": "nuxt-module-build build",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:dependencies": "node scripts/check-production-dependencies.mjs",
     "test:watch": "vitest watch",
     "test:types": "vue-tsc --noEmit && pnpm --dir playground exec vue-tsc --noEmit",
-    "verify": "pnpm lint && pnpm test:types && pnpm test && pnpm build && pnpm dev:build"
+    "verify": "pnpm lint && pnpm test:types && pnpm test:dependencies && pnpm test && pnpm build && pnpm dev:build"
   },
   "dependencies": {
     "@nuxt/kit": "^4.4.8",
