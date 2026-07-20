@@ -1,0 +1,167 @@
+import type { PdfTemplate } from './discover-templates'
+
+export type PdfRegistryGenerationOptions = {
+  runtimeImport: string
+  moduleId?: string
+}
+
+const compareText = (left: string, right: string): number => {
+  if (left < right) return -1
+  if (left > right) return 1
+  return 0
+}
+
+const quote = (value: string): string => JSON.stringify(value)
+
+const importPath = (filePath: string): string =>
+  filePath.replaceAll('\\', '/')
+
+const orderedTemplates = (
+  templates: readonly PdfTemplate[],
+): PdfTemplate[] => {
+  const result = [...templates].sort((left, right) =>
+    compareText(left.canonicalKey, right.canonicalKey),
+  )
+  const canonicalKeys = new Map<string, PdfTemplate>()
+  const propertyKeys = new Map<string, PdfTemplate>()
+
+  for (const template of result) {
+    const canonicalDuplicate = canonicalKeys.get(template.canonicalKey)
+    if (canonicalDuplicate) {
+      throw new TypeError(
+        `Cannot generate duplicate PDF template key "${template.canonicalKey}" from "${canonicalDuplicate.filePath}" and "${template.filePath}".`,
+      )
+    }
+
+    const propertyDuplicate = propertyKeys.get(template.propertyKey)
+    if (propertyDuplicate) {
+      throw new TypeError(
+        `Cannot generate duplicate PDF property "${template.propertyKey}" for "${propertyDuplicate.canonicalKey}" and "${template.canonicalKey}".`,
+      )
+    }
+
+    canonicalKeys.set(template.canonicalKey, template)
+    propertyKeys.set(template.propertyKey, template)
+  }
+
+  return result
+}
+
+const validateOptions = (options: PdfRegistryGenerationOptions) => {
+  if (options.runtimeImport.trim() === '') {
+    throw new TypeError('runtimeImport is required to generate the PDF registry.')
+  }
+
+  if (options.moduleId != null && options.moduleId.trim() === '') {
+    throw new TypeError('moduleId cannot be empty.')
+  }
+}
+
+export const generatePdfRuntimeRegistry = (
+  templates: readonly PdfTemplate[],
+  options: PdfRegistryGenerationOptions,
+): string => {
+  validateOptions(options)
+  const ordered = orderedTemplates(templates)
+  const lines = [
+    `import { createPdfRegistry, createPdfTemplate } from ${quote(options.runtimeImport)}`,
+  ]
+
+  ordered.forEach((template, index) => {
+    lines.push(
+      `import __pdfTemplate${index} from ${quote(importPath(template.filePath))}`,
+    )
+  })
+
+  lines.push('', 'const registry = createPdfRegistry({')
+
+  ordered.forEach((template, index) => {
+    lines.push(
+      `  ${quote(template.propertyKey)}: createPdfTemplate(${quote(template.canonicalKey)}, __pdfTemplate${index}),`,
+    )
+  })
+
+  lines.push(
+    '})',
+    '',
+    'export const pdf = registry.pdf',
+    'export const renderPdf = registry.renderPdf',
+    'export const getPdfTemplate = registry.getPdfTemplate',
+    'export const pdfTemplateKeys = registry.pdfTemplateKeys',
+    'export type PdfTemplateKey = typeof pdfTemplateKeys[number]',
+    '',
+  )
+
+  return lines.join('\n')
+}
+
+export const generatePdfRegistryTypes = (
+  templates: readonly PdfTemplate[],
+  options: PdfRegistryGenerationOptions,
+): string => {
+  validateOptions(options)
+  const ordered = orderedTemplates(templates)
+  const moduleId = options.moduleId ?? '#pdf'
+  const lines = [
+    `declare module ${quote(moduleId)} {`,
+    '  import type { Component } from \'vue\'',
+    `  import type { PdfRenderResult, PdfTemplateDefinition } from ${quote(options.runtimeImport)}`,
+    '',
+    '  type ComponentProps<T extends Component> =',
+    '    T extends new (...args: any[]) => { $props: infer Props extends object }',
+    '      ? Props',
+    '      : T extends (props: infer Props extends object, ...args: any[]) => any',
+    '        ? Props',
+    '        : never',
+  ]
+
+  ordered.forEach((template, index) => {
+    lines.push(
+      '',
+      `  type PdfComponent${index} = typeof import(${quote(importPath(template.filePath))})['default']`,
+      `  type PdfProps${index} = ComponentProps<PdfComponent${index}>`,
+    )
+  })
+
+  lines.push('', '  export const pdf: {')
+
+  ordered.forEach((template, index) => {
+    lines.push(
+      `    readonly ${quote(template.propertyKey)}: PdfTemplateDefinition<PdfProps${index}>`,
+    )
+  })
+
+  lines.push('  }', '')
+
+  if (ordered.length === 0) {
+    lines.push(
+      '  export function renderPdf(name: never, props: never): Promise<PdfRenderResult>',
+      '  export function getPdfTemplate(name: never): never',
+    )
+  }
+  else {
+    ordered.forEach((template, index) => {
+      lines.push(
+        `  export function renderPdf(name: ${quote(template.canonicalKey)}, props: PdfProps${index}): Promise<PdfRenderResult>`,
+      )
+    })
+
+    lines.push('')
+
+    ordered.forEach((template, index) => {
+      lines.push(
+        `  export function getPdfTemplate(name: ${quote(template.canonicalKey)}): PdfTemplateDefinition<PdfProps${index}>`,
+      )
+    })
+  }
+
+  lines.push(
+    '',
+    `  export const pdfTemplateKeys: readonly [${ordered.map(template => quote(template.canonicalKey)).join(', ')}]`,
+    '  export type PdfTemplateKey = typeof pdfTemplateKeys[number]',
+    '}',
+    '',
+  )
+
+  return lines.join('\n')
+}
