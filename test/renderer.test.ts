@@ -2,6 +2,7 @@ import {
   Fragment,
   defineComponent,
   h,
+  resolveComponent,
   type PropType,
 } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -45,6 +46,28 @@ afterEach(() => {
 })
 
 describe('Vue PDF host renderer', () => {
+  it('resolves PDF primitives in the custom renderer app context', async () => {
+    const Fixture = defineComponent({
+      setup() {
+        const Document = resolveComponent('PdfDocument')
+        const Page = resolveComponent('PdfPage')
+        const Text = resolveComponent('PdfText')
+
+        return () => h(Document, null, {
+          default: () => h(Page, { size: 'A4' }, {
+            default: () => h(Text, null, () => 'Globally resolved primitives'),
+          }),
+        })
+      },
+    })
+    const mounted = await mountPdfComponent(Fixture)
+
+    expect(textChild(elementChild(elementChild(mounted.document, 0), 0)).value)
+      .toBe('Globally resolved primitives')
+
+    mounted.unmount()
+  })
+
   it('uses the upstream primitive contract and feeds layout directly', async () => {
     expect(PDF_PRIMITIVES).toMatchObject({
       Document: UpstreamPrimitives.Document,

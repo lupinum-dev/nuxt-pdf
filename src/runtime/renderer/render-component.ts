@@ -6,6 +6,15 @@ import {
   shallowRef,
   type Component,
 } from 'vue'
+import {
+  PdfDocument,
+  PdfImage,
+  PdfLink,
+  PdfNote,
+  PdfPage,
+  PdfText,
+  PdfView,
+} from '../components'
 import { createPdfNodeOps, createPdfRoot } from './node-ops'
 import {
   PDF_PRIMITIVES,
@@ -16,6 +25,16 @@ import {
 } from './types'
 
 const renderer = createRenderer<PdfHostNode, PdfHostElement>(createPdfNodeOps())
+
+const PDF_COMPONENTS = {
+  PdfDocument,
+  PdfImage,
+  PdfLink,
+  PdfNote,
+  PdfPage,
+  PdfText,
+  PdfView,
+}
 
 export type PdfComponentProps = Record<string, unknown>
 
@@ -47,7 +66,13 @@ export const mountPdfComponent = async (
     setup: () => () => createVNode(component, currentProps.value),
   })
 
-  renderer.render(createVNode(RootComponent), root)
+  const app = renderer.createApp(RootComponent)
+
+  for (const [name, primitive] of Object.entries(PDF_COMPONENTS)) {
+    app.component(name, primitive)
+  }
+
+  app.mount(root)
   await nextTick()
   requireDocument(root)
 
@@ -62,7 +87,7 @@ export const mountPdfComponent = async (
       return requireDocument(root)
     },
     unmount() {
-      renderer.render(null, root)
+      app.unmount()
     },
   }
 }
