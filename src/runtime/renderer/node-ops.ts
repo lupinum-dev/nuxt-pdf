@@ -32,7 +32,30 @@ const PAGE_CHILDREN = new Set<PdfElementType>([
   PDF_PRIMITIVES.Image,
   PDF_PRIMITIVES.Link,
   PDF_PRIMITIVES.Note,
+  PDF_PRIMITIVES.Svg,
 ])
+
+// Shape leaves shared by Svg, G, and ClipPath child sets.
+const SVG_SHAPES = [
+  PDF_PRIMITIVES.Path,
+  PDF_PRIMITIVES.Rect,
+  PDF_PRIMITIVES.Circle,
+  PDF_PRIMITIVES.Ellipse,
+  PDF_PRIMITIVES.Line,
+  PDF_PRIMITIVES.Polyline,
+  PDF_PRIMITIVES.Polygon,
+] as const
+
+// G accepts shapes, nested groups, images, and svg text.
+const G_CHILDREN = new Set<PdfElementType>([
+  ...SVG_SHAPES,
+  PDF_PRIMITIVES.G,
+  PDF_PRIMITIVES.Image,
+  PDF_PRIMITIVES.Text,
+  PDF_PRIMITIVES.Tspan,
+])
+
+const NO_CHILDREN: ReadonlySet<PdfElementType> = new Set()
 
 const ELEMENT_CHILDREN: Record<PdfElementType, ReadonlySet<PdfElementType>> = {
   [PDF_PRIMITIVES.Document]: new Set([PDF_PRIMITIVES.Page]),
@@ -44,14 +67,32 @@ const ELEMENT_CHILDREN: Record<PdfElementType, ReadonlySet<PdfElementType>> = {
     PDF_PRIMITIVES.Link,
     PDF_PRIMITIVES.Tspan,
   ]),
-  [PDF_PRIMITIVES.Image]: new Set(),
+  [PDF_PRIMITIVES.Image]: NO_CHILDREN,
   [PDF_PRIMITIVES.Link]: new Set([
     PDF_PRIMITIVES.View,
     PDF_PRIMITIVES.Image,
     PDF_PRIMITIVES.Text,
   ]),
-  [PDF_PRIMITIVES.Note]: new Set(),
-  [PDF_PRIMITIVES.Tspan]: new Set(),
+  [PDF_PRIMITIVES.Note]: NO_CHILDREN,
+  [PDF_PRIMITIVES.Tspan]: NO_CHILDREN,
+  [PDF_PRIMITIVES.Svg]: new Set([...G_CHILDREN, PDF_PRIMITIVES.Defs]),
+  [PDF_PRIMITIVES.G]: G_CHILDREN,
+  [PDF_PRIMITIVES.Defs]: new Set([
+    PDF_PRIMITIVES.ClipPath,
+    PDF_PRIMITIVES.LinearGradient,
+    PDF_PRIMITIVES.RadialGradient,
+  ]),
+  [PDF_PRIMITIVES.ClipPath]: new Set(SVG_SHAPES),
+  [PDF_PRIMITIVES.LinearGradient]: new Set([PDF_PRIMITIVES.Stop]),
+  [PDF_PRIMITIVES.RadialGradient]: new Set([PDF_PRIMITIVES.Stop]),
+  [PDF_PRIMITIVES.Path]: NO_CHILDREN,
+  [PDF_PRIMITIVES.Rect]: NO_CHILDREN,
+  [PDF_PRIMITIVES.Circle]: NO_CHILDREN,
+  [PDF_PRIMITIVES.Ellipse]: NO_CHILDREN,
+  [PDF_PRIMITIVES.Line]: NO_CHILDREN,
+  [PDF_PRIMITIVES.Polyline]: NO_CHILDREN,
+  [PDF_PRIMITIVES.Polygon]: NO_CHILDREN,
+  [PDF_PRIMITIVES.Stop]: NO_CHILDREN,
 }
 
 export type PdfRendererWarning = (message: string) => void
