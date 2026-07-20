@@ -7,12 +7,27 @@ import {
   type Component,
 } from 'vue'
 import {
+  PdfCircle,
+  PdfClipPath,
+  PdfDefs,
   PdfDocument,
+  PdfEllipse,
+  PdfG,
   PdfImage,
+  PdfLine,
+  PdfLinearGradient,
   PdfLink,
   PdfNote,
   PdfPage,
+  PdfPath,
+  PdfPolygon,
+  PdfPolyline,
+  PdfRadialGradient,
+  PdfRect,
+  PdfStop,
+  PdfSvg,
   PdfText,
+  PdfTspan,
   PdfView,
 } from '../components'
 import { createPdfNodeOps, createPdfRoot } from './node-ops'
@@ -27,12 +42,27 @@ import {
 const renderer = createRenderer<PdfHostNode, PdfHostElement>(createPdfNodeOps())
 
 const PDF_COMPONENTS = {
+  PdfCircle,
+  PdfClipPath,
+  PdfDefs,
   PdfDocument,
+  PdfEllipse,
+  PdfG,
   PdfImage,
+  PdfLine,
+  PdfLinearGradient,
   PdfLink,
   PdfNote,
   PdfPage,
+  PdfPath,
+  PdfPolygon,
+  PdfPolyline,
+  PdfRadialGradient,
+  PdfRect,
+  PdfStop,
+  PdfSvg,
   PdfText,
+  PdfTspan,
   PdfView,
 }
 

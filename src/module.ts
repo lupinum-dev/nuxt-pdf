@@ -65,6 +65,21 @@ declare module 'vue' {
     PdfPage: typeof import(${quote(componentsImport)})['PdfPage']
     PdfText: typeof import(${quote(componentsImport)})['PdfText']
     PdfView: typeof import(${quote(componentsImport)})['PdfView']
+    PdfSvg: typeof import(${quote(componentsImport)})['PdfSvg']
+    PdfG: typeof import(${quote(componentsImport)})['PdfG']
+    PdfPath: typeof import(${quote(componentsImport)})['PdfPath']
+    PdfRect: typeof import(${quote(componentsImport)})['PdfRect']
+    PdfCircle: typeof import(${quote(componentsImport)})['PdfCircle']
+    PdfEllipse: typeof import(${quote(componentsImport)})['PdfEllipse']
+    PdfLine: typeof import(${quote(componentsImport)})['PdfLine']
+    PdfPolyline: typeof import(${quote(componentsImport)})['PdfPolyline']
+    PdfPolygon: typeof import(${quote(componentsImport)})['PdfPolygon']
+    PdfDefs: typeof import(${quote(componentsImport)})['PdfDefs']
+    PdfClipPath: typeof import(${quote(componentsImport)})['PdfClipPath']
+    PdfLinearGradient: typeof import(${quote(componentsImport)})['PdfLinearGradient']
+    PdfRadialGradient: typeof import(${quote(componentsImport)})['PdfRadialGradient']
+    PdfStop: typeof import(${quote(componentsImport)})['PdfStop']
+    PdfTspan: typeof import(${quote(componentsImport)})['PdfTspan']
   }
 }
 
