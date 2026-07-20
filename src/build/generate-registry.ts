@@ -143,6 +143,7 @@ export const generatePdfRuntimeRegistry = (
     'export const renderPdf = registry.renderPdf',
     'export const getPdfTemplate = registry.getPdfTemplate',
     'export const pdfTemplateKeys = registry.pdfTemplateKeys',
+    `export { NuxtPdfError, PDF_ERROR_CODES } from ${quote(options.runtimeImport)}`,
     '',
   )
 
@@ -207,6 +208,8 @@ export const generatePdfRegistryTypes = (
     '',
     `export declare const pdfTemplateKeys: readonly [${ordered.map(template => quote(template.canonicalKey)).join(', ')}]`,
     'export type PdfTemplateKey = typeof pdfTemplateKeys[number]',
+    `export { NuxtPdfError, PDF_ERROR_CODES } from ${quote(options.runtimeImport)}`,
+    `export type { PdfErrorCode } from ${quote(options.runtimeImport)}`,
     '',
   )
 

@@ -219,6 +219,7 @@ describe('PDF registry generation', () => {
       '"reportsMonthly": createPdfTemplate("reports/monthly", __pdfTemplate1, { file: "pdfs/reports/monthly.vue" })',
     )
     expect(source).toContain('export const pdf = registry.pdf')
+    expect(source).toContain('export { NuxtPdfError, PDF_ERROR_CODES }')
     expect(source).toContain('export const renderPdf = registry.renderPdf')
     expect(source).toContain(
       'export const getPdfTemplate = registry.getPdfTemplate',
