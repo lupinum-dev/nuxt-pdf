@@ -383,3 +383,35 @@ describe('ATTACK 2 — id on a page-spanning container points at the section STA
     expect(destPage).toBe(startPage)
   })
 })
+
+// Convergence must compare the produced map against the map the layout was FED,
+// not against the previous pass's produced map. The two are equivalent from
+// pass 2 onward (fed_N = produced_{N-1}), so the ONLY observable difference is
+// pass 1: an id-less document produces {} == fed {} and must converge
+// immediately. A previous-vs-current variant cannot converge on pass 1 and
+// silently pays a redundant full layout for every id-less multi-pass render.
+describe('convergence compares produced against fed', () => {
+  it('converges an id-less document in exactly one pass', async () => {
+    const NoIdsDoc = defineComponent({
+      props: { resolved: { type: Object, default: () => ({}) } },
+      setup() {
+        return () =>
+          h(PdfDocument, {}, {
+            default: () => h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
+              default: () => h(PdfText, {}, { default: () => 'no destinations here' }),
+            }),
+          })
+      },
+    })
+
+    const mounted = await mountPdfComponent(NoIdsDoc, { resolved: {} })
+    try {
+      const result = await renderDocumentMultiPass(mountedSource(mounted))
+      expect(result.passes).toBe(1)
+      expect(result.pages).toEqual({})
+    }
+    finally {
+      mounted.unmount()
+    }
+  })
+})
