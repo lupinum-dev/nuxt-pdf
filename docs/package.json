@@ -1,0 +1,22 @@
+{
+  "name": "nuxt-pdf-docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "generate": "nuxt generate",
+    "prepare": "nuxt prepare",
+    "typecheck": "nuxt prepare && vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@lupinum/ginko-content": "file:../../../../workspace/ginko-content/.pack/lupinum-ginko-content-0.3.0-rc.5.tgz",
+    "@lupinum/ginko-docs": "file:../../../../2_sites/ginko-docs/layer/.pack/lupinum-ginko-docs-0.2.2.tgz",
+    "nuxt": "^4.4.8",
+    "vue": "^3.5.35",
+    "vue-router": "^5.1.0"
+  },
+  "devDependencies": {
+    "vue-tsc": "^2.2.0"
+  }
+}
