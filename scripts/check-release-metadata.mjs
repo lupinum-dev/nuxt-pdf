@@ -20,10 +20,12 @@ assert(
   `package.json contains an invalid release version: ${packageJson.version}.`,
 )
 
-const currentChangelogVersion = changelog.match(/^## (\S+)$/m)?.[1]
+const changelogVersions = [...changelog.matchAll(/^## (\S+)$/gm)]
+  .map(match => match[1])
+const currentChangelogVersion = changelogVersions.find(version => version !== 'Unreleased')
 assert(
   currentChangelogVersion === packageJson.version,
-  `CHANGELOG.md starts with ${currentChangelogVersion ?? 'no release'}; expected ${packageJson.version}.`,
+  `CHANGELOG.md's newest release is ${currentChangelogVersion ?? 'missing'}; expected ${packageJson.version}.`,
 )
 
 assert(

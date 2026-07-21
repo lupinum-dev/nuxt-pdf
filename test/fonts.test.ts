@@ -125,7 +125,7 @@ describe('local PDF fonts', () => {
       [{ family: 'Roboto', src }],
       { fontRoots: [fontRoot] },
     )).rejects.toThrow(
-      /relative local path|parent path segments|remote fonts are disabled/,
+      /relative local path|parent path segments|remote fonts are unsupported/,
     )
   })
 

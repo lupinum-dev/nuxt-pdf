@@ -16,7 +16,7 @@ import {
   discoverPdfTemplates,
   type PdfTemplateLayer,
 } from './build/discover-templates'
-import { bundlePdfFonts, DEFAULT_MAX_PDF_FONT_BYTES } from './build/fonts'
+import { bundlePdfFonts } from './build/fonts'
 import {
   generatePdfRegistryTypes,
   generatePdfRuntimeRegistry,
@@ -26,11 +26,9 @@ import {
   normalizeRemoteAssetPolicy,
   type RemoteAssetOptions,
 } from './runtime/server/assets/remote'
+import { loadPdfImageAsset } from './runtime/server/assets/resolve-asset'
 import {
-  DEFAULT_MAX_PDF_IMAGE_BYTES,
-  loadPdfImageAsset,
-} from './runtime/server/assets/resolve-asset'
-import {
+  DEFAULT_PDF_RENDER_LIMITS,
   normalizePdfLimits,
   type PdfLimitsOptions,
 } from './runtime/server/engine/limits'
@@ -86,9 +84,9 @@ export interface ModuleOptions {
   fonts?: readonly PdfFontDeclaration[]
   remote?: RemoteAssetOptions
   /**
-   * Render limits enforced on every PDF render. Both fields are optional
-   * positive integers; omitted fields fall back to the built-in defaults
-   * (`timeoutMs` 30000, `maxPages` 2000).
+   * Canonical render, tree, image, remote-request, and output budgets. Every
+   * field is an optional positive safe integer; omitted fields use the
+   * documented built-in defaults.
    */
   limits?: PdfLimitsOptions
 }
@@ -177,19 +175,21 @@ export default defineNuxtModule<ModuleOptions>({
     )
     const templates = await discoverPdfTemplates(layers)
     const componentFiles = await discoverPdfComponentFiles(layers)
+    const limits = normalizePdfLimits(options.limits)
+    const resolvedLimits = limits ?? DEFAULT_PDF_RENDER_LIMITS
     const imageFiles = await discoverPdfImageFiles(layers)
     const assets = await Promise.all(imageFiles.map(image =>
-      loadPdfImageAsset(image.key, { roots: [image.rootDir] }),
+      loadPdfImageAsset(image.key, {
+        roots: [image.rootDir],
+        maxBytes: resolvedLimits.maxImageBytes,
+        maxPixels: resolvedLimits.maxImagePixels,
+      }),
     ))
     const fontRoots = await existingDirectories(
       layers.map(layer => join(layer.rootDir, 'pdfs', 'fonts')),
     )
-    const remote = normalizeRemoteAssetPolicy(options.remote, {
-      maxImageBytes: DEFAULT_MAX_PDF_IMAGE_BYTES,
-      maxFontBytes: DEFAULT_MAX_PDF_FONT_BYTES,
-    })
-    const limits = normalizePdfLimits(options.limits)
-    const fonts = await bundlePdfFonts(options.fonts ?? [], { fontRoots, remote })
+    const remote = normalizeRemoteAssetPolicy(options.remote)
+    const fonts = await bundlePdfFonts(options.fonts ?? [], { fontRoots })
     const pdfSfcFiles = new Map<string, 'component' | 'template'>(
       componentFiles.map(file => [file, 'component']),
     )

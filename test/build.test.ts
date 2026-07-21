@@ -15,6 +15,7 @@ import {
   generatePdfRegistryTypes,
   generatePdfRuntimeRegistry,
 } from '../src/build/generate-registry'
+import { DEFAULT_PDF_RENDER_LIMITS } from '../src/runtime/server/engine/limits'
 
 const temporaryDirectories: string[] = []
 
@@ -260,7 +261,11 @@ export { NuxtPdfError, PDF_ERROR_CODES } from "#pdf-runtime"
     const source = generatePdfRuntimeRegistry(templates, {
       ...options,
       development: true,
-      limits: { maxPages: 20, timeoutMs: 1_000 },
+      limits: {
+        ...DEFAULT_PDF_RENDER_LIMITS,
+        maxPages: 20,
+        timeoutMs: 1_000,
+      },
     })
 
     expect(source).toContain(

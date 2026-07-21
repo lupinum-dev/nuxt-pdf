@@ -4,14 +4,20 @@ import { PdfDocument, PdfPage, PdfText } from '../src/runtime/components'
 import { createPdfTemplate } from '../src/runtime/server/registry'
 import {
   DEFAULT_PDF_MAX_PAGES,
+  DEFAULT_PDF_RENDER_LIMITS,
   DEFAULT_PDF_TIMEOUT_MS,
   normalizePdfLimits,
+  type PdfLimitsOptions,
 } from '../src/runtime/server/engine/limits'
 import { PDF_DEFINITION_PROPERTY } from '../src/runtime/shared/template'
 import { parsePdf } from './utils/pdf'
 
 const asTemplate = (component: Component): Component =>
   Object.assign(component, { [PDF_DEFINITION_PROPERTY]: {} })
+
+const renderLimits = (
+  overrides: Partial<typeof DEFAULT_PDF_RENDER_LIMITS>,
+) => ({ ...DEFAULT_PDF_RENDER_LIMITS, ...overrides })
 
 // A tiny page forces the same modest body to paginate into many pages, so a low
 // `maxPages` cap is exceeded without any large content.
@@ -56,7 +62,11 @@ describe('render limits', () => {
 
     const template = createPdfTemplate('capped', ManyPageDoc, {
       file: 'pdfs/capped.vue',
-      limits: { maxPages: 3, timeoutMs: DEFAULT_PDF_TIMEOUT_MS },
+      limits: {
+        ...DEFAULT_PDF_RENDER_LIMITS,
+        maxPages: 3,
+        timeoutMs: DEFAULT_PDF_TIMEOUT_MS,
+      },
     })
 
     const error = await template.render({}).catch((cause: unknown) => cause)
@@ -74,7 +84,11 @@ describe('render limits', () => {
   it('fails with PDF_LIMIT_EXCEEDED when the render exceeds the time budget', async () => {
     const template = createPdfTemplate('slow', OnePageDoc, {
       file: 'pdfs/slow.vue',
-      limits: { maxPages: DEFAULT_PDF_MAX_PAGES, timeoutMs: 0 },
+      limits: {
+        ...DEFAULT_PDF_RENDER_LIMITS,
+        maxPages: DEFAULT_PDF_MAX_PAGES,
+        timeoutMs: 0,
+      },
     })
 
     const error = await template.render({}).catch((cause: unknown) => cause)
@@ -86,6 +100,38 @@ describe('render limits', () => {
     expect(message).toContain('0ms time budget')
     expect(message).toContain('pdf.limits.timeoutMs')
   })
+
+  it.each([
+    ['maxNodes', { maxNodes: 3 }, 'more than 3 nodes'],
+    ['maxTreeDepth', { maxTreeDepth: 2 }, 'tree depth exceeded 2'],
+    ['maxTextCharacters', { maxTextCharacters: 4 }, 'text exceeded 4 characters'],
+  ] as const)('enforces the pre-layout %s admission budget', async (
+    _name,
+    override,
+    message,
+  ) => {
+    const template = createPdfTemplate('admission', OnePageDoc, {
+      limits: renderLimits(override),
+    })
+
+    await expect(template.render({})).rejects.toMatchObject({
+      code: 'PDF_LIMIT_EXCEEDED',
+      message: expect.stringContaining(message),
+      templateKey: 'admission',
+    })
+  })
+
+  it('destroys serialization when output exceeds maxOutputBytes', async () => {
+    const template = createPdfTemplate('output-cap', OnePageDoc, {
+      limits: renderLimits({ maxOutputBytes: 100 }),
+    })
+
+    await expect(template.render({})).rejects.toMatchObject({
+      code: 'PDF_LIMIT_EXCEEDED',
+      message: expect.stringContaining('pdf.limits.maxOutputBytes (100)'),
+      templateKey: 'output-cap',
+    })
+  })
 })
 
 describe('normalizePdfLimits', () => {
@@ -95,25 +141,34 @@ describe('normalizePdfLimits', () => {
 
   it('fills per-field defaults for a partial configuration', () => {
     expect(normalizePdfLimits({ maxPages: 10 })).toEqual({
+      ...DEFAULT_PDF_RENDER_LIMITS,
       maxPages: 10,
-      timeoutMs: DEFAULT_PDF_TIMEOUT_MS,
     })
     expect(normalizePdfLimits({ timeoutMs: 5000 })).toEqual({
-      maxPages: DEFAULT_PDF_MAX_PAGES,
+      ...DEFAULT_PDF_RENDER_LIMITS,
       timeoutMs: 5000,
     })
   })
 
   it('rejects non-positive, non-integer, and non-numeric values', () => {
     expect(() => normalizePdfLimits({ maxPages: 0 }))
-      .toThrow('pdf.limits.maxPages must be a positive integer.')
+      .toThrow('pdf.limits.maxPages must be a positive safe integer.')
     expect(() => normalizePdfLimits({ maxPages: -1 }))
-      .toThrow('pdf.limits.maxPages must be a positive integer.')
+      .toThrow('pdf.limits.maxPages must be a positive safe integer.')
     expect(() => normalizePdfLimits({ timeoutMs: 1.5 }))
-      .toThrow('pdf.limits.timeoutMs must be a positive integer.')
+      .toThrow('pdf.limits.timeoutMs must be a positive safe integer.')
     expect(() => normalizePdfLimits({ timeoutMs: Number.NaN }))
-      .toThrow('pdf.limits.timeoutMs must be a positive integer.')
+      .toThrow('pdf.limits.timeoutMs must be a positive safe integer.')
     expect(() => normalizePdfLimits({ maxPages: '2000' as unknown as number }))
-      .toThrow('pdf.limits.maxPages must be a positive integer.')
+      .toThrow('pdf.limits.maxPages must be a positive safe integer.')
+    expect(() => normalizePdfLimits({ maxOutputBytes: Number.MAX_SAFE_INTEGER + 1 }))
+      .toThrow('pdf.limits.maxOutputBytes must be a positive safe integer.')
+  })
+
+  it('rejects invalid containers and unknown fields', () => {
+    expect(() => normalizePdfLimits(null as unknown as undefined))
+      .toThrow('pdf.limits must be an object.')
+    expect(() => normalizePdfLimits({ legacyCap: 1 } as PdfLimitsOptions))
+      .toThrow('pdf.limits.legacyCap is not supported.')
   })
 })

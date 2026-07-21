@@ -25,7 +25,6 @@ import {
 } from '../../renderer/types'
 import {
   enforceMaxPages,
-  type RenderDeadline,
   type RenderLimits,
 } from './limits'
 
@@ -88,13 +87,44 @@ const compact = (values: Record<string, unknown>) => Object.fromEntries(
   Object.entries(values).filter(([, value]) => value !== undefined && value !== null),
 )
 
-const collectStream = (stream: NodeJS.ReadableStream) => new Promise<Uint8Array>((resolve, reject) => {
+const collectStream = (
+  stream: PDFDocument,
+  limits?: RenderLimits,
+) => new Promise<Uint8Array>((resolve, reject) => {
   const chunks: Uint8Array[] = []
+  let total = 0
 
   stream.on('data', (chunk: Uint8Array | Buffer | string) => {
-    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk)
+    try {
+      limits?.deadline.check()
+      const bytes = typeof chunk === 'string' ? Buffer.from(chunk) : Buffer.from(chunk)
+      total += bytes.byteLength
+      if (limits && total > limits.maxOutputBytes) {
+        const error = new NuxtPdfError(
+          PDF_ERROR_CODES.LimitExceeded,
+          `PDF output exceeded pdf.limits.maxOutputBytes (${limits.maxOutputBytes}).`,
+        )
+        limits.abortController.abort(error)
+        stream.destroy(error)
+        return
+      }
+      chunks.push(bytes)
+    }
+    catch (error) {
+      const cause = error instanceof Error ? error : new Error(String(error))
+      limits?.abortController.abort(cause)
+      stream.destroy(cause)
+    }
   })
-  stream.on('end', () => resolve(Buffer.concat(chunks)))
+  stream.on('end', () => {
+    try {
+      limits?.deadline.check()
+      resolve(Buffer.concat(chunks, total))
+    }
+    catch (error) {
+      reject(error)
+    }
+  })
   stream.on('error', reject)
 })
 
@@ -342,23 +372,35 @@ export const serializePdfLayout = async (
   props: DocumentMetadata,
   layout: SafeDocumentNode,
   compress: boolean,
-  deadline?: RenderDeadline,
+  limits?: RenderLimits,
 ): Promise<Uint8Array> => {
   // Checked before the paint (outside the try below) so an expired budget stays
   // PDF_LIMIT_EXCEEDED instead of being re-wrapped as a serialization failure.
-  deadline?.check()
+  limits?.deadline.check()
   try {
     anchorDestinationsAtFirstPage(layout)
     normalizeResolvedSvgZeros(layout)
     const context = createContext(props, compress)
-    const stream = renderPDF(
-      context as unknown as Parameters<typeof renderPDF>[0],
-      layout,
-    ) as unknown as NodeJS.ReadableStream
+    // Listen before the synchronous painter starts so early PDFKit chunks and
+    // errors cannot race the collector.
+    const collected = collectStream(context, limits)
+    try {
+      renderPDF(
+        context as unknown as Parameters<typeof renderPDF>[0],
+        layout,
+      )
+    }
+    catch (error) {
+      const cause = error instanceof Error ? error : new Error(String(error))
+      context.destroy(cause)
+      await collected.catch(() => undefined)
+      throw cause
+    }
 
-    return await collectStream(stream)
+    return await collected
   }
   catch (error) {
+    if (error instanceof NuxtPdfError) throw error
     throw new NuxtPdfError(
       PDF_ERROR_CODES.RenderError,
       `PDF serialization failed: ${error instanceof Error ? error.message : String(error)}`,
@@ -377,7 +419,7 @@ export const renderDocument = async (
     document.props,
     layout,
     options.compress ?? true,
-    options.limits?.deadline,
+    options.limits,
   )
 
   return { bytes, layout }

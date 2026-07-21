@@ -21,6 +21,7 @@ import { countPages, renderDocument } from './engine/render-document'
 import { renderDocumentMultiPass } from './engine/layout-passes'
 import {
   createRenderLimits,
+  enforceTreeLimits,
   resolvePdfRenderLimits,
   type PdfRenderLimits,
 } from './engine/limits'
@@ -232,9 +233,11 @@ const renderTemplate = async <Props extends object>(
       props as Record<string, unknown>,
       warn,
     )
+    enforceTreeLimits(mounted.document, limits)
     applyDocumentMetadata(mounted.document, metadata)
     await resolvePdfImageAssets(mounted.document, {
       assets: options.assets ?? EMPTY_ASSETS,
+      limits,
       remote: options.remote,
     })
 
