@@ -163,9 +163,10 @@ The alpha exposes seven thin primitives:
 - `PdfNote`
 
 Composition is normal Vue: use typed props, interpolation, `v-if`, keyed
-`v-for`, local components, and slots. Styles are React PDF style objects, not
-browser CSS. Invalid primitive nesting and DOM-only attributes fail early with
-targeted diagnostics.
+`v-for`, local components, and slots. Styles use Nuxt PDF's framework-owned,
+typed `PdfStyle` contract, not browser CSS or the upstream React PDF type
+surface. Invalid nesting, DOM-only attributes, unknown props, and props used on
+the wrong primitive fail early with `PDF_TREE_INVALID`.
 
 `definePdf` accepts static metadata plus preview data:
 
@@ -237,22 +238,25 @@ That marker does not validate the props; it only makes the loss of static
 typing visible at the call site. Unknown template names still fail with
 `PDF_TEMPLATE_NOT_FOUND`.
 
-One render result can be converted without rendering the document again:
+One completed render result owns immutable bytes and can be converted without
+rendering the document again:
 
 ```ts
 const result = await pdf.invoice.render({ invoice })
 
 await result.toUint8Array()
 await result.toBuffer()
-await result.toStream()
+result.diagnostics // duration, byte size, pages, passes, warnings
 await result.response({
   disposition: 'inline',
   filename: 'invoice.pdf',
 })
 ```
 
-`response()` always sets `content-type: application/pdf` and sanitizes the
-download filename before writing `content-disposition`.
+`response()` always sets `content-type`, the exact `content-length`, and a
+sanitized `content-disposition`. With no template filename or response override,
+it safely downloads as `document.pdf`. Diagnostics contain measurements and
+warnings only — never document content, props, or resource URLs.
 
 ## Local images and fonts
 

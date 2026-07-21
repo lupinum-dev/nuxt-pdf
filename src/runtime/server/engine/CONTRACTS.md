@@ -102,6 +102,30 @@ Only `DOCUMENT` is accepted as the root passed to layout. Raw text is retained o
 
 Protected by `test/renderer.test.ts` and the paired conformance fixture. An incompatible change will fail exact tree assertions or layout before PDF serialization.
 
+### Closed authoring-input contract
+
+The host-node shape matches the engine; the public input surface deliberately
+does not match every upstream prop or stylesheet key. `PdfStyle` is owned by
+Nuxt PDF and lists only the value shapes and units covered by this repository's
+fixtures. Primitive props are likewise closed: `patchPdfProp` uses an exact
+per-primitive allowlist tied to the exported prop types, then the complete-tree
+validator checks cross-prop and context invariants. This catches Vue fallthrough
+attributes that TypeScript cannot reliably exclude. Unknown props, DOM/event
+attributes, props on the wrong primitive, both/neither image sources, both/neither
+link targets, and page-flow/SVG text branch violations all fail with
+`PDF_TREE_INVALID`; none reach layout as best-effort passthroughs.
+
+`PdfImage` therefore has exactly one of `src`/`source`, and `PdfLink` exactly one
+of `href`/`src`. SVG `PdfText` requires `x` and `y`, uses direct `fill` for paint,
+and rejects page-flow-only props. `PdfTspan` accepts only `x`, `y`, and `fill`.
+`PdfG` and shapes accept their direct presentation props but no generic `style`;
+`PdfSvg.style` remains page-flow sizing/positioning, while SVG text style is for
+text metrics rather than SVG paint.
+
+Protected by the real Vue SFC/type fixtures and renderer invalid-tree tests. A
+new public prop or style key requires types, runtime admission, invariant tests,
+and conformance evidence together; there is no compatibility passthrough.
+
 ## Layout contract
 
 `layoutDocument(document, fontStore)` accepts a `DocumentNode` and returns a `SafeDocumentNode`. The published JavaScript pipeline forwards additional arguments to every layout step and React PDF itself passes `fontStore` as the second argument. The published declaration incorrectly exposes only the document argument, so Nuxt PDF narrows this one call through a local function signature.
@@ -214,26 +238,49 @@ engine code is involved beyond the pinned `@react-pdf/layout` and
   is an incomplete advisory type, not a runtime rule; `node-ops.ts` deliberately
   adds `Svg` to `PAGE_CHILDREN` on the evidence of the measure function. A future
   reader must not "correct" this back to match the upstream union.
-- **SVG props are camelCase and override style.** `resolveSvg` keys off exact
-  camelCase prop names (`strokeWidth`, `fillOpacity`, `stopColor`, `viewBox`,
-  `gradientTransform`) via `parseProps`/`pickStyleProps`, and merges
-  `Object.assign({}, style, props)` so props win over style. `transform` is a
-  *prop* on SVG nodes (parsed by `resolveSvg`), unlike `View`, where it is a
-  style key. The thin SVG components coerce kebab-case attribute names to these
-  camelCase keys (`compactSvgProps`) so static template attributes are not
-  silently dropped; `data-`/`aria-` names are left untouched so `patchPdfProp`
-  still rejects them.
-- **`url(#id)` references resolve within one Svg subtree.** `getDefs` indexes
-  `DEFS` children by `props.id`; `replaceDefs` substitutes matches for
-  `fill`/`clipPath` `url(#id)` references and detaches the `DEFS` subtree. A
-  dangling reference yields `undefined` (no fill), which differs from browsers.
+- **SVG presentation is a direct-prop contract.** `resolveSvg` keys off exact
+  camelCase names (`strokeWidth`, `fillOpacity`, `stopColor`, `viewBox`) via
+  `parseProps`/`pickStyleProps`; `transform` is a prop on SVG groups/shapes,
+  unlike `View`, where it is a style key. Although upstream internally merges a
+  node's style and props, Nuxt PDF does not expose generic style on `PdfG`,
+  shapes, or `PdfTspan`, so that merge is not public precedence behavior. The
+  thin components coerce kebab-case template attributes to camelCase
+  (`compactSvgProps`); `data-`/`aria-` names stay untouched so `patchPdfProp`
+  rejects them.
+- **The numeric surface is parsed and validated before layout.** Geometry is a
+  finite number/numeric string, plus percentages only for `PdfSvgLength` props;
+  stroke width excludes percentages. Dimensions/radii are non-negative,
+  opacities and stops stay in their unit intervals, `viewBox` has four finite
+  numbers with positive dimensions, and transforms are one to three unitless
+  `translate`/`rotate` operations. This is narrower than arbitrary browser SVG
+  syntax by design.
+- **`url(#id)` references are scoped and fail closed.** Upstream `getDefs`
+  indexes a `DEFS` subtree, `replaceDefs` substitutes `fill`/`clipPath`
+  references, and then detaches `DEFS`. Nuxt PDF validates before layout that an
+  SVG has at most one `PdfDefs`, ids are safe and unique within that SVG, fills
+  target gradients, and clip paths target `PdfClipPath`. Missing, malformed, or
+  incompatible references fail with `PDF_TREE_INVALID`, so upstream's dangling
+  reference fallback is intentionally unreachable. Definition ids are scoped
+  per SVG and are a separate namespace from document destination ids.
+- **Resolved explicit zeroes are repaired before paint.** Layout parses author
+  strings to numbers and resolves a gradient reference into `node.props.fill`;
+  the pinned renderer then uses truthiness fallbacks that lose some numeric
+  zeroes. `serializePdfLayout` walks the disposable resolved tree immediately
+  before `renderPDF`: `fillOpacity: 0` becomes the truthy numeric string `'0'`;
+  `strokeWidth: 0` clears the stroke so PDFKit cannot interpret width zero as a
+  hairline; linear-gradient `x2` and radial-gradient `cx`/`cy`/`fx`/`fy`/`r`
+  zeroes become `'0'` on the resolved definition object. Under the closed
+  object-bounding-box gradient contract the renderer coerces those strings back
+  to numeric zero at use, preserving authored SVG semantics.
 - **Scope exclusions.** `Marker` (and `markerStart`/`Mid`/`End`) has additional
   `resolveSvg` container logic that is intentionally not exposed; the `Defs`
   child set and prop types exclude it. `List`, `Canvas`, `ImageBackground`, and
   form primitives are also out of scope.
 
-Protected by `test/svg-conformance.test.ts` (semantic + raster parity against
-React) and the SVG nesting/casing tests in `test/renderer.test.ts`.
+Protected by `test/svg-conformance.test.ts` (semantic/raster parity, direct SVG
+text fill, and zero-value regressions) and the SVG nesting, prop-surface,
+reference-scope, numeric, transform, and casing tests in
+`test/renderer.test.ts`.
 
 ## PDFKit contract
 

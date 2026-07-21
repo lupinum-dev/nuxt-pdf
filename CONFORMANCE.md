@@ -37,8 +37,8 @@ The paired React/Vue fixture verifies:
   page-by-page raster comparison for this fixture.
 
 Renderer tests separately cover insertion, removal, keyed movement, prop and
-text updates, primitive resolution, rejection of invalid roots, and exclusion
-of orphan text from the document tree.
+text updates, primitive resolution, rejection of invalid roots, and fail-closed
+rejection of non-whitespace orphan text without echoing its content.
 
 Dynamic text (page-number footers) renders at correct page-bottom geometry even
 when a `lineHeight` reaches it — inherited from `PdfPage` or nested `PdfView`
@@ -65,23 +65,38 @@ the same layout and render engine and verifies:
 - a `PdfDefs` `PdfClipPath` referenced by `clipPath="url(#id)"`;
 - SVG text: a `PdfSvg` `PdfText` with `x`/`y` and two `PdfTspan` children,
   proving tspan joining and x-chaining, with its content preserved as extracted
-  page text; and
+  page text; direct SVG `fill` is raster-proven independently rather than
+  relying on page-flow `style.color`; and
 - equivalent extracted page text plus a thresholded page raster comparison
   against React output and a reviewed committed baseline.
 
 Renderer tests separately cover the SVG nesting rules: which primitives each
 container accepts, `PdfSvg` as a valid child of `PdfPage` and `PdfView`, the
 rejection of `PdfSvg` directly inside `PdfText`, leaf shapes staying childless,
-and coercion of kebab-case SVG attributes (`stroke-width`) to the camelCase
-prop names (`strokeWidth`) the engine reads.
+closed per-primitive prop allowlists, required props (with numeric zero treated
+as present), numeric/range/viewBox/transform validation, page-flow versus SVG
+text props, `PdfTspan`'s `x`/`y`/`fill`-only boundary, and coercion of kebab-case
+SVG attributes (`stroke-width`) to the camelCase prop names (`strokeWidth`) the
+engine reads.
 
-SVG props are camelCase and, on SVG nodes, override `style`; `transform` is a
-prop on SVG primitives (unlike `PdfView`, where it is a style key). A `url(#id)`
-reference resolves only against a `PdfDefs` child in the same `PdfSvg` subtree;
-a dangling reference yields no fill, which differs from browser SVG. Not claimed
-within SVG: `Marker` (`markerStart`/`markerMid`/`markerEnd`), non-default
-`gradientUnits` and `preserveAspectRatio` beyond the tested defaults, and SVG
-image files as an image source.
+SVG presentation uses direct camelCase props; `PdfG` and shapes do not expose a
+generic style prop. `PdfSvg.style` is page-flow sizing/positioning, SVG
+`PdfText.style` is for text metrics, and direct `fill` controls SVG text paint.
+`transform` is a direct prop on groups/shapes (unlike `PdfView`, where it is a
+style key) and is limited to one to three unitless translate/rotate operations.
+A `url(#id)` resolves only against the single `PdfDefs` in the same `PdfSvg`;
+definition ids are safe, unique within that SVG, reusable in other SVGs, and
+separate from destination ids. Missing, malformed, or incompatible fill/clip
+references fail with `PDF_TREE_INVALID`.
+
+Vue-only raster regressions additionally prove the intentional zero-value
+repair at the serialization boundary: `fillOpacity: 0` is transparent,
+`strokeWidth: 0` paints no PDF hairline, linear `x2: 0` stays zero, and radial
+`cx`/`cy`/`fx`/`fy`/`r` zeroes stay zero after layout resolves definitions.
+`strokeOpacity` paint is independently raster-proven. Not exposed within SVG:
+`Marker` (`markerStart`/`markerMid`/`markerEnd`), alternate gradient coordinate
+systems/transforms/inheritance, and `preserveAspectRatio` modes. SVG image files
+are not supported as an image source.
 
 ### Behavioural conformance corpus
 
@@ -134,6 +149,12 @@ reviewed baselines.
 
 **Styles and layout** (`test/corpus/styles.test.ts`):
 
+`PdfStyle` is a framework-owned contract, not a re-export of the wider upstream
+stylesheet types. Real TypeScript and Vue SFC negative fixtures reject unknown
+keys, unsupported units/values, and invalid style-array entries; runtime props
+remain independently closed because Vue fallthrough attrs can escape static
+checking.
+
 - flexbox — `row`/`column` direction, `flexGrow`, `flexBasis`+`flexShrink`,
   `justifyContent: space-between`, `alignItems: center`, and `gap`;
 - percent width/height against page and nested parent boxes;
@@ -173,17 +194,25 @@ The 0.2.0 tests verify:
   nested keys, collisions, and project-over-layer precedence;
 - generated typed `#pdf` access, including negative type fixtures for missing
   props, extra props, invalid props, and invalid template keys;
-- one render execution shared by byte, buffer, stream, and `Response`
-  conversions;
+- framework-owned `PdfStyle` and exact primitive prop types checked through a
+  real Vue SFC, plus closed per-primitive runtime allowlists that reject
+  unknown, DOM/event, removed, and wrong-host props without echoing values;
+- exactly one `src`/`source` for `PdfImage`, exactly one `href`/`src` for
+  `PdfLink`, and context-specific page-flow/SVG `PdfText` invariants;
+- one completed render held behind immutable byte, buffer, and `Response`
+  conversions, with one frozen, content-free diagnostics object shared by the
+  production result and development preview;
 - template attribution on failure: every error surfaced from a template's
   `render()` is a `NuxtPdfError` carrying `templateKey` and `templateFile` and a
-  message prefixed with the template name and source file (`pdfs/…`), and
-  invalid-nesting warnings emitted during that render are prefixed with the same
-  template context. Font-resolution failures surface as a single
+  message prefixed with the template name and source file (`pdfs/…`). Invalid
+  nesting fails with `PDF_TREE_INVALID`; it never returns a partial document or
+  downgrades the failure to a warning. Font-resolution failures surface as a single
   `PDF_LAYOUT_ERROR` (font resolution is a layout sub-stage) whose message
   preserves React PDF's exact "Font family not registered" text rather than a
   separate font-error code;
-- safe PDF response headers and filename sanitization;
+- safe PDF response headers: bounded Unicode-safe filename sanitization, a
+  default `document.pdf` attachment name, exact `content-length`, and forced PDF
+  content type;
 - development preview index, viewer, raw PDF, and named scenarios;
 - a production Nitro route rendering through the generated registry;
 - absence of development preview behavior in production; and
@@ -379,26 +408,27 @@ failure messages, in `test/test-utils-public.test.ts`.
 - Authenticated remote fetches, request headers/bodies, credentialed requests,
   proxies, or private-IP/DNS-rebinding protection. Opt-in allowlisted remote
   images and fonts are claimed above under "Opt-in remote resources".
-- SVG image files (as an image source), SVG `Marker`, and non-default
-  `gradientUnits`/`preserveAspectRatio`. SVG drawing primitives are otherwise
-  claimed above.
-- A layout effect for `wordSpacing`. It is accepted and inherited as a style but
-  never consumed by the `@react-pdf/layout` + textkit pipeline this module drives
-  (only pdfkit's own text layout reads it, which the render step bypasses), so it
-  changes neither wrapping nor glyph advances. `letterSpacing` is honored.
+- SVG image files (as an image source), SVG `Marker`, alternate gradient
+  coordinate systems/transforms/inheritance, and `preserveAspectRatio` modes.
+  Radial-gradient inner radius (`fr`) is also absent because the pinned renderer
+  hardcodes it to zero. SVG drawing primitives are otherwise claimed above.
+- `wordSpacing` authoring. The pinned `@react-pdf/layout` + textkit pipeline does
+  not apply it to wrapping or glyph advances, so Nuxt PDF leaves the no-op
+  property out of `PdfStyle`. Use the verified `letterSpacing` property instead.
 - Browser CSS, HTML printing, a PDF stylesheet compiler, or paged-media CSS.
 - A first-class table layout engine, charts, forms, signing, editing, or PDF
   merging. A table of contents is authored from ordinary components; there is no
   TOC component or automatic heading collection.
 - Bookmark destination geometry (`top`/`left`/`zoom`/`fit`) and outline click
-  actions beyond title text and parent/child nesting; the outline is verified by
-  its title hierarchy via pdfjs `getOutline`.
+  actions are not exposed. Bookmark titles, expanded state, and parent/child
+  nesting are verified; the title hierarchy is inspected via pdfjs
+  `getOutline`.
 - Multi-pass resolution of anything other than destination page numbers, and
   convergence for documents whose geometry depends on the numbers they print
   (these fail closed with `PDF_LIMIT_EXCEEDED`, they are not made to converge).
 - Tagged PDF, PDF/UA, archival, or other accessibility/compliance profiles.
-- PDF encryption. `ownerPassword`, `userPassword`, and `permissions` are typed
-  passthroughs to the engine with no conformance fixture behind them.
+- PDF encryption. Password and permission props are not exposed without a
+  conformance fixture proving their behaviour.
 - Deterministic PDF bytes across operating systems or PDF viewers.
 - Hard render cancellation. The `pdf.limits.timeoutMs` budget is polled between
   engine stages and passes — upstream layout is not abortable mid-step — so a
