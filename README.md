@@ -138,15 +138,16 @@ preview and the raw PDF. Each viewer page:
   count, and layout passes — plus every warning the render emitted (in
   development these are collected for the panel; production still logs them with
   `console.warn`);
-- replaces the document with a readable error panel — code, template, file, and
-  message, no stack dump — when a render fails; and
-- has a `Refresh` link that re-renders. Nuxt already restarts on template
-  changes, so there is no websocket or HMR layer.
+- shows a content-free error summary when a render fails while retaining the
+  previous successful PDF with an explicit stale marker;
+- provides separate refresh, inline raw-PDF, and download actions; and
+- automatically reloads after a PDF SFC changes while preserving the active
+  scenario in the current URL.
 
-The whole preview is server-rendered HTML with no client build step and is
-absent from production builds. It calls the template's public `render(props)`
-once and embeds that exact completed result; there is no preview-specific render
-path.
+The preview is server-rendered HTML with a tiny Vite development-event listener
+and is absent from production builds. It calls the template's public
+`render(props)` once and embeds that exact completed result; there is no
+preview-specific render path.
 
 ## Authoring model
 
