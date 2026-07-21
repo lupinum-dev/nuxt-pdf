@@ -18,6 +18,7 @@ import {
   PDF_PRIMITIVES,
   type PdfElementNode,
   type PdfNode,
+  type PdfStyleValue,
 } from '../../renderer/types'
 import {
   enforceMaxPages,
@@ -66,9 +67,11 @@ const normalizeDynamicTextLineHeight = (node: PdfElementNode): void => {
     node.type === PDF_PRIMITIVES.Text
     && typeof node.props.render === 'function'
   ) {
-    node.style = Array.isArray(node.style)
+    // The empty-string sentinel is an engine-only workaround, never valid
+    // author input, so keep it outside the public PdfStyle contract.
+    node.style = (Array.isArray(node.style)
       ? [...node.style, { lineHeight: DYNAMIC_LINE_HEIGHT_SENTINEL }]
-      : { ...(node.style ?? {}), lineHeight: DYNAMIC_LINE_HEIGHT_SENTINEL }
+      : { ...(node.style ?? {}), lineHeight: DYNAMIC_LINE_HEIGHT_SENTINEL }) as PdfStyleValue
   }
 
   for (const child of node.children) {
@@ -207,13 +210,13 @@ const nodeId = (node: PdfElementNode): string | undefined => {
 export const extractDestinationPages = (
   layout: SafeDocumentNode,
 ): DestinationPageMap => {
-  const pages: DestinationPageMap = {}
+  const pages = Object.create(null) as DestinationPageMap
 
   documentPages(layout).forEach((page, index) => {
     const pageNumber = index + 1
     visitPageNodes(page, (node) => {
       const id = nodeId(node)
-      if (id !== undefined && !(id in pages)) pages[id] = pageNumber
+      if (id !== undefined && !Object.hasOwn(pages, id)) pages[id] = pageNumber
     })
   })
 

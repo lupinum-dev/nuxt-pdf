@@ -261,30 +261,39 @@ describe('Vue PDF host renderer', () => {
     expect(mounted.root.document).toBeNull()
   })
 
-  it('warns once and excludes orphan text', async () => {
-    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  it('fails closed on orphan text without echoing document content', async () => {
     const Fixture = defineComponent(() => () =>
       h(PdfDocument, null, {
         default: () => h(PdfPage, null, {
-          default: () => h(PdfView, { id: 'orphan' }, () => 'not allowed'),
+          default: () => h(PdfView, { id: 'orphan' }, () => 'private customer text'),
+        }),
+      }),
+    )
+
+    const error = await mountPdfComponent(Fixture).catch(cause => cause)
+    expect(error).toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message: '<PdfView> cannot contain text. Wrap it in <PdfText>.',
+    })
+    expect((error as Error).message).not.toContain('private customer text')
+  })
+
+  it('ignores formatting whitespace outside text containers', async () => {
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, null, {
+          default: () => h(PdfView, null, () => ' \n  '),
         }),
       }),
     )
 
     const mounted = await mountPdfComponent(Fixture)
-    const orphanView = elementChild(elementChild(mounted.document, 0), 0)
-
-    expect(orphanView.children).toEqual([])
-    expect(warning).toHaveBeenCalledTimes(1)
-    expect(warning).toHaveBeenCalledWith(
-      'Invalid \'not allowed\' string child outside <PdfText>.',
-    )
-
+    expect(elementChild(elementChild(mounted.document, 0), 0).children)
+      .toEqual([])
     mounted.unmount()
   })
 
-  it('warns once and excludes unsupported primitive nesting', async () => {
-    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  it('fails closed on unsupported primitive nesting', async () => {
     const Fixture = defineComponent(() => () =>
       h(PdfDocument, null, {
         default: () => h(PdfPage, null, {
@@ -298,20 +307,13 @@ describe('Vue PDF host renderer', () => {
       }),
     )
 
-    const mounted = await mountPdfComponent(Fixture)
-    const view = elementChild(elementChild(mounted.document, 0), 0)
-
-    expect(view.children).toHaveLength(1)
-    expect(textChild(elementChild(view, 0)).value).toBe('Still valid')
-    expect(warning).toHaveBeenCalledOnce()
-    expect(warning).toHaveBeenCalledWith(
-      'Invalid PDF nesting: <PdfView> cannot contain <PdfPage>. The <PdfPage> child was ignored.',
-    )
-
-    mounted.unmount()
+    await expect(mountPdfComponent(Fixture)).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message: 'Invalid PDF nesting: <PdfView> cannot contain <PdfPage>.',
+    })
   })
 
-  it('routes nesting warnings to a provided warn callback', async () => {
+  it('does not downgrade invalid nesting when a warning sink is provided', async () => {
     const warn = vi.fn()
     const Fixture = defineComponent(() => () =>
       h(PdfDocument, null, {
@@ -323,13 +325,50 @@ describe('Vue PDF host renderer', () => {
       }),
     )
 
-    const mounted = await mountPdfComponent(Fixture, {}, warn)
+    await expect(mountPdfComponent(Fixture, {}, warn)).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+    })
+    expect(warn).not.toHaveBeenCalled()
+  })
 
-    expect(warn).toHaveBeenCalledWith(
-      'Invalid PDF nesting: <PdfView> cannot contain <PdfPage>. The <PdfPage> child was ignored.',
+  it('rejects duplicate destination ids without echoing the identifier', async () => {
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, null, {
+          default: () => [
+            h(PdfView, { id: 'private-customer-id' }),
+            h(PdfText, { id: 'private-customer-id' }, () => 'Duplicate'),
+          ],
+        }),
+      }),
     )
 
-    mounted.unmount()
+    const error = await mountPdfComponent(Fixture).catch(cause => cause)
+    expect(error).toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message: 'PDF destination ids must be unique within a document.',
+    })
+    expect((error as Error).message).not.toContain('private-customer-id')
+  })
+
+  it.each([
+    '',
+    '   ',
+    '__proto__',
+    'constructor',
+    'prototype',
+  ])('rejects unsafe destination id %j', async (id) => {
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, null, {
+          default: () => h(PdfText, { id }, () => 'Destination'),
+        }),
+      }),
+    )
+
+    await expect(mountPdfComponent(Fixture)).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+    })
   })
 
   it.each([
@@ -461,112 +500,73 @@ describe('Vue PDF SVG nesting', () => {
   })
 
   it('rejects Defs inside a G', async () => {
-    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const mounted = await mountSvgSubtree(() => h(PdfG, null, {
+    await expect(mountSvgSubtree(() => h(PdfG, null, {
       default: () => [
         h(PdfRect, { key: 'kept', width: 1, height: 1 }),
         h(PdfDefs, { key: 'dropped' }),
       ],
-    }))
-
-    const group = elementChild(svgOf(mounted), 0)
-    expect(group.children).toHaveLength(1)
-    expect(elementChild(group, 0).type).toBe(PDF_PRIMITIVES.Rect)
-    expect(warning).toHaveBeenCalledWith(
-      'Invalid PDF nesting: <PdfG> cannot contain <PdfDefs>. The <PdfDefs> child was ignored.',
-    )
-
-    mounted.unmount()
+    }))).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message: 'Invalid PDF nesting: <PdfG> cannot contain <PdfDefs>.',
+    })
   })
 
   it('rejects Tspan outside Text, where upstream would draw nothing', async () => {
-    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const mounted = await mountSvgSubtree(() => h(PdfG, null, {
+    await expect(mountSvgSubtree(() => h(PdfG, null, {
       default: () => [
         h(PdfText, { key: 'text' }, {
           default: () => h(PdfTspan, null, () => 'kept'),
         }),
         h(PdfTspan, { key: 'orphan' }, () => 'dropped'),
       ],
-    }))
-
-    const group = elementChild(svgOf(mounted), 0)
-    expect(group.children).toHaveLength(1)
-    expect(elementChild(group, 0).type).toBe(PDF_PRIMITIVES.Text)
-    expect(elementChild(elementChild(group, 0), 0).type).toBe(PDF_PRIMITIVES.Tspan)
-    expect(warning).toHaveBeenCalledWith(
-      'Invalid PDF nesting: <PdfG> cannot contain <PdfTspan>. The <PdfTspan> child was ignored.',
-    )
-
-    mounted.unmount()
+    }))).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message: 'Invalid PDF nesting: <PdfG> cannot contain <PdfTspan>.',
+    })
   })
 
   it('lets Defs hold gradients and clip paths but rejects raw shapes', async () => {
-    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const mounted = await mountSvgSubtree(() => h(PdfDefs, null, {
+    await expect(mountSvgSubtree(() => h(PdfDefs, null, {
       default: () => [
         h(PdfLinearGradient, { key: 'grad', id: 'g' }),
         h(PdfClipPath, { key: 'clip', id: 'c' }),
         h(PdfRect, { key: 'raw', width: 1, height: 1 }),
       ],
-    }))
-
-    const defs = elementChild(svgOf(mounted), 0)
-    expect(defs.children.map(child => (child as PdfElementNode).type)).toEqual([
-      PDF_PRIMITIVES.LinearGradient,
-      PDF_PRIMITIVES.ClipPath,
-    ])
-    expect(warning).toHaveBeenCalledWith(
-      'Invalid PDF nesting: <PdfDefs> cannot contain <PdfRect>. The <PdfRect> child was ignored.',
-    )
-
-    mounted.unmount()
+    }))).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message: 'Invalid PDF nesting: <PdfDefs> cannot contain <PdfRect>.',
+    })
   })
 
   it('lets ClipPath hold shapes but rejects text', async () => {
-    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const mounted = await mountSvgSubtree(() => h(PdfDefs, null, {
+    await expect(mountSvgSubtree(() => h(PdfDefs, null, {
       default: () => h(PdfClipPath, { id: 'c' }, {
         default: () => [
           h(PdfRect, { key: 'kept', width: 1, height: 1 }),
           h(PdfText, { key: 'dropped' }, () => 'no text in clip'),
         ],
       }),
-    }))
-
-    const clip = elementChild(elementChild(svgOf(mounted), 0), 0)
-    expect(clip.children).toHaveLength(1)
-    expect(elementChild(clip, 0).type).toBe(PDF_PRIMITIVES.Rect)
-    expect(warning).toHaveBeenCalledWith(
-      'Invalid PDF nesting: <PdfClipPath> cannot contain <PdfText>. The <PdfText> child was ignored.',
-    )
-
-    mounted.unmount()
+    }))).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message: 'Invalid PDF nesting: <PdfClipPath> cannot contain <PdfText>.',
+    })
   })
 
   it('restricts gradients to Stop children', async () => {
-    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const mounted = await mountSvgSubtree(() => h(PdfDefs, null, {
+    await expect(mountSvgSubtree(() => h(PdfDefs, null, {
       default: () => h(PdfLinearGradient, { id: 'g' }, {
         default: () => [
           h(PdfStop, { key: 'kept', offset: '0', stopColor: '#000' }),
           h(PdfRect, { key: 'dropped', width: 1, height: 1 }),
         ],
       }),
-    }))
-
-    const gradient = elementChild(elementChild(svgOf(mounted), 0), 0)
-    expect(gradient.children).toHaveLength(1)
-    expect(elementChild(gradient, 0).type).toBe(PDF_PRIMITIVES.Stop)
-    expect(warning).toHaveBeenCalledWith(
-      'Invalid PDF nesting: <PdfLinearGradient> cannot contain <PdfRect>. The <PdfRect> child was ignored.',
-    )
-
-    mounted.unmount()
+    }))).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message: 'Invalid PDF nesting: <PdfLinearGradient> cannot contain <PdfRect>.',
+    })
   })
 
   it('rejects an Svg placed directly inside a PdfText', async () => {
-    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const Fixture = defineComponent(() => () =>
       h(PdfDocument, null, {
         default: () => h(PdfPage, null, {
@@ -577,15 +577,10 @@ describe('Vue PDF SVG nesting', () => {
       }),
     )
 
-    const mounted = await mountPdfComponent(Fixture)
-    const text = elementChild(elementChild(mounted.document, 0), 0)
-
-    expect(text.children).toEqual([])
-    expect(warning).toHaveBeenCalledWith(
-      'Invalid PDF nesting: <PdfText> cannot contain <PdfSvg>. The <PdfSvg> child was ignored.',
-    )
-
-    mounted.unmount()
+    await expect(mountPdfComponent(Fixture)).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message: 'Invalid PDF nesting: <PdfText> cannot contain <PdfSvg>.',
+    })
   })
 
   it('coerces kebab-case SVG attributes to the camelCase engine props', async () => {

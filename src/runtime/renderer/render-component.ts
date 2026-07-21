@@ -37,6 +37,7 @@ import {
   createPdfRoot,
   type PdfRendererWarning,
 } from './node-ops'
+import { NuxtPdfError, PDF_ERROR_CODES } from '../shared/errors'
 import {
   PDF_PRIMITIVES,
   type PdfDocumentNode,
@@ -44,6 +45,7 @@ import {
   type PdfHostNode,
   type PdfRoot,
 } from './types'
+import { validatePdfDocumentTree } from './validate-tree'
 
 const PDF_COMPONENTS = {
   PdfCircle,
@@ -85,11 +87,13 @@ export type MountedPdfComponent = {
 
 const requireDocument = (root: PdfRoot): PdfDocumentNode => {
   if (root.document?.type !== PDF_PRIMITIVES.Document) {
-    throw new TypeError(
+    throw new NuxtPdfError(
+      PDF_ERROR_CODES.TreeInvalid,
       'A PDF component must render exactly one PdfDocument at its root.',
     )
   }
 
+  validatePdfDocumentTree(root.document)
   return root.document
 }
 
