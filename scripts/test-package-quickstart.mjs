@@ -364,7 +364,7 @@ try {
   const tarball = join(temporaryDirectory, basename(report.filename))
 
   assert(report.name === '@lupinum/nuxt-pdf', `Quickstart packed the wrong package: ${report.name}.`)
-  assert(report.version === '0.2.0', `Quickstart packed the wrong version: ${report.version}.`)
+  assert(report.version === packageJson.version, `Quickstart packed the wrong version: ${report.version}.`)
 
   await writeFixture(appDir, tarball)
 

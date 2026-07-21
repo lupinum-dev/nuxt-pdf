@@ -5,8 +5,9 @@ application. Nuxt PDF uses Vue for authoring and the framework-neutral React
 PDF layout, font, and serialization packages for rendering; React itself is
 not a production dependency.
 
-`0.2.0` is an external alpha: still one Nuxt module, one document tree, and one
-Node server renderer, with a contract that has widened from 0.1.0's core layout
+The current release is an external alpha: still one Nuxt module, one document
+tree, and one Node server renderer, with a contract that has widened from
+0.1.0's core layout
 primitives to SVG drawing, a multi-pass table of contents, internal links,
 bookmarks, opt-in remote resources, shipped testing utilities, and enforced
 render limits — each backed by an executable fixture. See
@@ -19,8 +20,8 @@ the compatibility claim.
 - Nuxt `^4.4.8`
 - Vue `^3.5.0`
 
-Nuxt 3, Node 20, browser rendering, and edge rendering are not claimed by
-`0.2.0`.
+Nuxt 3, Node 20, browser rendering, and edge rendering are not claimed by the
+current alpha.
 
 ## Ten-minute quickstart
 

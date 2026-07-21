@@ -5,13 +5,17 @@
   "scripts": {
     "dev": "nuxt dev",
     "build": "nuxt build",
+    "check": "pnpm clean && pnpm check:snippets && pnpm typecheck && pnpm build && pnpm check:links",
+    "check:links": "ginko-content validate .",
+    "check:snippets": "node ../scripts/check-docs-snippets.mjs",
+    "clean": "nuxt cleanup",
     "generate": "nuxt generate",
     "prepare": "nuxt prepare",
     "typecheck": "nuxt prepare && vue-tsc --noEmit"
   },
   "dependencies": {
-    "@lupinum/ginko-content": "file:../../../../workspace/ginko-content/.pack/lupinum-ginko-content-0.3.0-rc.5.tgz",
-    "@lupinum/ginko-docs": "file:../../../../2_sites/ginko-docs/layer/.pack/lupinum-ginko-docs-0.2.2.tgz",
+    "@lupinum/ginko-content": "0.3.0-rc.4",
+    "@lupinum/ginko-docs": "0.2.2",
     "nuxt": "^4.4.8",
     "vue": "^3.5.35",
     "vue-router": "^5.1.0"

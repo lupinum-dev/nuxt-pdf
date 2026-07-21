@@ -287,7 +287,7 @@ function assertSupportedBlocks(descriptor: SFCDescriptor, filename: string): voi
     throw errorAtBlock(
       filename,
       style,
-      '<style> blocks are not supported in PDF components in 0.2.0.',
+      '<style> blocks are not supported in PDF components.',
     )
   }
 
@@ -296,7 +296,7 @@ function assertSupportedBlocks(descriptor: SFCDescriptor, filename: string): voi
     throw errorAtBlock(
       filename,
       customBlock,
-      `<${customBlock.type}> custom blocks are not supported in PDF components in 0.2.0.`,
+      `<${customBlock.type}> custom blocks are not supported in PDF components.`,
     )
   }
 }

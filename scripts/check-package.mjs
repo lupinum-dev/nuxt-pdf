@@ -10,7 +10,6 @@ const packageJson = JSON.parse(
 )
 const expectedRelease = {
   name: '@lupinum/nuxt-pdf',
-  version: '0.2.0',
 }
 
 const requiredFiles = [
@@ -97,7 +96,6 @@ try {
   const fileSet = new Set(files)
 
   assert(packageJson.name === expectedRelease.name, `Release package name is ${packageJson.name}; expected ${expectedRelease.name}.`)
-  assert(packageJson.version === expectedRelease.version, `Release version is ${packageJson.version}; expected ${expectedRelease.version}.`)
   assert(report.name === packageJson.name, `Packed name is ${report.name}; expected ${packageJson.name}.`)
   assert(report.version === packageJson.version, `Packed version is ${report.version}; expected ${packageJson.version}.`)
   assert(report.entryCount === files.length, 'npm pack reported an inconsistent entry count.')

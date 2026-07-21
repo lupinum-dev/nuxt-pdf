@@ -35,8 +35,8 @@ appears.
    per-package only if the combined bump fails.
 3. Run the full evidence chain and record exact results:
    - `pnpm lint`
-   - `pnpm test` (193 tests, including the paired conformance fixtures and the
-     raster baselines)
+   - `pnpm test` (including the paired conformance fixtures and raster
+     baselines)
    - `pnpm test:types`
 4. Re-verify each documented contract below against the new engine source in the
    read-only reference checkout (`react-pdf/`). Update the **Reference commit**
