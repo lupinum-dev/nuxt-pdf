@@ -31,7 +31,7 @@ const date = (value: string) => formatLupinumDate(value, invoice.locale)
 const qrPayload = buildEpcQrPayload(invoice, totals.total)
 const vatPercent = formatLupinumQuantity(invoice.vatRate * 100, invoice.locale)
 const qr = QRCode.create(qrPayload, { errorCorrectionLevel: 'M' })
-const qrQuietZone = 2
+const qrQuietZone = 1
 const qrViewBoxSize = qr.modules.size + qrQuietZone * 2
 const qrPath = Array.from({ length: qr.modules.size }, (_, row) => {
   const runs: string[] = []
