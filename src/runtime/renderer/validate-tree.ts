@@ -11,6 +11,17 @@ const treeInvalid = (message: string): never => {
   throw new NuxtPdfError(PDF_ERROR_CODES.TreeInvalid, message)
 }
 
+const validateDestinationId = (value: unknown): string | undefined => {
+  if (value === undefined) return undefined
+  if (typeof value === 'string') {
+    if (value.trim() === '') {
+      treeInvalid('PDF destination ids must be non-empty strings.')
+    }
+    return value
+  }
+  return treeInvalid('PDF destination ids must be non-empty strings.')
+}
+
 /** Validate invariants that require the complete mounted document tree. */
 export const validatePdfDocumentTree = (document: PdfDocumentNode): void => {
   const destinationIds = new Set<string>()
@@ -18,15 +29,9 @@ export const validatePdfDocumentTree = (document: PdfDocumentNode): void => {
 
   while (pending.length > 0) {
     const node = pending.pop()!
-    const id = node.props.id
+    const id = validateDestinationId(node.props.id)
 
     if (id !== undefined) {
-      if (typeof id !== 'string') {
-        treeInvalid('PDF destination ids must be non-empty strings.')
-      }
-      if (id.trim() === '') {
-        treeInvalid('PDF destination ids must be non-empty strings.')
-      }
       if (RESERVED_DESTINATION_IDS.has(id)) {
         treeInvalid('A PDF destination uses a reserved identifier.')
       }
