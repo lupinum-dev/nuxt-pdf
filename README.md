@@ -144,7 +144,9 @@ preview and the raw PDF. Each viewer page:
   changes, so there is no websocket or HMR layer.
 
 The whole preview is server-rendered HTML with no client build step and is
-absent from production builds.
+absent from production builds. It calls the template's public `render(props)`
+once and embeds that exact completed result; there is no preview-specific render
+path.
 
 ## Authoring model
 
@@ -168,7 +170,7 @@ typed `PdfStyle` contract, not browser CSS or the upstream React PDF type
 surface. Invalid nesting, DOM-only attributes, unknown props, and props used on
 the wrong primitive fail early with `PDF_TREE_INVALID`.
 
-`definePdf` accepts static metadata plus preview data:
+`definePdf` accepts render metadata plus development-only preview data:
 
 ```ts
 definePdf<Props>({
@@ -183,7 +185,12 @@ definePdf<Props>({
 ```
 
 A scenario is available at `/_pdf/report?scenario=long`. Unknown scenarios
-return a 404 with the available names.
+return a 404 with the available names. `sampleData` and `scenarios` live in an
+internal development sidecar; the production SFC transform structurally omits
+their expressions, and the public template handle never exposes them. Like
+Vue's hoisted compiler macros, `definePdf()` metadata can use inline values or
+imports, but not variables declared locally in `<script setup>`. Keep imported
+preview-fixture modules side-effect-free so production bundlers can remove them.
 
 ## Table of contents, links, and bookmarks
 
@@ -227,6 +234,15 @@ import { pdf, renderPdf } from '#pdf'
 await pdf.invoice.render({ invoice })
 await renderPdf('invoice', { invoice })
 ```
+
+Each public template is exactly `{ key, resolveMetadata(props), render(props) }`.
+The registry is server-only: do not import `#pdf` from client code. In
+production, neither the engine nor template SFCs enter the client bundle, and
+preview data is absent from the Nitro server artifact too.
+
+The completed result carries the exact frozen `metadata` resolved for that
+render alongside its frozen `diagnostics`; preview and application code consume
+the same facts without evaluating metadata a second time.
 
 Runtime strings require the explicit unknown-props escape hatch:
 

@@ -200,11 +200,20 @@ The 0.2.0 tests verify:
 - exactly one `src`/`source` for `PdfImage`, exactly one `href`/`src` for
   `PdfLink`, and context-specific page-flow/SVG `PdfText` invariants;
 - one completed render held behind immutable byte, buffer, and `Response`
-  conversions, with one frozen, content-free diagnostics object shared by the
-  production result and development preview;
+  conversions, with exact frozen resolved metadata and one frozen, content-free
+  diagnostics object shared by the public result and development preview; the
+  preview calls the exact public `render(props)` path once and parks that
+  completed result rather than re-evaluating metadata or using a second preview
+  renderer;
+- a closed public `PdfTemplate` handle containing exactly `key`,
+  `resolveMetadata(props)`, and `render(props)` — never the compile-time
+  definition, sample data, scenarios, source path, or a preview render method;
+- `definePdf` title/language precedence over `PdfDocument` fallback props,
+  including reapplication after every page-number feed in a multi-pass render;
 - template attribution on failure: every error surfaced from a template's
-  `render()` is a `NuxtPdfError` carrying `templateKey` and `templateFile` and a
-  message prefixed with the template name and source file (`pdfs/…`). Invalid
+  `render()` is a `NuxtPdfError` carrying `templateKey`; development renders
+  also carry `templateFile` and a message prefixed with the source file
+  (`pdfs/…`), while production deliberately omits that preview-only path. Invalid
   nesting fails with `PDF_TREE_INVALID`; it never returns a partial document or
   downgrades the failure to a warning. Font-resolution failures surface as a single
   `PDF_LAYOUT_ERROR` (font resolution is a layout sub-stage) whose message
@@ -213,8 +222,14 @@ The 0.2.0 tests verify:
 - safe PDF response headers: bounded Unicode-safe filename sanitization, a
   default `document.pdf` attachment name, exact `content-length`, and forced PDF
   content type;
-- development preview index, viewer, raw PDF, and named scenarios;
+- development preview index, viewer, raw PDF, and named scenarios, backed by a
+  separate internal development sidecar;
 - a production Nitro route rendering through the generated registry;
+- structural removal of `sampleData` and `scenarios` during production SFC
+  compilation, with unique fixture canaries and preview-only API tokens rejected
+  by a recursive scan of the emitted Nitro server artifact; metadata follows
+  module-scope macro rules, so imports are supported while setup-local bindings
+  fail compilation before they can leak or throw at runtime;
 - absence of development preview behavior in production; and
 - absence of React PDF engine code from the Nuxt client bundle and React
   renderer runtimes from production dependencies.
