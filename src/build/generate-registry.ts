@@ -3,7 +3,11 @@ import type { RemoteAssetPolicy } from '../runtime/server/assets/remote'
 import type { PdfRenderLimits } from '../runtime/server/engine/limits'
 import type { PdfTemplate } from './discover-templates'
 
-export type PdfRegistryGenerationOptions = {
+export type PdfRegistryTypeGenerationOptions = {
+  runtimeImport: string
+}
+
+export type PdfRegistryGenerationOptions = PdfRegistryTypeGenerationOptions & {
   assets?: readonly {
     data: Uint8Array
     format: 'jpg' | 'png'
@@ -17,7 +21,7 @@ export type PdfRegistryGenerationOptions = {
   }[]
   remote?: RemoteAssetPolicy
   limits?: PdfRenderLimits
-  runtimeImport: string
+  development: boolean
 }
 
 const compareText = (left: string, right: string): number => {
@@ -103,7 +107,7 @@ const orderedTemplates = (
   return result
 }
 
-const validateOptions = (options: PdfRegistryGenerationOptions) => {
+const validateOptions = (options: PdfRegistryTypeGenerationOptions) => {
   if (options.runtimeImport.trim() === '') {
     throw new TypeError('runtimeImport is required to generate the PDF registry.')
   }
@@ -115,8 +119,11 @@ export const generatePdfRuntimeRegistry = (
 ): string => {
   validateOptions(options)
   const ordered = orderedTemplates(templates)
+  const runtimeImports = options.development
+    ? 'createPdfPreviewEntry, createPdfRegistry, createPdfTemplate'
+    : 'createPdfRegistry, createPdfTemplate'
   const lines = [
-    `import { createPdfRegistry, createPdfTemplate } from ${quote(options.runtimeImport)}`,
+    `import { ${runtimeImports} } from ${quote(options.runtimeImport)}`,
   ]
 
   if ((options.assets?.length ?? 0) > 0) {
@@ -133,17 +140,32 @@ export const generatePdfRuntimeRegistry = (
   lines.push(...runtimeOptions, '', 'const registry = createPdfRegistry({')
 
   ordered.forEach((template, index) => {
-    const runtimeSpread = runtimeOptions.length > 0
-      ? ', ...__pdfRuntimeOptions'
-      : ''
-    const templateOptions = `{ file: ${quote(`pdfs/${template.relativePath}`)}${runtimeSpread} }`
+    const file = quote(`pdfs/${template.relativePath}`)
+    const runtimeArgument = options.development
+      ? runtimeOptions.length > 0
+        ? `, { ...__pdfRuntimeOptions, file: ${file} }`
+        : `, { file: ${file} }`
+      : runtimeOptions.length > 0
+        ? ', __pdfRuntimeOptions'
+        : ''
     lines.push(
-      `  ${quote(template.propertyKey)}: createPdfTemplate(${quote(template.canonicalKey)}, __pdfTemplate${index}, ${templateOptions}),`,
+      `  ${quote(template.propertyKey)}: createPdfTemplate(${quote(template.canonicalKey)}, __pdfTemplate${index}${runtimeArgument}),`,
     )
   })
 
+  lines.push('})')
+
+  if (options.development) {
+    lines.push('', 'export const pdfPreview = Object.freeze({')
+    ordered.forEach((template, index) => {
+      lines.push(
+        `  ${quote(template.propertyKey)}: createPdfPreviewEntry(registry.pdf[${quote(template.propertyKey)}], __pdfTemplate${index}, { file: ${quote(`pdfs/${template.relativePath}`)} }),`,
+      )
+    })
+    lines.push('})')
+  }
+
   lines.push(
-    '})',
     '',
     'export const pdf = registry.pdf',
     'export const renderPdf = registry.renderPdf',
@@ -158,7 +180,7 @@ export const generatePdfRuntimeRegistry = (
 
 export const generatePdfRegistryTypes = (
   templates: readonly PdfTemplate[],
-  options: PdfRegistryGenerationOptions,
+  options: PdfRegistryTypeGenerationOptions,
 ): string => {
   validateOptions(options)
   const ordered = orderedTemplates(templates)

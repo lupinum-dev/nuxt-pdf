@@ -72,6 +72,95 @@ definePdf({
     expect(component.__nuxtPdf.scenarios).toEqual({ long: { id: 'long' } })
   })
 
+  it('allows imported metadata values but rejects setup-local bindings', async () => {
+    const imported = `<script setup lang="ts">
+import { sampleInvoice } from './invoice-data'
+defineOptions({ name: 'ImportedMetadata' })
+type Props = { id: string }
+defineProps<Props>()
+definePdf<Props>({ sampleData: sampleInvoice })
+</script>
+<template><PdfDocument /></template>`
+    const local = `<script setup lang="ts">
+defineOptions({ name: 'LocalMetadata' })
+type Props = { id: string }
+defineProps<Props>()
+const preview = { id: 'must-not-ship' }
+definePdf<Props>({ sampleData: preview })
+</script>
+<template><PdfDocument /></template>`
+
+    await expect(compilePdfSfc(
+      imported,
+      resolve(fixturesDirectory, 'imported-metadata.vue'),
+      'template',
+    )).resolves.toMatchObject({
+      code: expect.stringContaining('sampleData: sampleInvoice'),
+    })
+    await expect(compilePdfSfc(
+      local,
+      resolve(fixturesDirectory, 'local-metadata.vue'),
+      'template',
+    )).rejects.toThrow(
+      'definePdf() metadata cannot reference locally declared <script setup> bindings',
+    )
+  })
+
+  it('structurally removes preview-only metadata from production output', async () => {
+    const filename = resolve('test/fixtures/pdf-sfc/production-metadata.vue')
+    const source = `
+<script setup lang="ts">
+type Props = { id: string }
+defineProps<Props>()
+definePdf({
+  title: 'Production metadata',
+  filename: (props: Props) => \`invoice-\${props.id}.pdf\`,
+  language: 'de-AT',
+  maxPasses: 4,
+  sampleData: { id: 'NUXT_PDF_SAMPLE_DATA_CANARY' },
+  scenarios: { long: { id: 'NUXT_PDF_SCENARIO_CANARY' } },
+})
+</script>
+<template><PdfDocument /></template>
+`
+    const development = await compilePdfSfc(
+      source,
+      filename,
+      'template',
+      false,
+    )
+    const production = await compilePdfSfc(
+      source,
+      filename,
+      'template',
+      true,
+    )
+
+    expect(development.code).toContain('NUXT_PDF_SAMPLE_DATA_CANARY')
+    expect(development.code).toContain('NUXT_PDF_SCENARIO_CANARY')
+    expect(production.code).not.toContain('NUXT_PDF_SAMPLE_DATA_CANARY')
+    expect(production.code).not.toContain('NUXT_PDF_SCENARIO_CANARY')
+    expect(production.code).not.toMatch(/\bsampleData\s*:/)
+    expect(production.code).not.toMatch(/\bscenarios\s*:/)
+
+    const outputFile = join(temporaryDirectory, 'production-metadata.mjs')
+    await writeFile(outputFile, production.code)
+    const component = (await import(`${pathToFileURL(outputFile).href}?v=1`)).default
+
+    expect(Object.keys(component.__nuxtPdf)).toEqual([
+      'title',
+      'filename',
+      'language',
+      'maxPasses',
+    ])
+    expect(component.__nuxtPdf).toMatchObject({
+      language: 'de-AT',
+      maxPasses: 4,
+      title: 'Production metadata',
+    })
+    expect(component.__nuxtPdf.filename({ id: '42' })).toBe('invoice-42.pdf')
+  })
+
   it('preserves dynamic page text callbacks through SFC compilation', async () => {
     const filename = resolve('test/fixtures/pdf-sfc/dynamic-footer.vue')
     const source = `
@@ -179,6 +268,15 @@ definePdf({})
     )
     expect(plugin.resolveId('./invoice-data', invoiceId!)).toBe(invoiceDataFile)
     expect(plugin.resolveId('./Unknown.vue', invoiceId!)).toBeNull()
+
+    const basicInvoiceFile = resolve('test/fixtures/basic/pdfs/invoice.vue')
+    const basicPlugin = createPdfSfcPlugin({
+      files: new Map([[basicInvoiceFile, 'template' as const]]),
+    })
+    const basicInvoiceId = basicPlugin.resolveId(basicInvoiceFile)
+    expect(basicPlugin.resolveId('./invoice.preview', basicInvoiceId!)).toBe(
+      resolve('test/fixtures/basic/pdfs/invoice.preview.ts'),
+    )
   })
 
   it.each([

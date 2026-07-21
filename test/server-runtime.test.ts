@@ -8,9 +8,9 @@ import {
   PdfText,
 } from '../src/runtime/components'
 import {
+  createPdfPreviewEntry,
   createPdfRegistry,
   createPdfTemplate,
-  type PdfPreviewRender,
   type PdfRenderDiagnostics,
 } from '../src/runtime/server/registry'
 import { usePdfPageNumbers } from '../src/runtime/composables/use-pdf-page-numbers'
@@ -26,8 +26,9 @@ import {
   type PdfDefinition,
   type PdfTemplate,
 } from '../src/runtime/shared/template'
+import { installPdfCanvasGlobals } from './utils/pdf'
 
-vi.mock('#pdf', () => ({ pdf: {} }))
+vi.mock('#pdf', () => ({ pdfPreview: {} }))
 
 type FixtureProps = {
   name: string
@@ -83,66 +84,87 @@ const renderDiagnostics = (
   ...overrides,
 })
 
-const previewRender = (
+const previewResult = (
   options: {
     bytes?: Uint8Array
     diagnostics?: Partial<DiagnosticsInput>
   } = {},
-): PdfPreviewRender => ({
-  result: createPdfRenderResult(
+): ReturnType<typeof createPdfRenderResult> =>
+  createPdfRenderResult(
     options.bytes ?? new TextEncoder().encode('%PDF-preview'),
-    'invoice.pdf',
+    { filename: 'invoice.pdf', title: 'Preview invoice' },
     renderDiagnostics(options.diagnostics),
-  ),
-  title: 'Preview invoice',
-})
+  )
 
 const createPreviewTemplate = (
   options: {
     key?: string
     sampleData?: object
     scenarios?: Readonly<Record<string, object>>
-    renderForPreview?: (props: object) => Promise<PdfPreviewRender>
+    render?: (props: object) => Promise<ReturnType<typeof createPdfRenderResult>>
   } = {},
 ) => {
   const key = options.key ?? 'invoice'
   const sampleData = options.sampleData
   const scenarios = options.scenarios ?? {}
-  const render = vi.fn(async () => createPdfRenderResult(
+  const render = vi.fn(async (_props: object) => createPdfRenderResult(
     new TextEncoder().encode('%PDF-preview'),
-    'invoice.pdf',
+    { filename: 'invoice.pdf', title: 'Preview invoice' },
     renderDiagnostics(),
   ))
-  const renderForPreview = vi.fn(
-    options.renderForPreview ?? (async () => previewRender()),
-  )
-  const template = {
-    key,
-    file: `pdfs/${key}.vue`,
-    definition: { sampleData, scenarios },
-    sampleData,
-    scenarios,
-    scenarioNames: Object.keys(scenarios).sort(),
-    getPreviewProps(scenario?: string) {
-      return scenario === undefined ? sampleData : scenarios[scenario]
-    },
-    resolveMetadata() {
-      return { title: 'Preview invoice', filename: 'invoice.pdf' }
-    },
-    render,
-    renderForPreview,
-  } satisfies PdfTemplate<object> & {
-    file: string
-    renderForPreview: (props: object) => Promise<PdfPreviewRender>
-  }
+  if (options.render) render.mockImplementation(options.render)
 
-  return { render, renderForPreview, template }
+  const resolveMetadata = vi.fn(() => ({
+    title: 'Preview invoice',
+    filename: 'invoice.pdf',
+  }))
+  const handle = Object.freeze({
+    key,
+    resolveMetadata,
+    render,
+  }) satisfies PdfTemplate<object>
+
+  const component = defineComponent(() => () => h(PdfDocument))
+  Object.defineProperty(component, PDF_DEFINITION_PROPERTY, {
+    value: { sampleData, scenarios } satisfies PdfDefinition<object>,
+  })
+  const template = createPdfPreviewEntry(handle, component, {
+    file: `pdfs/${key}.vue`,
+  })
+
+  return { handle, render, resolveMetadata, template }
 }
 
 const getPreviewRenderToken = async (response: Response): Promise<string> => {
   const token = /[?&](?:amp;)?render=([^"&]+)/.exec(await response.text())?.[1]
   expect(token).toBeDefined()
   return token!
+}
+
+const readPdfMetadata = async (
+  bytes: Uint8Array,
+): Promise<{ language?: string, title?: string }> => {
+  installPdfCanvasGlobals()
+  const pdfJs = await import('pdfjs-dist/legacy/build/pdf.mjs')
+  const task = pdfJs.getDocument({
+    data: Uint8Array.from(bytes),
+    isEvalSupported: false,
+    stopAtErrors: true,
+    useWorkerFetch: false,
+    verbosity: 0,
+  })
+  try {
+    const document = await task.promise
+    const { info } = await document.getMetadata()
+    const record = info as Record<string, unknown>
+    return {
+      language: typeof record.Language === 'string' ? record.Language : undefined,
+      title: typeof record.Title === 'string' ? record.Title : undefined,
+    }
+  }
+  finally {
+    await task.destroy()
+  }
 }
 
 describe('PDF render result', () => {
@@ -156,9 +178,15 @@ describe('PDF render result', () => {
       props: { secret: true },
       url: 'https://private.example/asset.png',
     }
-    const result = createPdfRenderResult(source, 'result.pdf', measurements)
+    const metadata = {
+      filename: 'result.pdf',
+      language: 'en-GB',
+      title: 'Immutable result',
+    }
+    const result = createPdfRenderResult(source, metadata, measurements)
 
     source.fill(0)
+    metadata.title = 'Late mutation'
     warnings.push('late mutation')
 
     const bytes = await result.toUint8Array()
@@ -171,6 +199,7 @@ describe('PDF render result', () => {
     expect(await result.toUint8Array()).toEqual(new Uint8Array(expected))
     expect(result).not.toHaveProperty('toStream')
     expect(Object.isFrozen(result)).toBe(true)
+    expect(Object.isFrozen(result.metadata)).toBe(true)
     expect(Object.isFrozen(result.diagnostics)).toBe(true)
     expect(Object.isFrozen(result.diagnostics.warnings)).toBe(true)
     expect(result.diagnostics).toEqual({
@@ -179,6 +208,11 @@ describe('PDF render result', () => {
       pageCount: 1,
       passes: 1,
       warnings: ['safe warning'],
+    })
+    expect(result.metadata).toEqual({
+      filename: 'result.pdf',
+      language: 'en-GB',
+      title: 'Immutable result',
     })
     expect(response.headers.get('content-type')).toBe('application/pdf')
     expect(response.headers.get('content-length')).toBe(String(expected.byteLength))
@@ -192,7 +226,7 @@ describe('PDF render result', () => {
 
     const result = createPdfRenderResult(
       new Uint8Array([1, 2, 3]),
-      undefined,
+      {},
       renderDiagnostics(),
     )
     const defaultResponse = await result.response()
@@ -261,18 +295,29 @@ describe('PDF runtime registry', () => {
       fixture.component,
     )
     const registry = createPdfRegistry({ reportsGreeting: template })
+    const preview = createPdfPreviewEntry(template, fixture.component, {
+      file: 'pdfs/reports/greeting.vue',
+    })
 
-    expect(template.definition).toBe(fixture.definition)
-    expect(template.sampleData).toBe(fixture.sampleData)
-    expect(template.scenarios).toBe(fixture.scenarios)
-    expect(template.scenarioNames).toEqual(['compact', 'long'])
-    expect(template.getPreviewProps('long')).toBe(fixture.scenarios.long)
-    expect(template.getPreviewProps('missing')).toBeUndefined()
+    expect(Object.keys(template).sort()).toEqual([
+      'key',
+      'render',
+      'resolveMetadata',
+    ])
+    expect(preview.template).toBe(template)
+    expect(preview.file).toBe('pdfs/reports/greeting.vue')
+    expect(preview.scenarioNames).toEqual(['compact', 'long'])
+    expect(preview.getPreviewProps()).toBe(fixture.sampleData)
+    expect(preview.getPreviewProps('long')).toBe(fixture.scenarios.long)
+    expect(preview.getPreviewProps('missing')).toBeUndefined()
     expect(template.resolveMetadata({ name: 'Ada' })).toEqual({
       title: 'Greeting for Ada',
       filename: 'greeting-Ada.pdf',
       language: 'en-GB',
     })
+    expect(() => template.resolveMetadata(null as never)).toThrow(
+      'metadata props must be an object',
+    )
 
     expect(registry.pdf).toEqual({ reportsGreeting: template })
     expect(registry.pdfTemplateKeys).toEqual(['reports/greeting'])
@@ -307,6 +352,57 @@ describe('PDF runtime registry', () => {
     expect(response.headers.get('content-disposition')).toContain(
       'filename="greeting-Ada.pdf"',
     )
+  })
+
+  it('writes definePdf title and language over conflicting PdfDocument metadata', async () => {
+    const component = defineComponent(() => () =>
+      h(PdfDocument, {
+        language: 'de-AT',
+        title: 'Document fallback',
+      }, {
+        default: () => h(PdfPage, null, {
+          default: () => h(PdfText, null, () => 'Metadata conflict'),
+        }),
+      }),
+    )
+    Object.defineProperty(component, PDF_DEFINITION_PROPERTY, {
+      value: {
+        language: 'en-GB',
+        title: 'Definition wins',
+      } satisfies PdfDefinition<object>,
+    })
+
+    const result = await createPdfTemplate('metadata-conflict', component).render({})
+    const metadata = await readPdfMetadata(await result.toUint8Array())
+
+    expect(metadata).toEqual({
+      language: 'en-GB',
+      title: 'Definition wins',
+    })
+  })
+
+  it('preserves PdfDocument metadata when definePdf leaves it absent', async () => {
+    const component = defineComponent(() => () =>
+      h(PdfDocument, {
+        language: 'de-AT',
+        title: 'Document fallback',
+      }, {
+        default: () => h(PdfPage, null, {
+          default: () => h(PdfText, null, () => 'Metadata fallback'),
+        }),
+      }),
+    )
+    Object.defineProperty(component, PDF_DEFINITION_PROPERTY, {
+      value: { filename: 'fallback.pdf' } satisfies PdfDefinition<object>,
+    })
+
+    const result = await createPdfTemplate('metadata-fallback', component).render({})
+    const metadata = await readPdfMetadata(await result.toUint8Array())
+
+    expect(metadata).toEqual({
+      language: 'de-AT',
+      title: 'Document fallback',
+    })
   })
 
   it('fails usefully for missing metadata and unknown canonical keys', async () => {
@@ -437,8 +533,9 @@ describe('PDF runtime registry', () => {
 
 describe('development PDF preview', () => {
   it('renders a standalone index and native viewer page', async () => {
-    const { template } = createPreviewTemplate({
-      sampleData: { id: 'sample' },
+    const sampleData = { id: 'sample' }
+    const { render, resolveMetadata, template } = createPreviewTemplate({
+      sampleData,
       scenarios: { long: { id: 'long' } },
     })
     const registry = { invoice: template }
@@ -450,6 +547,9 @@ describe('development PDF preview', () => {
     expect(await index.text()).toContain('href="/_pdf/invoice"')
     expect(page.status).toBe(200)
     expect(await page.text()).toMatch(/src="\/_pdf\/invoice\.pdf\?render=[^"&]+"/)
+    expect(resolveMetadata).not.toHaveBeenCalled()
+    expect(render).toHaveBeenCalledOnce()
+    expect(render).toHaveBeenCalledWith(sampleData)
   })
 
   it('renders raw scenario bytes through the template render path', async () => {
@@ -542,9 +642,14 @@ describe('development PDF preview', () => {
 
   it('serves the exact diagnosed bytes to the iframe via the parked render', async () => {
     const diagnosedBytes = new TextEncoder().encode('%PDF-diagnosed-render')
+    let renderCount = 0
     const { render, template } = createPreviewTemplate({
       sampleData: { id: 'sample' },
-      renderForPreview: async () => previewRender({ bytes: diagnosedBytes }),
+      render: async () => previewResult({
+        bytes: renderCount++ === 0
+          ? diagnosedBytes
+          : new TextEncoder().encode('%PDF-preview'),
+      }),
     })
     const registry = { invoice: template }
 
@@ -559,7 +664,7 @@ describe('development PDF preview', () => {
     })
     expect(raw.headers.get('content-type')).toBe('application/pdf')
     expect(new Uint8Array(await raw.arrayBuffer())).toEqual(diagnosedBytes)
-    expect(render).not.toHaveBeenCalled()
+    expect(render).toHaveBeenCalledOnce()
 
     // Successful retrieval consumes the token, so replay falls back to a fresh
     // render instead of serving the parked bytes again.
@@ -568,7 +673,7 @@ describe('development PDF preview', () => {
       render: token,
     })
     expect(Buffer.from(await replay.arrayBuffer()).toString()).toBe('%PDF-preview')
-    expect(render).toHaveBeenCalledTimes(1)
+    expect(render).toHaveBeenCalledTimes(2)
 
     // A missing/evicted token follows the same fresh-render path.
     const fallback = await renderPdfPreview(registry, {
@@ -576,16 +681,21 @@ describe('development PDF preview', () => {
       render: '999999',
     })
     expect(fallback.status).toBe(200)
-    expect(render).toHaveBeenCalledTimes(2)
+    expect(render).toHaveBeenCalledTimes(3)
   })
 
   it('binds parked renders to their template and scenario', async () => {
     const diagnosedBytes = new TextEncoder().encode('%PDF-bound-render')
     const scenarios = { long: { id: 'long' } }
+    let invoiceRenderCount = 0
     const invoice = createPreviewTemplate({
       sampleData: { id: 'sample' },
       scenarios,
-      renderForPreview: async () => previewRender({ bytes: diagnosedBytes }),
+      render: async () => previewResult({
+        bytes: invoiceRenderCount++ === 0
+          ? diagnosedBytes
+          : new TextEncoder().encode('%PDF-preview'),
+      }),
     })
     const other = createPreviewTemplate({
       key: 'other',
@@ -612,7 +722,7 @@ describe('development PDF preview', () => {
       render: token,
     })
     expect(new Uint8Array(await wrongScenario.arrayBuffer())).not.toEqual(diagnosedBytes)
-    expect(invoice.render).toHaveBeenCalledOnce()
+    expect(invoice.render).toHaveBeenCalledTimes(2)
 
     // Rejected lookups do not consume another template/scenario's token.
     const correct = await renderPdfPreview(registry, {
@@ -621,16 +731,21 @@ describe('development PDF preview', () => {
       render: token,
     })
     expect(new Uint8Array(await correct.arrayBuffer())).toEqual(diagnosedBytes)
-    expect(invoice.render).toHaveBeenCalledOnce()
+    expect(invoice.render).toHaveBeenCalledTimes(2)
   })
 
   it('expires parked renders before serving them', async () => {
     vi.useFakeTimers()
     try {
       const diagnosedBytes = new TextEncoder().encode('%PDF-expiring-render')
+      let renderCount = 0
       const { render, template } = createPreviewTemplate({
         sampleData: { id: 'sample' },
-        renderForPreview: async () => previewRender({ bytes: diagnosedBytes }),
+        render: async () => previewResult({
+          bytes: renderCount++ === 0
+            ? diagnosedBytes
+            : new TextEncoder().encode('%PDF-preview'),
+        }),
       })
       const registry = { invoice: template }
       const token = await getPreviewRenderToken(
@@ -644,18 +759,21 @@ describe('development PDF preview', () => {
         render: token,
       })
       expect(new Uint8Array(await expired.arrayBuffer())).not.toEqual(diagnosedBytes)
-      expect(render).toHaveBeenCalledOnce()
+      expect(render).toHaveBeenCalledTimes(2)
     }
     finally {
       vi.useRealTimers()
     }
   })
 
-  it('shares immutable render diagnostics with the development preview', async () => {
+  it('keeps definePdf metadata authoritative through every multi-pass update', async () => {
     const component = defineComponent({
       setup() {
         const pages = usePdfPageNumbers()
-        return () => h(PdfDocument, null, {
+        return () => h(PdfDocument, {
+          language: 'de-AT',
+          title: 'Document fallback',
+        }, {
           default: () => [
             h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
               default: () => h(
@@ -672,16 +790,19 @@ describe('development PDF preview', () => {
       },
     })
     Object.defineProperty(component, PDF_DEFINITION_PROPERTY, {
-      value: { sampleData: {} } satisfies PdfDefinition<object>,
+      value: {
+        language: 'en-GB',
+        sampleData: {},
+        title: 'Definition survives feedback',
+      } satisfies PdfDefinition<object>,
     })
     const template = createPdfTemplate('report', component, {
       file: 'pdfs/report.vue',
     })
 
-    const render = await (template as unknown as {
-      renderForPreview(props: object): Promise<PdfPreviewRender>
-    }).renderForPreview({})
-    const diagnostics = render.result.diagnostics
+    const result = await template.render({})
+    const diagnostics = result.diagnostics
+    const metadata = await readPdfMetadata(await result.toUint8Array())
 
     // usePdfPageNumbers() activates the multi-pass loop; it converges in two.
     expect(diagnostics.passes).toBeGreaterThanOrEqual(2)
@@ -691,15 +812,19 @@ describe('development PDF preview', () => {
     expect(diagnostics.warnings).toEqual([])
     expect(Object.isFrozen(diagnostics)).toBe(true)
     expect(Object.isFrozen(diagnostics.warnings)).toBe(true)
-    expect((await render.result.toUint8Array()).byteLength).toBe(
+    expect((await result.toUint8Array()).byteLength).toBe(
       diagnostics.byteLength,
     )
+    expect(metadata).toEqual({
+      language: 'en-GB',
+      title: 'Definition survives feedback',
+    })
   })
 
   it('renders an error panel with code, template, and file when a render fails', async () => {
     const { template } = createPreviewTemplate({
       sampleData: { id: 'sample' },
-      renderForPreview: async () => {
+      render: async () => {
         throw new NuxtPdfError(
           'PDF_LAYOUT_ERROR',
           'PDF template "invoice" (pdfs/invoice.vue): PDF layout failed: Font family not registered: Roboto',

@@ -23,9 +23,9 @@ export interface PdfDefinition<Props extends object = Record<string, unknown>> {
 }
 
 export interface ResolvedPdfMetadata {
-  title?: string
-  filename?: string
-  language?: string
+  readonly title?: string
+  readonly filename?: string
+  readonly language?: string
 }
 
 export type PdfComponent<Props extends object = Record<string, unknown>>
@@ -51,25 +51,15 @@ export interface PdfRenderDiagnostics {
 }
 
 export interface PdfRenderResult {
+  readonly metadata: Readonly<ResolvedPdfMetadata>
   readonly diagnostics: PdfRenderDiagnostics
   toUint8Array(): Promise<Uint8Array>
   toBuffer(): Promise<Buffer>
   response(init?: PdfResponseInit): Promise<Response>
 }
 
-/** The completed result plus display metadata needed by the dev-only preview. */
-export interface PdfPreviewRender {
-  result: PdfRenderResult
-  title?: string
-}
-
 export interface PdfTemplate<Props extends object = Record<string, unknown>> {
   readonly key: string
-  readonly definition: Readonly<PdfDefinition<Props>>
-  readonly sampleData: Props | undefined
-  readonly scenarios: Readonly<Record<string, Props>>
-  readonly scenarioNames: readonly string[]
-  getPreviewProps(scenario?: string): Props | undefined
   resolveMetadata(props: Props): ResolvedPdfMetadata
   render(props: Props): Promise<PdfRenderResult>
 }

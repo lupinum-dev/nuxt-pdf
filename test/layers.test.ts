@@ -66,5 +66,5 @@ describe('Nuxt PDF layer precedence', async () => {
       '-p',
       join(fixtureRoot, 'tsconfig.json'),
     ])).resolves.toMatchObject({ stderr: '' })
-  })
+  }, 30_000)
 })

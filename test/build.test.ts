@@ -197,35 +197,74 @@ describe('PDF registry generation', () => {
     template('invoice', 'invoice', '/project/pdfs/invoice.vue'),
   ]
   const options = {
+    development: false,
     runtimeImport: '#pdf-runtime',
   }
 
-  it('generates deterministic runtime registry source through the runtime factories', () => {
+  it('generates an exact production registry with only public template handles', () => {
     const source = generatePdfRuntimeRegistry(templates, options)
 
     expect(source).toBe(
       generatePdfRuntimeRegistry([...templates].reverse(), options),
     )
+    expect(source).toBe(`import { createPdfRegistry, createPdfTemplate } from "#pdf-runtime"
+import __pdfTemplate0 from "/project/pdfs/invoice.vue"
+import __pdfTemplate1 from "/project/pdfs/reports/monthly.vue"
+
+const registry = createPdfRegistry({
+  "invoice": createPdfTemplate("invoice", __pdfTemplate0),
+  "reportsMonthly": createPdfTemplate("reports/monthly", __pdfTemplate1),
+})
+
+export const pdf = registry.pdf
+export const renderPdf = registry.renderPdf
+export const getPdfTemplate = registry.getPdfTemplate
+export const pdfTemplateKeys = registry.pdfTemplateKeys
+export { NuxtPdfError, PDF_ERROR_CODES } from "#pdf-runtime"
+`)
+    expect(source).not.toContain('createPdfPreviewEntry')
+    expect(source).not.toContain('pdfPreview')
+    expect(source).not.toContain('file:')
+  })
+
+  it('adds the preview sidecar only to development registries', () => {
+    const source = generatePdfRuntimeRegistry(templates, {
+      ...options,
+      development: true,
+    })
+
+    expect(source).toBe(`import { createPdfPreviewEntry, createPdfRegistry, createPdfTemplate } from "#pdf-runtime"
+import __pdfTemplate0 from "/project/pdfs/invoice.vue"
+import __pdfTemplate1 from "/project/pdfs/reports/monthly.vue"
+
+const registry = createPdfRegistry({
+  "invoice": createPdfTemplate("invoice", __pdfTemplate0, { file: "pdfs/invoice.vue" }),
+  "reportsMonthly": createPdfTemplate("reports/monthly", __pdfTemplate1, { file: "pdfs/reports/monthly.vue" }),
+})
+
+export const pdfPreview = Object.freeze({
+  "invoice": createPdfPreviewEntry(registry.pdf["invoice"], __pdfTemplate0, { file: "pdfs/invoice.vue" }),
+  "reportsMonthly": createPdfPreviewEntry(registry.pdf["reportsMonthly"], __pdfTemplate1, { file: "pdfs/reports/monthly.vue" }),
+})
+
+export const pdf = registry.pdf
+export const renderPdf = registry.renderPdf
+export const getPdfTemplate = registry.getPdfTemplate
+export const pdfTemplateKeys = registry.pdfTemplateKeys
+export { NuxtPdfError, PDF_ERROR_CODES } from "#pdf-runtime"
+`)
+    expect(source).toContain('{ file: "pdfs/invoice.vue" }')
+  })
+
+  it('keeps development source attribution when runtime options are present', () => {
+    const source = generatePdfRuntimeRegistry(templates, {
+      ...options,
+      development: true,
+      limits: { maxPages: 20, timeoutMs: 1_000 },
+    })
+
     expect(source).toContain(
-      'import { createPdfRegistry, createPdfTemplate } from "#pdf-runtime"',
-    )
-    expect(source.indexOf('/project/pdfs/invoice.vue')).toBeLessThan(
-      source.indexOf('/project/pdfs/reports/monthly.vue'),
-    )
-    expect(source).toContain(
-      '"invoice": createPdfTemplate("invoice", __pdfTemplate0, { file: "pdfs/invoice.vue" })',
-    )
-    expect(source).toContain(
-      '"reportsMonthly": createPdfTemplate("reports/monthly", __pdfTemplate1, { file: "pdfs/reports/monthly.vue" })',
-    )
-    expect(source).toContain('export const pdf = registry.pdf')
-    expect(source).toContain('export { NuxtPdfError, PDF_ERROR_CODES }')
-    expect(source).toContain('export const renderPdf = registry.renderPdf')
-    expect(source).toContain(
-      'export const getPdfTemplate = registry.getPdfTemplate',
-    )
-    expect(source).toContain(
-      'export const pdfTemplateKeys = registry.pdfTemplateKeys',
+      'createPdfTemplate("invoice", __pdfTemplate0, { ...__pdfRuntimeOptions, file: "pdfs/invoice.vue" })',
     )
   })
 
@@ -240,6 +279,7 @@ describe('PDF registry generation', () => {
         family: 'Invoice Sans',
         src: 'data:font/ttf;base64,AAEAAA==',
       }],
+      development: false,
       runtimeImport: '#pdf-runtime',
     })
 
@@ -248,8 +288,9 @@ describe('PDF registry generation', () => {
     expect(source).toContain('"brand/logo.png"')
     expect(source).toContain('"Invoice Sans"')
     expect(source).toContain(
-      '"invoice": createPdfTemplate("invoice", __pdfTemplate0, { file: "pdfs/invoice.vue", ...__pdfRuntimeOptions })',
+      '"invoice": createPdfTemplate("invoice", __pdfTemplate0, __pdfRuntimeOptions)',
     )
+    expect(source).not.toContain('file:')
     expect(source).not.toContain('/project/pdfs/assets')
     expect(source).not.toContain('/project/pdfs/fonts')
   })

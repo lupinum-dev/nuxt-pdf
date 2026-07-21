@@ -8,7 +8,6 @@ import {
   PDF_DEFINITION_PROPERTY,
   type PdfComponent,
   type PdfDefinition,
-  type PdfPreviewRender,
   type PdfRenderResult,
   type PdfTemplate,
   type ResolvedPdfMetadata,
@@ -31,9 +30,9 @@ import {
 } from './fonts'
 import { createPdfRenderResult } from './result'
 
-export type { PdfPreviewRender, PdfRenderDiagnostics } from '../shared/template'
+export type { PdfRenderDiagnostics } from '../shared/template'
 
-const EMPTY_SCENARIOS = Object.freeze({})
+const EMPTY_SCENARIOS: Readonly<Record<string, never>> = Object.freeze({})
 const EMPTY_ASSETS = Object.freeze({})
 
 export interface PdfTemplateRuntimeOptions {
@@ -215,8 +214,8 @@ const renderTemplate = async <Props extends object>(
   metadata: ResolvedPdfMetadata,
   options: PdfTemplateRuntimeOptions,
   maxPasses: number | undefined,
-  // The warning sink. Production passes `console.warn` (unchanged behavior); the
-  // dev preview passes a collector so it can display the same prefixed messages.
+  // One sink serves the public render path in every environment. The caller
+  // records the same prefixed messages it logs, so diagnostics stay truthful.
   warnSink: (message: string) => void,
 ): Promise<TemplateRenderOutput> => {
   let mounted: Awaited<ReturnType<typeof mountPdfComponent>> | undefined
@@ -256,6 +255,11 @@ const renderTemplate = async <Props extends object>(
           },
           feed: async (pages) => {
             await live.feedPageNumbers(pages)
+            // Feeding page numbers re-renders the Vue tree and therefore
+            // restores authored PdfDocument props. Reapply definePdf's
+            // authoritative values before every layout pass so metadata cannot
+            // regress to the component fallback during a multi-pass render.
+            applyDocumentMetadata(live.document, metadata)
           },
         },
         { fontStore, maxPasses, limits },
@@ -291,13 +295,7 @@ export const createPdfTemplate = <Props extends object>(
     (component as PdfComponent<Props>)[PDF_DEFINITION_PROPERTY],
   )
 
-  const renderWithDiagnostics = async (
-    props: Props,
-    warningSink?: (message: string) => void,
-  ): Promise<{
-    metadata: ResolvedPdfMetadata
-    result: PdfRenderResult
-  }> => {
+  const renderWithDiagnostics = async (props: Props): Promise<PdfRenderResult> => {
     if (!isObject(props)) {
       throw templateError(ref, 'render props must be an object.')
     }
@@ -314,67 +312,78 @@ export const createPdfTemplate = <Props extends object>(
       definition.maxPasses,
       (message) => {
         warnings.push(message)
-        warningSink?.(message)
+        console.warn(message)
       },
     )
-    const result = createPdfRenderResult(bytes, metadata.filename, {
+    const result = createPdfRenderResult(bytes, metadata, {
       durationMs: performance.now() - start,
       pageCount,
       passes,
       warnings,
     })
 
-    return { metadata, result }
+    return result
   }
 
   return Object.freeze({
     key,
-    // The source file, exposed for the dev preview's template attribution. Not
-    // part of the public `PdfTemplate` type; consumed only by the dev preview.
-    file: options.file,
-    definition,
-    get sampleData() {
-      return definition.sampleData
-    },
-    get scenarios() {
-      return definition.scenarios ?? EMPTY_SCENARIOS
-    },
-    get scenarioNames() {
-      return Object.keys(definition.scenarios ?? EMPTY_SCENARIOS).sort()
-    },
-    getPreviewProps(scenario?: string) {
-      if (scenario === undefined) return definition.sampleData
-      const scenarios = definition.scenarios
-      if (!scenarios || !Object.prototype.hasOwnProperty.call(scenarios, scenario)) {
-        return undefined
-      }
-      return scenarios[scenario]
-    },
     resolveMetadata(props: Props) {
+      if (!isObject(props)) {
+        throw templateError(ref, 'metadata props must be an object.')
+      }
       return resolveMetadata(ref, definition, props)
     },
     async render(props: Props): Promise<PdfRenderResult> {
       try {
-        return (await renderWithDiagnostics(props, console.warn)).result
+        return await renderWithDiagnostics(props)
       }
       catch (error) {
         throw enrichTemplateError(error, key, options.file)
       }
     },
-    // Dev-only display metadata wrapped around the same completed result and
-    // immutable diagnostics object production callers receive.
-    async renderForPreview(props: Props): Promise<PdfPreviewRender> {
-      try {
-        const { metadata, result } = await renderWithDiagnostics(props)
+  })
+}
 
-        return {
-          result,
-          title: metadata.title,
-        }
+/**
+ * Internal development-only information for the preview UI. It wraps the
+ * production handle instead of extending it, so preview fixtures and source
+ * paths cannot accidentally become part of the public template contract.
+ */
+export interface PdfPreviewEntry<
+  Props extends object = Record<string, unknown>,
+> {
+  readonly template: PdfTemplate<Props>
+  readonly file?: string
+  readonly scenarioNames: readonly string[]
+  getPreviewProps(scenario?: string): Props | undefined
+}
+
+export type PdfPreviewEntryOptions = Pick<PdfTemplateRuntimeOptions, 'file'>
+
+export const createPdfPreviewEntry = <Props extends object>(
+  template: PdfTemplate<Props>,
+  component: Component,
+  options: PdfPreviewEntryOptions = {},
+): PdfPreviewEntry<Props> => {
+  const ref: TemplateRef = { key: template.key, file: options.file }
+  const definition = validateDefinition(
+    ref,
+    (component as PdfComponent<Props>)[PDF_DEFINITION_PROPERTY],
+  )
+  const scenarios: Readonly<Record<string, Props>>
+    = definition.scenarios ?? EMPTY_SCENARIOS
+  const scenarioNames = Object.freeze(Object.keys(scenarios).sort())
+
+  return Object.freeze({
+    template,
+    file: options.file,
+    scenarioNames,
+    getPreviewProps(scenario?: string) {
+      if (scenario === undefined) return definition.sampleData
+      if (!Object.prototype.hasOwnProperty.call(scenarios, scenario)) {
+        return undefined
       }
-      catch (error) {
-        throw enrichTemplateError(error, key, options.file)
-      }
+      return scenarios[scenario]
     },
   })
 }

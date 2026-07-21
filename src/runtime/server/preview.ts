@@ -5,30 +5,18 @@ import {
   getRequestURL,
 } from 'h3'
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore -- Nuxt generates this server-only virtual module.
-import { pdf } from '#pdf'
+// @ts-ignore -- Nuxt generates this development-only virtual module.
+import { pdfPreview } from '#pdf'
 import { NuxtPdfError } from '../shared/errors'
 import type {
-  PdfPreviewRender,
   PdfRenderDiagnostics,
   PdfRenderResult,
-  PdfTemplate,
 } from '../shared/template'
+import type { PdfPreviewEntry } from './registry'
 
 const PREVIEW_ROUTE = '/_pdf'
 
-type PreviewTemplate = Pick<
-  PdfTemplate<object>,
-  | 'getPreviewProps'
-  | 'key'
-  | 'render'
-  | 'scenarioNames'
-> & {
-  // Both extra members exist on the object `createPdfTemplate` returns but are
-  // intentionally absent from the public `PdfTemplate` type: they are dev-only.
-  readonly file?: string
-  renderForPreview(props: object): Promise<PdfPreviewRender>
-}
+type PreviewTemplate = PdfPreviewEntry<object>
 
 export type PdfPreviewRegistry = Readonly<Record<string, PreviewTemplate>>
 
@@ -180,7 +168,7 @@ const templateByKey = (
   registry: PdfPreviewRegistry,
   key: string,
 ): PreviewTemplate | undefined =>
-  Object.values(registry).find(template => template.key === key)
+  Object.values(registry).find(entry => entry.template.key === key)
 
 const scenarioCount = (template: PreviewTemplate): string =>
   template.scenarioNames.length > 0
@@ -192,7 +180,9 @@ const indexPage = (
   rootPath: string,
 ): Response => {
   const templates = Object.values(registry)
-    .sort((left, right) => left.key.localeCompare(right.key))
+    .sort((left, right) =>
+      left.template.key.localeCompare(right.template.key),
+    )
 
   if (templates.length === 0) {
     return htmlResponse(
@@ -202,13 +192,13 @@ const indexPage = (
   }
 
   const cards = templates.map((template) => {
-    const base = `${rootPath}/${encodeTemplatePath(template.key)}`
+    const base = `${rootPath}/${encodeTemplatePath(template.template.key)}`
     const file = template.file
       ? `<span class="file">${escapeHtml(template.file)}</span>`
       : ''
 
     return `<article class="card">`
-      + `<strong>${escapeHtml(template.key)}</strong>`
+      + `<strong>${escapeHtml(template.template.key)}</strong>`
       + file
       + `<span class="meta">${scenarioCount(template)}</span>`
       + `<span class="links">`
@@ -252,7 +242,7 @@ const scenarioNav = (
   rootPath: string,
   active?: string,
 ): string => {
-  const base = `${rootPath}/${encodeTemplatePath(template.key)}`
+  const base = `${rootPath}/${encodeTemplatePath(template.template.key)}`
   const tab = (label: string, href: string, isActive: boolean): string =>
     `<a href="${escapeHtml(href)}"${isActive ? ' class="active" aria-current="page"' : ''}>${escapeHtml(label)}</a>`
 
@@ -328,7 +318,8 @@ const viewerPage = async (
   rootPath: string,
   scenario?: string,
 ): Promise<Response> => {
-  const base = `${rootPath}/${encodeTemplatePath(template.key)}`
+  const handle = template.template
+  const base = `${rootPath}/${encodeTemplatePath(handle.key)}`
   const scenarioQuery = scenario === undefined
     ? ''
     : `?scenario=${encodeURIComponent(scenario)}`
@@ -337,22 +328,22 @@ const viewerPage = async (
 
   const actions = `<span class="actions">`
     + `<a href="${escapeHtml(refreshHref)}">Refresh</a>`
-    + `<a href="${escapeHtml(rawUrl(rootPath, template.key, scenario))}">Raw PDF</a>`
+    + `<a href="${escapeHtml(rawUrl(rootPath, handle.key, scenario))}">Raw PDF</a>`
     + `<a href="${escapeHtml(rootPath)}">All templates</a>`
     + `</span>`
 
   let body: string
   let title: string
   try {
-    const render = await template.renderForPreview(props)
-    title = render.title || template.key
-    const token = parkRender(render.result, template.key, scenario)
-    body = diagnosticsPanel(render.result.diagnostics)
-      + `<iframe title="${escapeHtml(title)}" src="${escapeHtml(rawUrl(rootPath, template.key, scenario, token))}"></iframe>`
+    const result = await handle.render(props)
+    title = result.metadata.title || handle.key
+    const token = parkRender(result, handle.key, scenario)
+    body = diagnosticsPanel(result.diagnostics)
+      + `<iframe title="${escapeHtml(title)}" src="${escapeHtml(rawUrl(rootPath, handle.key, scenario, token))}"></iframe>`
   }
   catch (error) {
-    title = template.key
-    body = errorDetails(error, template.key, template.file)
+    title = handle.key
+    body = errorDetails(error, handle.key, template.file)
   }
 
   return htmlResponse(
@@ -436,7 +427,7 @@ export const renderPdfPreview = async (
   }
 
   try {
-    const result = await template.render(props)
+    const result = await template.template.render(props)
     return result.response({
       disposition: 'inline',
       headers: {
@@ -473,7 +464,7 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const route = requestRoute(url.pathname)
 
-  return renderPdfPreview(pdf as unknown as PdfPreviewRegistry, {
+  return renderPdfPreview(pdfPreview as unknown as PdfPreviewRegistry, {
     ...route,
     scenario: typeof query.scenario === 'string' ? query.scenario : undefined,
     render: typeof query.render === 'string' ? query.render : undefined,

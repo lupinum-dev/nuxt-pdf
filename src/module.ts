@@ -206,6 +206,7 @@ export default defineNuxtModule<ModuleOptions>({
       filename: '#pdf',
       getContents: () => generatePdfRuntimeRegistry(templates, {
         assets,
+        development: nuxt.options.dev,
         fonts,
         remote,
         limits,

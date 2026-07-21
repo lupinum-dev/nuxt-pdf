@@ -1,4 +1,7 @@
-import { pdf, renderPdf } from '#pdf'
+// @ts-expect-error Preview fixtures are not part of the public registry module.
+import { pdf, pdfPreview, renderPdf } from '#pdf'
+
+void pdfPreview
 
 const lines = [{
   description: 'Typed line',
@@ -27,14 +30,26 @@ async function verifyRenderResult() {
 
   result.diagnostics.byteLength satisfies number
   result.diagnostics.warnings satisfies readonly string[]
+  result.metadata.title satisfies string | undefined
 
   // @ts-expect-error Completed results deliberately expose no fake stream API.
   await result.toStream()
   // @ts-expect-error Diagnostics are immutable facts about the completed render.
   result.diagnostics.warnings.push('late mutation')
+  // @ts-expect-error Resolved render metadata is immutable.
+  result.metadata.title = 'late mutation'
 }
 
 void verifyRenderResult
+
+// @ts-expect-error Preview definition details are internal development data.
+void pdf.invoice.definition
+// @ts-expect-error Preview sample data is not a public template member.
+void pdf.invoice.sampleData
+// @ts-expect-error Preview scenarios are not a public template member.
+void pdf.invoice.scenarios
+// @ts-expect-error Preview scenario names are not a public template member.
+void pdf.invoice.scenarioNames
 
 declare const dynamicName: string
 declare const dynamicProps: Record<string, unknown>

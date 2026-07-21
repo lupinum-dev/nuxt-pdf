@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import InvoiceLine from './components/InvoiceLine.vue'
+import {
+  invoicePreviewSample,
+  invoicePreviewScenarios,
+} from './invoice.preview'
 
 defineOptions({ name: 'PdfInvoiceTemplate' })
 
 type InvoiceProps = {
   customer: string
   number: string
+  previewOnlyCanary?: string
   lines: Array<{
     description: string
     id: string
@@ -19,26 +24,8 @@ definePdf<InvoiceProps>({
   title: invoice => `Invoice ${invoice.number}`,
   filename: invoice => `invoice-${invoice.number}.pdf`,
   language: 'en-GB',
-  sampleData: {
-    customer: 'Ada Lovelace',
-    number: 'INV-001',
-    lines: [{
-      description: 'PDF framework',
-      id: 'framework',
-      price: 'EUR 1,250.00',
-    }],
-  },
-  scenarios: {
-    long: {
-      customer: 'Grace Hopper',
-      number: 'INV-LONG',
-      lines: Array.from({ length: 12 }, (_, index) => ({
-        description: `Engineering line ${index + 1}`,
-        id: `line-${index + 1}`,
-        price: 'EUR 100.00',
-      })),
-    },
-  },
+  sampleData: invoicePreviewSample,
+  scenarios: invoicePreviewScenarios,
 })
 </script>
 

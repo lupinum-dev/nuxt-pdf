@@ -4,7 +4,10 @@ import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import { compilePdfSfc } from '../src/build/pdf-sfc-plugin'
 import { bundlePdfFonts } from '../src/build/fonts'
-import { createPdfTemplate } from '../src/runtime/server/registry'
+import {
+  createPdfPreviewEntry,
+  createPdfTemplate,
+} from '../src/runtime/server/registry'
 import { PDF_DEFINITION_PROPERTY } from '../src/runtime/shared/template'
 import {
   longNameCertificate,
@@ -60,9 +63,10 @@ describe('playground certificate.vue (SVG showcase)', () => {
 
     const fonts = await bundlePdfFonts(fontDescriptors, { fontRoots: [fontRoot] })
     const template = createPdfTemplate<{ certificate: Certificate }>('certificate', component, { fonts })
+    const preview = createPdfPreviewEntry(template, component)
 
     // Scenario wiring is real: sample data plus a registered long-name stress case.
-    expect(template.scenarioNames).toEqual(['longName'])
+    expect(preview.scenarioNames).toEqual(['longName'])
 
     const renderCertificate = async (certificate: Certificate) =>
       parsePdf(await template.render({ certificate }))

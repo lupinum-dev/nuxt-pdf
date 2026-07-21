@@ -79,6 +79,12 @@ const METADATA_KEYS = new Set([
   'scenarios',
   'title',
 ])
+const PRODUCTION_METADATA_KEYS = new Set([
+  'filename',
+  'language',
+  'maxPasses',
+  'title',
+])
 
 type AstLocation = {
   start: { column: number, line: number }
@@ -163,9 +169,13 @@ const MODULE_EXTENSIONS = [
 ] as const
 
 function resolveRelativeModule(filename: string): string | null {
-  const candidates = extname(filename)
+  const extension = extname(filename)
+  const candidates = MODULE_EXTENSIONS.includes(
+    extension as (typeof MODULE_EXTENSIONS)[number],
+  )
     ? [filename]
     : [
+        filename,
         ...MODULE_EXTENSIONS.map(extension => `${filename}${extension}`),
         ...MODULE_EXTENSIONS.map(extension => resolve(filename, `index${extension}`)),
       ]
@@ -228,7 +238,13 @@ export async function compilePdfSfc(
   assertSupportedBlocks(original, filename)
   assertTemplate(original, filename)
 
-  const metadata = extractMetadata(source, original, filename, kind)
+  const metadata = extractMetadata(
+    source,
+    original,
+    filename,
+    kind,
+    isProduction,
+  )
   const cleaned = parsePdfSfc(metadata.source, filename)
   const componentCode = compileComponent(cleaned, filename, isProduction)
   const composableImportCode = composableInjection(
@@ -317,6 +333,7 @@ function extractMetadata(
   descriptor: SFCDescriptor,
   filename: string,
   kind: PdfSfcKind,
+  isProduction: boolean,
 ): ExtractedMetadata {
   const calls = [
     ...findMacroCalls(descriptor.script, filename),
@@ -383,7 +400,12 @@ function extractMetadata(
     )
   }
 
-  assertMetadataShape(macro.argument, filename, macro.block)
+  const metadataProperties = assertMetadataShape(
+    macro.argument,
+    filename,
+    macro.block,
+  )
+  assertMetadataHoistable(source, descriptor, filename, macro)
 
   const blockOffset = macro.block.loc.start.offset
   const argumentStart = requiredOffset(macro.argument.start, filename, macro.block)
@@ -394,7 +416,13 @@ function extractMetadata(
   const absoluteStatementEnd = blockOffset + statementEnd
 
   return {
-    expression: macro.block.content.slice(argumentStart, argumentEnd),
+    expression: isProduction
+      ? productionMetadataExpression(
+          metadataProperties,
+          macro.block,
+          filename,
+        )
+      : macro.block.content.slice(argumentStart, argumentEnd),
     source: replaceWithWhitespace(
       source,
       absoluteStatementStart,
@@ -406,6 +434,7 @@ function extractMetadata(
 function findMacroCalls(
   block: SFCScriptBlock | null,
   filename: string,
+  name = 'definePdf',
 ): MacroCall[] {
   if (!block) return []
 
@@ -431,7 +460,7 @@ function findMacroCalls(
     if (node.type !== 'CallExpression') return
 
     const callee = asAstNode(node.callee)
-    if (callee?.type !== 'Identifier' || callee.name !== 'definePdf') return
+    if (callee?.type !== 'Identifier' || callee.name !== name) return
 
     const parent = ancestors.at(-1)
     const grandparent = ancestors.at(-2)
@@ -451,13 +480,75 @@ function findMacroCalls(
   return calls
 }
 
+function assertMetadataHoistable(
+  source: string,
+  descriptor: SFCDescriptor,
+  filename: string,
+  macro: MacroCall,
+): void {
+  const block = descriptor.scriptSetup
+  if (!block || !macro.argument || !macro.statement) return
+
+  const blockOffset = block.loc.start.offset
+  const argumentStart = requiredOffset(macro.argument.start, filename, block)
+  const argumentEnd = requiredOffset(macro.argument.end, filename, block)
+  const replacements: Array<{ end: number, start: number, value: string }> = []
+
+  for (const call of findMacroCalls(block, filename, 'defineOptions')) {
+    if (!call.statement) continue
+    replacements.push({
+      start: blockOffset + requiredOffset(call.statement.start, filename, block),
+      end: blockOffset + requiredOffset(call.statement.end, filename, block),
+      value: '',
+    })
+  }
+
+  replacements.push({
+    start: blockOffset + requiredOffset(macro.statement.start, filename, block),
+    end: blockOffset + requiredOffset(macro.statement.end, filename, block),
+    value: `defineOptions(${block.content.slice(argumentStart, argumentEnd)})`,
+  })
+
+  const validationSource = replacements
+    .sort((left, right) => right.start - left.start)
+    .reduce(
+      (result, replacement) =>
+        result.slice(0, replacement.start)
+        + replacement.value
+        + result.slice(replacement.end),
+      source,
+    )
+
+  try {
+    const validation = parsePdfSfc(validationSource, filename)
+    compileScript(validation, {
+      id: 'nuxt-pdf-metadata-hoist',
+      sourceMap: false,
+    })
+  }
+  catch (error) {
+    if (
+      errorMessage(error).includes(
+        '`defineOptions()` in <script setup> cannot reference locally declared variables',
+      )
+    ) {
+      throw errorAtNode(
+        filename,
+        block,
+        macro.call,
+        'definePdf() metadata cannot reference locally declared <script setup> bindings because it is evaluated at module scope. Inline the value or import it from a side-effect-free module.',
+      )
+    }
+  }
+}
+
 function assertMetadataShape(
   object: AstNode,
   filename: string,
   block: SFCScriptBlock,
-): void {
+): ReadonlyMap<string, AstNode> {
   const properties = Array.isArray(object.properties) ? object.properties : []
-  const keys = new Set<string>()
+  const keys = new Map<string, AstNode>()
 
   for (const value of properties) {
     const property = asAstNode(value)
@@ -518,8 +609,26 @@ function assertMetadataShape(
       )
     }
 
-    keys.add(key)
+    keys.set(key, property)
   }
+
+  return keys
+}
+
+function productionMetadataExpression(
+  properties: ReadonlyMap<string, AstNode>,
+  block: SFCScriptBlock,
+  filename: string,
+): string {
+  const retained = [...properties]
+    .filter(([key]) => PRODUCTION_METADATA_KEYS.has(key))
+    .map(([, property]) => {
+      const start = requiredOffset(property.start, filename, block)
+      const end = requiredOffset(property.end, filename, block)
+      return block.content.slice(start, end)
+    })
+
+  return `{${retained.join(',')}}`
 }
 
 function isRuntimeMetadataKey(key: string): boolean {

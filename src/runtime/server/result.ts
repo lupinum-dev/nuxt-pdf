@@ -4,6 +4,7 @@ import type {
   PdfRenderDiagnostics,
   PdfRenderResult,
   PdfResponseInit,
+  ResolvedPdfMetadata,
 } from '../shared/template'
 
 const DEFAULT_BASENAME = 'document'
@@ -81,7 +82,7 @@ type CompletedRenderDiagnostics = Omit<PdfRenderDiagnostics, 'byteLength'>
 
 export const createPdfRenderResult = (
   source: Uint8Array,
-  defaultFilename: string | undefined,
+  metadata: ResolvedPdfMetadata,
   diagnostics: CompletedRenderDiagnostics,
 ): PdfRenderResult => {
   // The engine has completed before a result exists. Keep one private copy and
@@ -94,8 +95,14 @@ export const createPdfRenderResult = (
     passes: diagnostics.passes,
     warnings: Object.freeze([...diagnostics.warnings]),
   })
+  const completedMetadata: Readonly<ResolvedPdfMetadata> = Object.freeze({
+    filename: metadata.filename,
+    language: metadata.language,
+    title: metadata.title,
+  })
 
   return Object.freeze({
+    metadata: completedMetadata,
     diagnostics: completedDiagnostics,
     async toUint8Array() {
       return new Uint8Array(bytes)
@@ -106,7 +113,7 @@ export const createPdfRenderResult = (
     async response(init: PdfResponseInit = {}) {
       const {
         disposition = 'attachment',
-        filename = defaultFilename ?? DEFAULT_FILENAME,
+        filename = completedMetadata.filename ?? DEFAULT_FILENAME,
         headers: initialHeaders,
         ...responseInit
       } = init

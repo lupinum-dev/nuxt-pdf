@@ -69,4 +69,33 @@ describe('Nuxt PDF production boundary', () => {
       /@react-pdf|fontkit|pdfkit|yoga-layout|nuxt-pdf:sfc/,
     )
   })
+
+  it('keeps preview fixtures and APIs out of the Nitro server artifact', async () => {
+    const outputDirectory = nuxt.ctx.nuxt?.options.nitro.output?.dir
+    expect(outputDirectory).toBeTruthy()
+    const serverDirectory = join(outputDirectory!, 'server')
+    const files = await readdir(serverDirectory, { recursive: true })
+    const text = await Promise.all(
+      files
+        .filter(file => /\.(?:[cm]?js|css|html|json|map|txt)$/.test(file))
+        .map(file => readFile(join(serverDirectory, file), 'utf8')),
+    )
+    const artifact = text.join('\n')
+
+    expect(artifact).not.toContain(
+      'NUXT_PDF_PREVIEW_SAMPLE_CANARY_20260721_A1F49C',
+    )
+    expect(artifact).not.toContain(
+      'NUXT_PDF_PREVIEW_SCENARIO_CANARY_20260721_B7E20D',
+    )
+
+    for (const previewOnlyToken of [
+      'getPreviewProps',
+      'pdfPreview',
+      'renderForPreview',
+      'scenarioNames',
+    ]) {
+      expect(artifact).not.toContain(previewOnlyToken)
+    }
+  })
 })

@@ -1,4 +1,5 @@
 export {
+  createPdfPreviewEntry,
   createPdfRegistry,
   createPdfTemplate,
 } from './registry'
@@ -8,6 +9,8 @@ export {
 } from '../shared/errors'
 export type { PdfErrorCode } from '../shared/errors'
 export type {
+  PdfPreviewEntry,
+  PdfPreviewEntryOptions,
   PdfRegistry,
   PdfRegistryEntries,
 } from './registry'

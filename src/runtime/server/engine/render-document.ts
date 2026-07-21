@@ -1,3 +1,6 @@
+// eslint-disable-next-line @typescript-eslint/triple-slash-reference -- ambient declaration must follow source imports into generated Nuxt consumer typechecks
+/// <reference path="./react-pdf-pdfkit.d.ts" />
+
 import { Buffer } from 'node:buffer'
 import type FontStore from '@react-pdf/font'
 import layoutDocument, {
