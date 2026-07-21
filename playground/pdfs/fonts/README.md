@@ -8,6 +8,28 @@ playground inputs and are not part of the published package.
 Registered in `playground/nuxt.config.ts` under `pdf.fonts`. Reference them from
 styles via `fontFamily` plus a numeric `fontWeight` / `fontStyle`.
 
+The complete SIL Open Font License text for the OFL fonts in this directory is
+included in `OFL.txt`.
+
+## Geist — Lupinum invoice fallback
+
+Source: the official Vercel Geist font distribution. License: SIL Open Font
+License 1.1 (OFL). Copyright 2023 The Geist Project Authors.
+
+The files are registered through the semantic `Lupinum Sans` and `Lupinum
+Mono` aliases. A consuming project that holds a GT Pressura license can point
+the sans alias at its licensed Extended Light, Medium, and Bold files for the
+exact production typography without changing the invoice component.
+
+| File                        | family       | fontWeight |
+| --------------------------- | ------------ | ---------- |
+| `Geist-Light.otf`           | Lupinum Sans | 300        |
+| `Geist-Medium.otf`          | Lupinum Sans | 500        |
+| `Geist-Bold.otf`            | Lupinum Sans | 700        |
+| `GeistMono-Regular.otf`     | Lupinum Mono | 400        |
+| `GeistMono-SemiBold.otf`    | Lupinum Mono | 600        |
+| `GeistMono-Bold.otf`        | Lupinum Mono | 700        |
+
 ## Inter — workhorse sans (grotesque)
 
 Source: `@expo-google-fonts/inter@0.4.2` (npm), which ships static Google Fonts
