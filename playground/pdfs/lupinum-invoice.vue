@@ -213,7 +213,7 @@ definePdf<LupinumInvoiceProps>({
           <PdfText :style="{ ...labelStyle, marginBottom: 8 }">
             {{ copy.customerLabel }}
           </PdfText>
-          <PdfText :style="{ fontSize: 10.5, fontWeight: 500, marginBottom: 3 }">
+          <PdfText :style="{ fontSize: 10.5, fontWeight: 300, marginBottom: 3 }">
             {{ invoice.customer.name }}
           </PdfText>
           <PdfText>{{ invoice.customer.address }}</PdfText>
@@ -298,7 +298,7 @@ definePdf<LupinumInvoiceProps>({
             {{ index + 1 }}
           </PdfText>
           <PdfView :style="{ paddingRight: 16, width: 350 }">
-            <PdfText :style="{ fontSize: 9.2, fontWeight: 500, lineHeight: 1.18 }">
+            <PdfText :style="{ fontSize: 9.2, fontWeight: 700, lineHeight: 1.18 }">
               {{ line.title }}
             </PdfText>
             <PdfText
@@ -452,7 +452,7 @@ definePdf<LupinumInvoiceProps>({
             <PdfText :style="{ fontSize: 8.3, marginTop: 4 }">
               {{ copy.greeting }}
             </PdfText>
-            <PdfText :style="{ fontSize: 8.3, fontWeight: 500, marginTop: 2 }">
+            <PdfText :style="{ fontSize: 8.3, fontWeight: 700, marginTop: 2 }">
               {{ copy.signature }}
             </PdfText>
           </PdfView>
