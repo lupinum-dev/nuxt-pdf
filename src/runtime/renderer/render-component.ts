@@ -130,9 +130,20 @@ export const mountPdfComponent = async (
     },
   })
 
-  app.mount(root)
-  await nextTick()
-  requireDocument(root)
+  let mounted = false
+  try {
+    app.mount(root)
+    mounted = true
+    await nextTick()
+    requireDocument(root)
+  }
+  catch (error) {
+    // Tree-wide validation runs after Vue has mounted. Tear that application
+    // down before surfacing an invalid document so failed renders retain no
+    // reactive effects or component state.
+    if (mounted) app.unmount()
+    throw error
+  }
 
   return {
     get document() {

@@ -328,7 +328,6 @@ definePdf<LupinumInvoiceProps>({
       </PdfView>
 
       <PdfView
-        :min-presence-ahead="110"
         :style="{ alignItems: 'flex-end', marginTop: 10, paddingRight: 3 }"
         :wrap="false"
       >
@@ -396,7 +395,6 @@ definePdf<LupinumInvoiceProps>({
       </PdfView>
 
       <PdfView
-        :min-presence-ahead="202"
         :style="{ marginTop: 22 }"
         :wrap="false"
       >

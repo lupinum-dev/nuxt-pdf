@@ -82,6 +82,7 @@ export const VueSvgDocument = defineComponent({
               h(PdfText, {
                 x: showcase.text.x,
                 y: showcase.text.y,
+                fill: showcase.text.fill,
                 style: showcase.text.style,
               }, {
                 default: () => showcase.textTspans.map((tspan, index) =>

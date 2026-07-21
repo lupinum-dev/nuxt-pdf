@@ -101,9 +101,6 @@ const createContext = (props: DocumentMetadata, compress: boolean) => new PDFDoc
   lang: props.language,
   displayTitle: true,
   autoFirstPage: false,
-  ownerPassword: props.ownerPassword,
-  userPassword: props.userPassword,
-  permissions: props.permissions,
   pageLayout: props.pageLayout,
   info: compact({
     Title: props.title,
@@ -113,7 +110,6 @@ const createContext = (props: DocumentMetadata, compress: boolean) => new PDFDoc
     Creator: props.creator ?? 'nuxt-pdf',
     Producer: props.producer ?? 'nuxt-pdf',
     CreationDate: props.creationDate ?? new Date(),
-    ModificationDate: props.modificationDate,
   }),
 })
 
@@ -277,6 +273,67 @@ const anchorDestinationsAtFirstPage = (layout: SafeDocumentNode): void => {
   root.children = documentPages(layout).map(strip) as PdfElementNode['children']
 }
 
+const SVG_SHAPE_TYPES = new Set<string>([
+  PDF_PRIMITIVES.Circle,
+  PDF_PRIMITIVES.Ellipse,
+  PDF_PRIMITIVES.G,
+  PDF_PRIMITIVES.Line,
+  PDF_PRIMITIVES.Path,
+  PDF_PRIMITIVES.Polygon,
+  PDF_PRIMITIVES.Polyline,
+  PDF_PRIMITIVES.Rect,
+  PDF_PRIMITIVES.Text,
+])
+
+const GRADIENT_ZERO_KEYS = {
+  [PDF_PRIMITIVES.LinearGradient]: ['x2'],
+  [PDF_PRIMITIVES.RadialGradient]: ['cx', 'cy', 'fx', 'fy', 'r'],
+} as const
+
+const normalizeGradientZeros = (value: unknown): void => {
+  if (
+    typeof value !== 'object'
+    || value === null
+    || !('type' in value)
+    || !('props' in value)
+    || (
+      value.type !== PDF_PRIMITIVES.LinearGradient
+      && value.type !== PDF_PRIMITIVES.RadialGradient
+    )
+    || typeof value.props !== 'object'
+    || value.props === null
+  ) return
+
+  const props = value.props as Record<string, unknown>
+  const keys = GRADIENT_ZERO_KEYS[value.type]
+  for (const key of keys) {
+    if (props[key] === 0) props[key] = '0'
+  }
+}
+
+/**
+ * Repair explicit SVG zeroes on the disposable, fully-resolved tree.
+ *
+ * The pinned `@react-pdf/render` release uses truthiness fallbacks for these
+ * values. Layout has already parsed author strings to numbers, so normalizing
+ * before layout cannot survive. Under the closed objectBoundingBox gradient
+ * contract, render multiplies/coerces a truthy string zero before PDFKit sees
+ * it. A zero-width stroke is removed because SVG defines it as not painted
+ * (PDF's native width zero would be a hairline).
+ */
+const normalizeResolvedSvgZeros = (layout: SafeDocumentNode): void => {
+  for (const page of documentPages(layout)) {
+    visitPageNodes(page, (node) => {
+      normalizeGradientZeros(node.props.fill)
+
+      if (!SVG_SHAPE_TYPES.has(node.type)) return
+
+      if (node.props.fillOpacity === 0) node.props.fillOpacity = '0'
+      if (node.props.strokeWidth === 0) node.props.stroke = null
+    })
+  }
+}
+
 // Serialization seam. Paints one already-laid-out document to PDF bytes.
 export const serializePdfLayout = async (
   props: DocumentMetadata,
@@ -289,6 +346,7 @@ export const serializePdfLayout = async (
   deadline?.check()
   try {
     anchorDestinationsAtFirstPage(layout)
+    normalizeResolvedSvgZeros(layout)
     const context = createContext(props, compress)
     const stream = renderPDF(
       context as unknown as Parameters<typeof renderPDF>[0],

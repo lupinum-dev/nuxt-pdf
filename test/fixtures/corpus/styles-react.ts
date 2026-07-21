@@ -2,6 +2,7 @@ import React from 'react'
 import { Document, Page, Text, View } from '@react-pdf/renderer'
 import {
   CONTROL_TEXT,
+  DECORATED_TEXT,
   INHERIT_TEXT,
   controlTextStyle,
   inheritPageStyle,
@@ -9,22 +10,26 @@ import {
   inheritWrapOuter,
   scenarios,
   styles,
+  styleValueCases,
+  textValueCases,
+  unitLengthCases,
   type PdfSize,
   type PdfStyle,
+  type PdfStyleValue,
 } from './styles-data'
 
 const h = React.createElement
 
 // react-pdf types its `style` prop as `Style | Style[]`; the shared data module
-// keeps loose `Record<string, unknown>` styles so a single object serves both
-// renderers. Cast at the React boundary via react-pdf's own inferred style type
-// (no `any`): the runtime object is identical, only the compile-time view narrows.
+// keeps framework-owned styles so a single object serves both renderers. Cast
+// at the React boundary via react-pdf's own inferred style type (no `any`): the
+// runtime object is identical, only the compile-time view narrows.
 type ReactStyle = React.ComponentProps<typeof View>['style']
-const s = (style: PdfStyle): ReactStyle => style as ReactStyle
+const s = (style: PdfStyleValue): ReactStyle => style as ReactStyle
 
 // A tagged View: `id` survives into the resolved layout node's props, so the
 // test can locate its box regardless of tree position.
-const box = (id: string, style: PdfStyle, ...children: React.ReactNode[]) =>
+const box = (id: string, style: PdfStyleValue, ...children: React.ReactNode[]) =>
   h(View, { key: id, id, style: s(style) }, ...children)
 
 const scenarioBody = (id: string): React.ReactNode => {
@@ -53,10 +58,34 @@ const scenarioBody = (id: string): React.ReactNode => {
         box('gapA', styles.gapChild),
         box('gapB', styles.gapChild),
         box('gapC', styles.gapChild))
+    case 'auto-layout-values':
+      return [
+        box('autoMarginParent', styles.autoMarginParent,
+          box('autoMarginChild', styles.autoMarginChild)),
+        box('autoBasisRow', styles.autoBasisRow,
+          box('autoBasisChild', styles.autoBasisChild),
+          box('autoBasisSibling', styles.autoBasisSibling)),
+      ]
+    case 'length-units':
+      return unitLengthCases.map(({ id: unitId, style }) => box(unitId, style))
+    case 'style-values':
+      return [
+        ...styleValueCases.map(({ id: valueId, style }) => box(valueId, style)),
+        ...textValueCases.map(({ id: valueId, source, style }) => h(Text, {
+          key: valueId,
+          id: valueId,
+          style: s(style),
+        }, source)),
+      ]
     case 'percent':
       return box('pctOuter', styles.pctOuter, box('pctInner', styles.pctInner))
     case 'margin-padding-border':
       return box('mpbBox', styles.mpbBox)
+    case 'dimension-constraints':
+      return [
+        box('minWidthBox', styles.minWidthBox),
+        box('maxHeightBox', styles.maxHeightBox),
+      ]
     case 'style-array-falsy':
       return box('arrBox', styles.arrView)
     case 'style-object-control':
@@ -68,6 +97,17 @@ const scenarioBody = (id: string): React.ReactNode => {
           h(Text, { key: 'ctl', id: 'ctlText', style: s(controlTextStyle) }, CONTROL_TEXT)))
     case 'border':
       return box('borderBox', styles.borderBox)
+    case 'closed-style-paint':
+      return [
+        box('styledBorderBox', styles.styledBorderBox),
+        box('styledEdgesBox', styles.styledEdgesBox),
+        box('cornerRadiiBox', styles.cornerRadiiBox),
+        h(Text, {
+          key: 'decoratedText',
+          id: 'decoratedText',
+          style: s(styles.decoratedText),
+        }, DECORATED_TEXT),
+      ]
     case 'background-opacity':
       return [
         box('opaqueBox', styles.opaqueBox),

@@ -2,7 +2,9 @@ import {
   copyFile,
   mkdir,
   mkdtemp,
+  readFile,
   rm,
+  writeFile,
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -30,11 +32,14 @@ import {
   CONTROL_TEXT,
   INHERIT_TEXT,
   scenarios,
+  styleValueCases,
+  textValueCases,
   visualScenarioIds,
   type BoxOracle,
 } from '../fixtures/corpus/styles-data'
 import {
   comparePageImages,
+  decodePngPage,
   hasPdfHeader,
   parsePdf,
   rasterizePdf,
@@ -44,6 +49,11 @@ const fontPath = fileURLToPath(new URL(
   '../fixtures/assets/Roboto-Regular.ttf',
   import.meta.url,
 ))
+const closedStyleBaselinePath = fileURLToPath(new URL(
+  '../fixtures/baselines/styles/closed-style-paint.png',
+  import.meta.url,
+))
+const updatePdfBaselines = process.env.UPDATE_PDF_BASELINES === '1'
 
 // Layout numbers come from the same Yoga engine on both sides, so parity is
 // exact; box comparisons use `toBeCloseTo(_, 2)` to absorb only float noise.
@@ -62,7 +72,8 @@ const BOX_KEYS = [
 type LayoutNode = {
   type?: string
   props?: Record<string, unknown>
-  box?: Record<string, number>
+  style?: Record<string, unknown>
+  box?: Record<string, number | string>
   children?: unknown
 }
 
@@ -78,32 +89,57 @@ const elementNodes = (node: LayoutNode): LayoutNode[] => {
 const documentPages = (layout: SafeDocumentNode): LayoutNode[] =>
   asNodes((layout as unknown as LayoutNode).children)
 
-/** id → resolved box, across every page of a laid-out document. */
-const boxesById = (layout: SafeDocumentNode): Map<string, Record<string, number>> => {
-  const map = new Map<string, Record<string, number>>()
+/** id → resolved element node, across every page of a laid-out document. */
+const nodesById = (layout: SafeDocumentNode): Map<string, LayoutNode> => {
+  const map = new Map<string, LayoutNode>()
   for (const page of documentPages(layout)) {
     for (const node of elementNodes(page)) {
       const id = node.props?.id
-      if (typeof id === 'string' && node.box) map.set(id, node.box)
+      if (typeof id === 'string') map.set(id, node)
     }
   }
   return map
 }
 
-const roundBox = (box: Record<string, number>): Record<string, number> =>
-  Object.fromEntries(BOX_KEYS.map(k => [k, Math.round((box[k] ?? 0) * 1000) / 1000]))
+/** id → resolved box, across every page of a laid-out document. */
+const boxesById = (layout: SafeDocumentNode): Map<string, Record<string, number | string>> => {
+  const map = new Map<string, Record<string, number | string>>()
+  for (const [id, node] of nodesById(layout)) {
+    if (node.box) map.set(id, node.box)
+  }
+  return map
+}
+
+const roundBox = (
+  box: Record<string, number | string>,
+): Record<string, number | string> => Object.fromEntries(BOX_KEYS.map((key) => {
+  const value = box[key] ?? 0
+  return [
+    key,
+    typeof value === 'number' ? Math.round(value * 1000) / 1000 : value,
+  ]
+}))
 
 /** Ordered element boxes per page — the structural parity fingerprint. */
-const orderedBoxesPerPage = (layout: SafeDocumentNode): Record<string, number>[][] =>
+const orderedBoxesPerPage = (
+  layout: SafeDocumentNode,
+): Record<string, number | string>[][] =>
   documentPages(layout).map(page => elementNodes(page).map(n => roundBox(n.box!)))
 
 const expectBoxClose = (
-  actual: Record<string, number>,
-  expected: Record<string, number>,
+  actual: Record<string, number | string>,
+  expected: Record<string, number | string>,
   label: string,
 ): void => {
   for (const key of BOX_KEYS) {
-    expect(actual[key] ?? 0, `${label}.${key}`).toBeCloseTo(expected[key] ?? 0, 2)
+    const actualValue = actual[key] ?? 0
+    const expectedValue = expected[key] ?? 0
+    if (typeof actualValue === 'number' && typeof expectedValue === 'number') {
+      expect(actualValue, `${label}.${key}`).toBeCloseTo(expectedValue, 2)
+    }
+    else {
+      expect(actualValue, `${label}.${key}`).toBe(expectedValue)
+    }
   }
 }
 
@@ -199,8 +235,8 @@ describe('style and layout resolution conformance', () => {
         expect(rBox, `react box ${id}`).toBeTruthy()
         expect(vBox, `vue box ${id}`).toBeTruthy()
         for (const [key, value] of Object.entries(partial)) {
-          expect(rBox![key], `react ${id}.${key}`).toBeCloseTo(value, 2)
-          expect(vBox![key], `vue ${id}.${key}`).toBeCloseTo(value, 2)
+          expect(rBox![key] as number, `react ${id}.${key}`).toBeCloseTo(value, 2)
+          expect(vBox![key] as number, `vue ${id}.${key}`).toBeCloseTo(value, 2)
         }
         expectBoxClose(vBox!, rBox!, `parity ${id}`)
       }
@@ -219,6 +255,37 @@ describe('style and layout resolution conformance', () => {
     expectBoxClose(arr!, obj!, 'array-vs-object')
   }, 20_000)
 
+  it('resolves every retained enum, font-weight alias, and transform spelling', async () => {
+    const react = await captureReactLayout(
+      createReactStyleScenario('style-values') as ReactElement,
+    )
+    const vue = await renderVue(
+      VueStyleScenario,
+      { scenario: 'style-values' },
+      fonts.fontStore,
+    )
+
+    const reactById = nodesById(react.layout)
+    const vueById = nodesById(vue.layout)
+    for (const { id, expectedStyle } of [...styleValueCases, ...textValueCases]) {
+      expect(reactById.get(id)?.style, `react style ${id}`).toEqual(
+        expect.objectContaining(expectedStyle),
+      )
+      expect(vueById.get(id)?.style, `vue style ${id}`).toEqual(
+        expect.objectContaining(expectedStyle),
+      )
+    }
+
+    const [reactPdf, vuePdf] = await Promise.all([
+      parsePdf(react.bytes),
+      parsePdf(vue.bytes),
+    ])
+    for (const { expectedText } of textValueCases) {
+      expect(reactPdf.pages[0]?.text).toContain(expectedText)
+      expect(vuePdf.pages[0]?.text).toContain(expectedText)
+    }
+  }, 30_000)
+
   it('cascades media-less inherited fontSize through Views into Text', async () => {
     const react = await captureReactLayout(createReactStylesDocument() as ReactElement)
     const vue = await renderVue(VueStylesDocument, {}, fonts.fontStore)
@@ -228,8 +295,8 @@ describe('style and layout resolution conformance', () => {
     const vInh = boxesById(vue.layout).get('inhText')!
     const vCtl = boxesById(vue.layout).get('ctlText')!
 
-    const rInhH = rInh.height ?? 0
-    const rCtlH = rCtl.height ?? 0
+    const rInhH = Number(rInh.height ?? 0)
+    const rCtlH = Number(rCtl.height ?? 0)
     // Cascade proof: inherited text (page fontSize 20) is ~2x the control text
     // (own fontSize 10), because the default line box scales with fontSize.
     expect(rCtlH).toBeGreaterThan(0)
@@ -239,6 +306,77 @@ describe('style and layout resolution conformance', () => {
     // Vue matches React's resolved geometry on both nodes.
     expectBoxClose(vInh, rInh, 'inherited-text')
     expectBoxClose(vCtl, rCtl, 'control-text')
+  }, 30_000)
+
+  it('resolves the closed border, radius, and text-decoration style contract', async () => {
+    const react = await captureReactLayout(
+      createReactStyleScenario('closed-style-paint') as ReactElement,
+    )
+    const vue = await renderVue(
+      VueStyleScenario,
+      { scenario: 'closed-style-paint' },
+      fonts.fontStore,
+    )
+
+    const expectedById: Record<string, Record<string, unknown>> = {
+      // borderStyle and borderRadius expand to the four concrete edges/corners.
+      styledBorderBox: {
+        borderTopStyle: 'dashed',
+        borderRightStyle: 'dashed',
+        borderBottomStyle: 'dashed',
+        borderLeftStyle: 'dashed',
+        borderTopLeftRadius: 14,
+        borderTopRightRadius: 14,
+        borderBottomRightRadius: 14,
+        borderBottomLeftRadius: 14,
+      },
+      styledEdgesBox: {
+        borderTopStyle: 'dashed',
+        borderRightWidth: 9,
+        borderRightColor: '#d9480f',
+        borderRightStyle: 'dotted',
+        borderLeftStyle: 'dashed',
+      },
+      cornerRadiiBox: {
+        borderTopLeftRadius: 4,
+        borderTopRightRadius: 12,
+        borderBottomRightRadius: 20,
+        borderBottomLeftRadius: 28,
+      },
+      decoratedText: {
+        textDecorationColor: '#d9480f',
+        textDecorationStyle: 'dashed',
+      },
+    }
+
+    for (const [id, expectedStyle] of Object.entries(expectedById)) {
+      const reactNode = nodesById(react.layout).get(id)
+      const vueNode = nodesById(vue.layout).get(id)
+      expect(reactNode?.style, `react style ${id}`).toEqual(
+        expect.objectContaining(expectedStyle),
+      )
+      expect(vueNode?.style, `vue style ${id}`).toEqual(
+        expect.objectContaining(expectedStyle),
+      )
+    }
+
+    const [page] = await rasterizePdf(vue.bytes)
+    if (updatePdfBaselines) {
+      await mkdir(dirname(closedStyleBaselinePath), { recursive: true })
+      await writeFile(closedStyleBaselinePath, page!.png)
+    }
+    const baseline = await decodePngPage(
+      await readFile(closedStyleBaselinePath),
+      page!.number,
+    )
+    expect(
+      comparePageImages(page!, baseline, rasterThresholds),
+      'closed style contract reviewed baseline mismatch',
+    ).toMatchObject({
+      dimensionsMatch: true,
+      matches: true,
+      pageNumbersMatch: true,
+    })
   }, 30_000)
 
   it('extracts the same page text from React and Vue, including inherited Text', async () => {

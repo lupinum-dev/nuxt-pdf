@@ -3,6 +3,7 @@
 // geometry, table cell text, tile deltas — so the .vue file stays declarative
 // and this logic can be unit-reasoned on its own. No Vue, no side effects.
 
+import type { PdfSvgTransform } from '@lupinum/nuxt-pdf'
 import type {
   LedgerRow,
   MonthlyPoint,
@@ -94,7 +95,7 @@ export interface LineModel {
   plotLeft: number
   plotW: number
   baseline: number
-  translate: string
+  translate: PdfSvgTransform
   area: string
   line: string
   dotX: number
@@ -128,7 +129,7 @@ export const lineModel = (points: readonly MonthlyPoint[]): LineModel => {
     plotLeft,
     plotW,
     baseline,
-    translate: `translate(${plotLeft} ${plotTop})`,
+    translate: `translate(${plotLeft} ${plotTop})` as PdfSvgTransform,
     area: areaPath(values, plotW, plotH, axisMax),
     line: linePoints(values, plotW, plotH, axisMax),
     dotX: plotW,
@@ -142,7 +143,7 @@ export const lineModel = (points: readonly MonthlyPoint[]): LineModel => {
 
 // --- Donut chart -----------------------------------------------------------
 
-export interface DonutSegment { id: string, d: string, fill: string, transform: string }
+export interface DonutSegment { id: string, d: string, fill: string, transform: PdfSvgTransform }
 export interface DonutLegendRow { id: string, color: string, label: string, pct: string, highlight: boolean }
 export interface DonutModel {
   size: number
@@ -178,7 +179,7 @@ export const donutModel = (sectors: readonly RevenueSector[]): DonutModel => {
       highlight: sector.highlight ?? false,
       pct: fmtPercent(sector.value / total),
       d: donutSegment(cx, cy, outerR, innerR, start, end),
-      transform: `translate(${shift.x.toFixed(2)} ${shift.y.toFixed(2)})`,
+      transform: `translate(${shift.x.toFixed(2)} ${shift.y.toFixed(2)})` as PdfSvgTransform,
     }
   })
 

@@ -1,8 +1,10 @@
+import { fileURLToPath } from 'node:url'
 import { defineComponent, h, type VNode } from 'vue'
 import { describe, expect, it } from 'vitest'
 import React, { type ComponentType, type ReactElement, type ReactNode } from 'react'
 import {
   Document as ReactDocument,
+  Image as ReactImage,
   Page as ReactPage,
   Text as ReactText,
   View as ReactView,
@@ -11,6 +13,7 @@ import {
 import type { DocumentNode } from '@react-pdf/layout'
 import {
   PdfDocument,
+  PdfImage,
   PdfLink,
   PdfPage,
   PdfText,
@@ -23,26 +26,30 @@ import { renderDocumentMultiPass, type DestinationPageMap, type MultiPassSource 
 import { getPdfOutline, type PdfOutlineItem } from './utils/pdf'
 
 // One source of truth for the outline both engines must produce.
-interface SectionSpec { title: string, detail: string }
-interface ChapterSpec { title: string, sections: SectionSpec[] }
+interface SectionSpec { title: string, detail: string, expanded: boolean }
+interface ChapterSpec { title: string, expanded: boolean, sections: SectionSpec[] }
 const CHAPTERS: ChapterSpec[] = [
   {
     title: 'Chapter 1',
+    expanded: true,
     sections: [
-      { title: 'Section 1.1', detail: 'Detail 1.1' },
-      { title: 'Section 1.2', detail: 'Detail 1.2' },
+      { title: 'Section 1.1', detail: 'Detail 1.1', expanded: true },
+      { title: 'Section 1.2', detail: 'Detail 1.2', expanded: false },
     ],
   },
   {
     title: 'Chapter 2',
-    sections: [{ title: 'Section 2.1', detail: 'Detail 2.1' }],
+    expanded: false,
+    sections: [{ title: 'Section 2.1', detail: 'Detail 2.1', expanded: true }],
   },
 ]
 
 const expectedOutline: PdfOutlineItem[] = CHAPTERS.map(chapter => ({
   title: chapter.title,
+  expanded: chapter.expanded,
   children: chapter.sections.map(section => ({
     title: section.title,
+    expanded: section.expanded,
     children: [{ title: section.detail, children: [] }],
   })),
 }))
@@ -61,6 +68,7 @@ interface ReactBookmarkableProps {
   bookmark?: string | { title: string, expanded?: boolean }
   break?: boolean
   size?: string
+  src?: string
 }
 
 const bm = (
@@ -75,10 +83,10 @@ const createReactBookmarkDocument = (): ReactElement => bm(
   {},
   ...CHAPTERS.map((chapter, chapterIndex) => bm(
     ReactPage,
-    { key: chapter.title, size: 'A4', break: chapterIndex > 0, bookmark: { title: chapter.title, expanded: true }, style: { padding: 40 } },
+    { key: chapter.title, size: 'A4', break: chapterIndex > 0, bookmark: { title: chapter.title, expanded: chapter.expanded }, style: { padding: 40 } },
     ...chapter.sections.map(section => bm(
       ReactView,
-      { key: section.title, bookmark: { title: section.title, expanded: true } },
+      { key: section.title, bookmark: { title: section.title, expanded: section.expanded } },
       bm(ReactText, { style: { fontSize: 16 } }, section.title),
       bm(ReactText, { bookmark: section.detail, style: { fontSize: 11 } }, section.detail),
     )),
@@ -91,9 +99,9 @@ const VueBookmarkDocument = defineComponent({
     return () =>
       h(PdfDocument, {}, {
         default: () => CHAPTERS.map((chapter, chapterIndex) =>
-          h(PdfPage, { size: 'A4', break: chapterIndex > 0, bookmark: { title: chapter.title, expanded: true }, style: { padding: 40 } }, {
+          h(PdfPage, { size: 'A4', break: chapterIndex > 0, bookmark: { title: chapter.title, expanded: chapter.expanded }, style: { padding: 40 } }, {
             default: () => chapter.sections.map(section =>
-              h(PdfView, { bookmark: { title: section.title, expanded: true } }, {
+              h(PdfView, { bookmark: { title: section.title, expanded: section.expanded } }, {
                 default: () => [
                   h(PdfText, { style: { fontSize: 16 } }, { default: () => section.title }),
                   h(PdfText, { bookmark: section.detail, style: { fontSize: 11 } }, { default: () => section.detail }),
@@ -125,6 +133,50 @@ describe('bookmarks (outline)', () => {
 
     expect(vueOutline).toEqual(expectedOutline)
     expect(vueOutline).toEqual(reactOutline)
+  }, 20_000)
+
+  it('emits a bookmark carried by an image like React', async () => {
+    const imagePath = fileURLToPath(new URL('./fixtures/assets/sample.png', import.meta.url))
+    const title = 'Image appendix'
+    const reactDocument = bm(
+      ReactDocument,
+      {},
+      bm(
+        ReactPage,
+        { size: 'A4' },
+        bm(ReactImage, {
+          bookmark: title,
+          src: imagePath,
+          style: { width: 32, height: 32 },
+        }),
+      ),
+    )
+    const VueImageBookmarkDocument = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, { size: 'A4' }, {
+          default: () => h(PdfImage, {
+            bookmark: title,
+            src: imagePath,
+            style: { width: 32, height: 32 },
+          }),
+        }),
+      }))
+
+    const reactBytes = new Uint8Array(await renderReactDocument(
+      reactDocument as Parameters<typeof renderReactDocument>[0],
+    ))
+    const mounted = await mountPdfComponent(VueImageBookmarkDocument)
+
+    try {
+      const vue = await renderDocument(mounted.document as unknown as DocumentNode)
+      const expected = [{ title, children: [] }]
+
+      expect(await getPdfOutline(vue.bytes)).toEqual(expected)
+      expect(await getPdfOutline(vue.bytes)).toEqual(await getPdfOutline(reactBytes))
+    }
+    finally {
+      mounted.unmount()
+    }
   }, 20_000)
 })
 
@@ -182,9 +234,9 @@ const TocBookmarkDoc = defineComponent({
           ...CHAPTERS.map(chapter =>
             h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
               default: () => [
-                h(PdfView, { id: chapter.title, bookmark: { title: chapter.title, expanded: true }, break: true }, {
+                h(PdfView, { id: chapter.title, bookmark: { title: chapter.title, expanded: chapter.expanded }, break: true }, {
                   default: () => chapter.sections.map(section =>
-                    h(PdfView, { bookmark: { title: section.title, expanded: true } }, {
+                    h(PdfView, { bookmark: { title: section.title, expanded: section.expanded } }, {
                       default: () => [
                         h(PdfText, { style: { fontSize: 16 } }, { default: () => section.title }),
                         h(PdfText, { bookmark: section.detail, style: { fontSize: 11 } }, { default: () => section.detail }),
@@ -256,7 +308,7 @@ describe('multi-pass + bookmarks', () => {
       expect(result.passes).toBeGreaterThanOrEqual(2)
       // The parent bookmark (added only on pass ≥ 2) correctly owns the child.
       expect(await getPdfOutline(result.bytes)).toEqual([
-        { title: 'Parent', children: [{ title: STABLE_CHILD_BOOKMARK, children: [] }] },
+        { title: 'Parent', expanded: false, children: [{ title: STABLE_CHILD_BOOKMARK, children: [] }] },
       ])
     }
     finally {

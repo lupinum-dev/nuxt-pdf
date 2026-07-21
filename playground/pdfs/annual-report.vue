@@ -102,7 +102,6 @@ definePdf<AnnualProps>({
     :author="report.company"
     creator="Nuxt PDF"
     :subject="`${report.form} ${report.fiscalYear}`"
-    page-mode="useOutlines"
   >
     <!-- 1 · Cover -->
     <PdfPage

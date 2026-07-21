@@ -8,6 +8,8 @@ import {
 } from '@react-pdf/renderer'
 import {
   documentMeta,
+  linkHitSlop,
+  linkStyle,
   linkTargets,
   noteContent,
   pageSetupCases,
@@ -22,8 +24,12 @@ export const createReactAnnotationsDocument = () => h(
   h(
     Page,
     { size: 'A4' },
-    h(Link, { src: linkTargets.external }, 'External documentation'),
-    h(Link, { src: linkTargets.mailto }, 'Email the report owner'),
+    h(Link, {
+      src: linkTargets.external,
+      hitSlop: linkHitSlop,
+      style: linkStyle,
+    }, 'External documentation'),
+    h(Link, { src: linkTargets.mailto, style: linkStyle }, 'Email the report owner'),
     h(Note, null, noteContent),
   ),
 )

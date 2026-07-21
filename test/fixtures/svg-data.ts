@@ -59,24 +59,24 @@ export const showcase = {
   svg: { viewBox: '0 0 200 200' },
   linearGradient: {
     id: 'brand',
-    x1: '0',
-    y1: '0',
-    x2: '1',
-    y2: '0',
+    x1: 0,
+    y1: 0,
+    x2: 1,
+    y2: 0,
   },
   gradientStops: [
-    { offset: '0', stopColor: '#e63946' },
-    { offset: '1', stopColor: '#457b9d', stopOpacity: '0.85' },
+    { offset: 0, stopColor: '#e63946' },
+    { offset: 1, stopColor: '#457b9d', stopOpacity: 0.85 },
   ],
   radialGradient: {
     id: 'glow',
-    cx: '0.5',
-    cy: '0.5',
-    r: '0.5',
+    cx: 0.5,
+    cy: 0.5,
+    r: 0.5,
   },
   radialGradientStops: [
-    { offset: '0', stopColor: '#ffd166' },
-    { offset: '1', stopColor: '#ef476f' },
+    { offset: 0, stopColor: '#ffd166' },
+    { offset: 1, stopColor: '#ef476f' },
   ],
   radialRect: {
     x: 110,
@@ -120,12 +120,12 @@ export const showcase = {
     fill: 'none',
   },
   group: {
-    transform: 'translate(150,150) rotate(15)',
+    transform: 'translate(150,150) rotate(15)' as const,
     fill: '#8338ec',
   },
   groupRects: [
     { x: -20, y: -20, width: 18, height: 18 },
-    { x: 4, y: 4, width: 18, height: 18, fillOpacity: '0.6' },
+    { x: 4, y: 4, width: 18, height: 18, fillOpacity: 0.6 },
   ],
   clippedRect: {
     x: 8,
@@ -138,7 +138,8 @@ export const showcase = {
   text: {
     x: 100,
     y: 195,
-    style: { fontFamily: 'Roboto', fontSize: 12, color: '#1d3557' },
+    fill: '#1d3557',
+    style: { fontFamily: 'Roboto', fontSize: 12 },
   },
   textTspans: [
     { text: 'Hello ' },

@@ -107,7 +107,6 @@ definePdf<EbookProps>({
     creator="Nuxt PDF"
     :subject="ebook.subtitle"
     :title="ebook.title"
-    page-mode="useOutlines"
   >
     <!-- 1 · Cover — full-bleed deep ink, no running matter -->
     <PdfPage

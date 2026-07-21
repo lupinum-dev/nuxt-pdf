@@ -36,6 +36,52 @@ import {
 } from './runtime/server/engine/limits'
 import type { PdfFontDeclaration } from './runtime/server/fonts'
 
+export type {
+  PdfLength,
+  PdfLengthOrPercentage,
+  PdfPercentage,
+  PdfStyle,
+  PdfStyleEntry,
+  PdfStyleValue,
+} from './runtime/renderer/types'
+
+export type {
+  PdfBaseProps,
+  PdfBookmark,
+  PdfCircleProps,
+  PdfClipPathProps,
+  PdfDefsProps,
+  PdfDocumentProps,
+  PdfEllipseProps,
+  PdfGProps,
+  PdfImageProps,
+  PdfImageSource,
+  PdfLinearGradientProps,
+  PdfLineProps,
+  PdfLinkProps,
+  PdfNoteProps,
+  PdfPageDimension,
+  PdfPageProps,
+  PdfPageSize,
+  PdfPageSizeName,
+  PdfPageUnit,
+  PdfPathProps,
+  PdfPolygonProps,
+  PdfPolylineProps,
+  PdfRadialGradientProps,
+  PdfRectProps,
+  PdfStopProps,
+  PdfSvgLength,
+  PdfSvgNumber,
+  PdfSvgTransform,
+  PdfSvgTransformOperation,
+  PdfSvgPresentationProps,
+  PdfSvgProps,
+  PdfTextProps,
+  PdfTspanProps,
+  PdfViewProps,
+} from './runtime/components'
+
 export interface ModuleOptions {
   fonts?: readonly PdfFontDeclaration[]
   remote?: RemoteAssetOptions

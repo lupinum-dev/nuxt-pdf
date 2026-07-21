@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { PdfStyle } from '@lupinum/nuxt-pdf'
 import type { Invoice } from '../shared/invoice'
 import {
   compactInvoice,
@@ -31,7 +32,7 @@ const pageStyle = {
   paddingBottom: 54,
   paddingHorizontal: 48,
   paddingTop: 44,
-}
+} satisfies PdfStyle
 
 const footerLinkStyle = {
   bottom: 24,
@@ -40,7 +41,7 @@ const footerLinkStyle = {
   left: 48,
   position: 'absolute',
   textDecoration: 'none',
-}
+} satisfies PdfStyle
 
 const footerPageStyle = {
   bottom: 24,
@@ -50,7 +51,7 @@ const footerPageStyle = {
   position: 'absolute',
   right: 48,
   textAlign: 'right',
-}
+} satisfies PdfStyle
 
 definePdf<InvoiceProps>({
   title: ({ invoice }) => `Invoice ${invoice.number}`,

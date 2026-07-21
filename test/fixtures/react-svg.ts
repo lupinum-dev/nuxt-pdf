@@ -94,7 +94,12 @@ export const createReactSvgDocument = () => h(
       ),
       h(
         Text,
-        { x: showcase.text.x, y: showcase.text.y, style: showcase.text.style },
+        {
+          x: showcase.text.x,
+          y: showcase.text.y,
+          fill: showcase.text.fill,
+          style: showcase.text.style,
+        },
         ...showcase.textTspans.map((tspan, index) =>
           h(
             Tspan,

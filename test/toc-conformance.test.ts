@@ -62,7 +62,7 @@ const ReportDocument = defineComponent({
   setup() {
     const pageNumbers = usePdfPageNumbers()
     return () =>
-      h(PdfDocument, { title: 'Field Report', creationDate: new Date(0), modificationDate: new Date(0) }, {
+      h(PdfDocument, { title: 'Field Report', creationDate: new Date(0) }, {
         default: () => [
           h(PdfPage, { size: 'A4', style: { paddingVertical: 56, paddingHorizontal: 48, fontFamily: 'Helvetica' } }, {
             default: () => [

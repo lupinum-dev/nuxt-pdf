@@ -103,7 +103,7 @@ const NormalDoc = defineComponent({
   setup(props) {
     const resolved = () => props.resolved as DestinationPageMap
     return () =>
-      h(PdfDocument, { title: 'X', creationDate: new Date(0), modificationDate: new Date(0) }, {
+      h(PdfDocument, { title: 'X', creationDate: new Date(0) }, {
         default: () => [
           h(PdfPage, { size: 'A4', style: { padding: 48 } }, {
             default: () => [
@@ -192,7 +192,7 @@ const BookmarkDoc = defineComponent({
   setup(props) {
     const resolved = () => props.resolved as DestinationPageMap
     return () =>
-      h(PdfDocument, { creationDate: new Date(0), modificationDate: new Date(0) }, {
+      h(PdfDocument, { creationDate: new Date(0) }, {
         default: () => [
           h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
             default: () => [
@@ -257,7 +257,7 @@ const StableStyleDoc = defineComponent({
   setup(props) {
     const resolved = () => props.resolved as DestinationPageMap
     return () =>
-      h(PdfDocument, { creationDate: new Date(0), modificationDate: new Date(0) }, {
+      h(PdfDocument, { creationDate: new Date(0) }, {
         default: () => [
           h(PdfPage, { size: 'A4', style: { padding: 48 } }, {
             default: () => [
@@ -321,7 +321,7 @@ const SplitDoc = defineComponent({
   setup(props) {
     const resolved = () => props.resolved as DestinationPageMap
     return () =>
-      h(PdfDocument, { creationDate: new Date(0), modificationDate: new Date(0) }, {
+      h(PdfDocument, { creationDate: new Date(0) }, {
         default: () => [
           h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
             default: () => [

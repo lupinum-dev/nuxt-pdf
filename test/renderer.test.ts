@@ -3,6 +3,7 @@ import {
   defineComponent,
   h,
   resolveComponent,
+  type Component,
   type PropType,
   type VNodeChild,
 } from 'vue'
@@ -18,11 +19,18 @@ import {
   PdfClipPath,
   PdfDefs,
   PdfDocument,
+  PdfEllipse,
   PdfG,
+  PdfImage,
+  PdfLine,
   PdfLinearGradient,
+  PdfLink,
   PdfNote,
   PdfPage,
   PdfPath,
+  PdfPolygon,
+  PdfPolyline,
+  PdfRadialGradient,
   PdfRect,
   PdfStop,
   PdfSvg,
@@ -31,12 +39,14 @@ import {
   PdfView,
 } from '../src/runtime/components'
 import { mountPdfComponent } from '../src/runtime/renderer'
+import { renderDocument } from '../src/runtime/server/engine/render-document'
 import {
   PDF_PRIMITIVES,
   type PdfElementNode,
   type PdfStyle,
   type PdfTextInstance,
 } from '../src/runtime/renderer/types'
+import { rasterizePdf } from './utils/pdf'
 
 type Item = {
   id: string
@@ -132,6 +142,54 @@ describe('Vue PDF host renderer', () => {
 
     mounted.unmount()
   })
+
+  it('paints the upstream layout debug overlay only when debug is enabled', async () => {
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => [false, true].map(debug => h(PdfPage, {
+          key: String(debug),
+          size: [80, 80],
+          style: { padding: 0 },
+        }, {
+          default: () => h(PdfView, {
+            debug,
+            style: {
+              position: 'absolute',
+              left: 20,
+              top: 20,
+              width: 40,
+              height: 40,
+            },
+          }),
+        })),
+      }))
+    const mounted = await mountPdfComponent(Fixture)
+
+    try {
+      const result = await renderDocument(
+        mounted.document as unknown as DocumentNode,
+      )
+      const pages = await rasterizePdf(result.bytes)
+      expect(pages).toHaveLength(2)
+
+      const pixelAt = (page: (typeof pages)[number], x: number, y: number) => {
+        const offset = ((y * page.width) + x) * 4
+        return [...page.pixels.slice(offset, offset + 4)]
+      }
+      const plainCenter = pixelAt(pages[0]!, 40, 40)
+      const debugCenter = pixelAt(pages[1]!, 40, 40)
+
+      expect(plainCenter).toEqual([255, 255, 255, 255])
+      expect(debugCenter).not.toEqual(plainCenter)
+      expect(debugCenter[0]).toBeGreaterThan(245)
+      expect(debugCenter[1]).toBeLessThan(10)
+      expect(debugCenter[2]).toBeLessThan(10)
+      expect(debugCenter[3]).toBe(255)
+    }
+    finally {
+      mounted.unmount()
+    }
+  }, 20_000)
 
   it('mounts and patches one layout-compatible document tree', async () => {
     const renderPageNumber = vi.fn(() => 0)
@@ -392,11 +450,11 @@ describe('Vue PDF host renderer', () => {
     )
   })
 
-  it('retains PdfNote text and minPresenceAhead on the canonical tree', async () => {
+  it('normalizes ordinary kebab-case PDF props before mounting', async () => {
     const Fixture = defineComponent(() => () =>
-      h(PdfDocument, null, {
+      h(PdfDocument, { 'page-layout': 'singlePage' }, {
         default: () => h(PdfPage, null, {
-          default: () => h(PdfView, { minPresenceAhead: 48 }, {
+          default: () => h(PdfView, { 'min-presence-ahead': 48 }, {
             default: () => h(PdfNote, null, () => 'Reviewer note'),
           }),
         }),
@@ -407,11 +465,126 @@ describe('Vue PDF host renderer', () => {
     const view = elementChild(elementChild(mounted.document, 0), 0)
     const note = elementChild(view, 0)
 
+    expect(mounted.document.props.pageLayout).toBe('singlePage')
+    expect(mounted.document.props).not.toHaveProperty('page-layout')
     expect(view.props.minPresenceAhead).toBe(48)
+    expect(view.props).not.toHaveProperty('min-presence-ahead')
     expect(note.type).toBe(PDF_PRIMITIVES.Note)
     expect(textChild(note).value).toBe('Reviewer note')
 
     mounted.unmount()
+  })
+
+  it.each([
+    { component: PdfDocument, prop: 'page-mode' },
+    { component: PdfDocument, prop: 'modification-date' },
+    { component: PdfDocument, prop: 'owner-password' },
+    { component: PdfSvg, prop: 'preserve-aspect-ratio' },
+    { component: PdfRect, prop: 'fill-rule' },
+    { component: PdfLinearGradient, prop: 'gradient-units' },
+    { component: PdfDefs, prop: 'anything' },
+  ])('fails closed on removed or unknown $prop props', async ({ component, prop }) => {
+    const secret = 'private-customer-value'
+    const InvalidPrimitive = component as Component
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, null, {
+          default: () => h(PdfSvg, { viewBox: '0 0 10 10' }, {
+            default: () => h(InvalidPrimitive, { [prop]: secret }),
+          }),
+        }),
+      }),
+    )
+
+    const error = await mountPdfComponent(Fixture).catch(cause => cause)
+    expect(error).toMatchObject({ code: 'PDF_TREE_INVALID' })
+    expect((error as Error).message).toContain(prop.replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase()))
+    expect((error as Error).message).not.toContain(secret)
+  })
+
+  it('rejects a valid prop on the wrong primitive', async () => {
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, { title: 'wrong host' }),
+      }),
+    )
+
+    await expect(mountPdfComponent(Fixture)).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message: 'Unsupported prop "title" on <PdfPage>.',
+    })
+  })
+
+  it.each([
+    {
+      label: 'an image without a source',
+      render: () => h(PdfImage as Component, {}),
+      message: '<PdfImage> requires exactly one of "src" or "source".',
+    },
+    {
+      label: 'an image with both source aliases',
+      render: () => h(PdfImage as Component, {
+        source: new Uint8Array([1]),
+        src: new Uint8Array([2]),
+      }),
+      message: '<PdfImage> requires exactly one of "src" or "source".',
+    },
+    {
+      label: 'a link without a target',
+      render: () => h(PdfLink as Component, {}, () => 'invalid link'),
+      message: '<PdfLink> requires exactly one of "href" or "src".',
+    },
+    {
+      label: 'a link with both target aliases',
+      render: () => h(PdfLink as Component, {
+        href: 'https://example.com',
+        src: '#details',
+      }, () => 'invalid link'),
+      message: '<PdfLink> requires exactly one of "href" or "src".',
+    },
+  ])('fails tree validation for $label', async ({ render, message }) => {
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, null, { default: render }),
+      }),
+    )
+
+    await expect(mountPdfComponent(Fixture)).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message,
+    })
+  })
+
+  it.each([
+    { label: 'zero dpi', props: { dpi: 0 } },
+    { label: 'negative tuple width', props: { size: [-1, 100] } },
+    { label: 'unknown page name', props: { size: 'invoice' } },
+    { label: 'string boolean', props: { wrap: 'false' } },
+  ])('rejects invalid page scalar: $label', async ({ props }) => {
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage as Component, props),
+      }),
+    )
+
+    await expect(mountPdfComponent(Fixture)).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+    })
+  })
+
+  it('rejects SVG text paint on page-flow text', async () => {
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, null, {
+          default: () => h(PdfText as Component, { fill: '#f00' }, () => 'text'),
+        }),
+      }),
+    )
+
+    await expect(mountPdfComponent(Fixture)).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message: 'The PdfText fill, x, and y props are only supported inside <PdfSvg>.',
+    })
   })
 
   it('rejects roots that do not contain exactly one document', async () => {
@@ -474,6 +647,191 @@ describe('Vue PDF SVG nesting', () => {
   })
 
   it.each([
+    { label: 'PdfPath.d', child: () => h(PdfPath as Component) },
+    { label: 'PdfRect.height', child: () => h(PdfRect as Component, { width: 1 }) },
+    { label: 'PdfCircle.r', child: () => h(PdfCircle as Component) },
+    { label: 'PdfEllipse.ry', child: () => h(PdfEllipse as Component, { rx: 1 }) },
+    {
+      label: 'PdfLine.y2',
+      child: () => h(PdfLine as Component, { x1: 0, x2: 1, y1: 0 }),
+    },
+    { label: 'PdfPolyline.points', child: () => h(PdfPolyline as Component) },
+    { label: 'PdfPolygon.points', child: () => h(PdfPolygon as Component) },
+    {
+      label: 'PdfClipPath.id',
+      child: () => h(PdfDefs, null, {
+        default: () => h(PdfClipPath as Component),
+      }),
+    },
+    {
+      label: 'PdfLinearGradient.id',
+      child: () => h(PdfDefs, null, {
+        default: () => h(PdfLinearGradient as Component),
+      }),
+    },
+    {
+      label: 'PdfRadialGradient.id',
+      child: () => h(PdfDefs, null, {
+        default: () => h(PdfRadialGradient as Component),
+      }),
+    },
+    {
+      label: 'PdfStop.stopColor',
+      child: () => h(PdfDefs, null, {
+        default: () => h(PdfLinearGradient, { id: 'g' }, {
+          default: () => h(PdfStop as Component, { offset: 0 }),
+        }),
+      }),
+    },
+  ])('fails closed when $label is missing', async ({ child }) => {
+    await expect(mountSvgSubtree(child)).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+    })
+  })
+
+  it('treats numeric zero as present for required SVG props', async () => {
+    const mounted = await mountSvgSubtree(() => [
+      h(PdfRect, { height: 0, width: 0 }),
+      h(PdfCircle, { r: 0 }),
+      h(PdfEllipse, { rx: 0, ry: 0 }),
+      h(PdfLine, { x1: 0, x2: 0, y1: 0, y2: 0 }),
+      h(PdfPolyline, { points: '0,0 0,0' }),
+      h(PdfPolygon, { points: '0,0 0,0 0,0' }),
+      h(PdfDefs, null, {
+        default: () => h(PdfLinearGradient, { id: 'zero-gradient' }, {
+          default: () => h(PdfStop, { offset: 0, stopColor: '#000' }),
+        }),
+      }),
+    ])
+
+    expect(svgOf(mounted).children).toHaveLength(7)
+    mounted.unmount()
+  })
+
+  it.each([
+    { label: 'malformed viewBox', svg: { viewBox: '0 0 nope 10' }, child: () => null },
+    {
+      label: 'negative stroke width',
+      svg: { viewBox: '0 0 10 10' },
+      child: () => h(PdfLine as Component, {
+        strokeWidth: -1,
+        x1: 0,
+        x2: 1,
+        y1: 0,
+        y2: 1,
+      }),
+    },
+    {
+      label: 'opacity above one',
+      svg: { viewBox: '0 0 10 10' },
+      child: () => h(PdfRect as Component, {
+        fillOpacity: 1.1,
+        height: 1,
+        width: 1,
+      }),
+    },
+    {
+      label: 'nonnumeric geometry',
+      svg: { viewBox: '0 0 10 10' },
+      child: () => h(PdfRect as Component, {
+        height: 1,
+        width: 'large',
+      }),
+    },
+    {
+      label: 'unsupported transform',
+      svg: { viewBox: '0 0 10 10' },
+      child: () => h(PdfRect as Component, {
+        height: 1,
+        transform: 'skewX(10)',
+        width: 1,
+      }),
+    },
+  ])('rejects $label', async ({ svg, child }) => {
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, null, {
+          default: () => h(PdfSvg as Component, svg, { default: child }),
+        }),
+      }),
+    )
+
+    await expect(mountPdfComponent(Fixture)).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+    })
+  })
+
+  it('scopes definition ids to each Svg instead of destination ids', async () => {
+    const definition = () => h(PdfDefs, null, {
+      default: () => h(PdfLinearGradient, { id: 'shared' }),
+    })
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, { id: 'shared' }, {
+          default: () => [
+            h(PdfSvg, { key: 'first', viewBox: '0 0 10 10' }, { default: definition }),
+            h(PdfSvg, { key: 'second', viewBox: '0 0 10 10' }, { default: definition }),
+          ],
+        }),
+      }),
+    )
+
+    const mounted = await mountPdfComponent(Fixture)
+    mounted.unmount()
+  })
+
+  it('rejects duplicate definition ids inside one Svg', async () => {
+    await expect(mountSvgSubtree(() => h(PdfDefs, null, {
+      default: () => [
+        h(PdfLinearGradient, { id: 'duplicate' }),
+        h(PdfRadialGradient, { id: 'duplicate' }),
+      ],
+    }))).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message: 'SVG definition ids must be unique within one <PdfSvg>.',
+    })
+  })
+
+  it('rejects more than one Defs child inside one Svg', async () => {
+    await expect(mountSvgSubtree(() => [
+      h(PdfDefs, { key: 'first' }),
+      h(PdfDefs, { key: 'second' }),
+    ])).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message: '<PdfSvg> accepts at most one <PdfDefs> child.',
+    })
+  })
+
+  it.each([
+    {
+      label: 'dangling fill',
+      child: () => h(PdfRect, {
+        fill: 'url(#missing)',
+        height: 1,
+        width: 1,
+      }),
+    },
+    {
+      label: 'gradient used as clip path',
+      child: () => [
+        h(PdfDefs, { key: 'defs' }, {
+          default: () => h(PdfLinearGradient, { id: 'paint' }),
+        }),
+        h(PdfRect, {
+          key: 'shape',
+          clipPath: 'url(#paint)',
+          height: 1,
+          width: 1,
+        }),
+      ],
+    },
+  ])('rejects a $label reference', async ({ child }) => {
+    await expect(mountSvgSubtree(child)).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+    })
+  })
+
+  it.each([
     { host: 'PdfPage', wrap: false },
     { host: 'PdfView', wrap: true },
   ])('accepts an Svg as a child of $host', async ({ wrap }) => {
@@ -514,7 +872,7 @@ describe('Vue PDF SVG nesting', () => {
   it('rejects Tspan outside Text, where upstream would draw nothing', async () => {
     await expect(mountSvgSubtree(() => h(PdfG, null, {
       default: () => [
-        h(PdfText, { key: 'text' }, {
+        h(PdfText, { key: 'text', x: 0, y: 0 }, {
           default: () => h(PdfTspan, null, () => 'kept'),
         }),
         h(PdfTspan, { key: 'orphan' }, () => 'dropped'),
@@ -523,6 +881,32 @@ describe('Vue PDF SVG nesting', () => {
       code: 'PDF_TREE_INVALID',
       message: 'Invalid PDF nesting: <PdfG> cannot contain <PdfTspan>.',
     })
+  })
+
+  it('rejects Tspan inside ordinary page-flow text', async () => {
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, null, {
+          default: () => h(PdfText, null, {
+            default: () => h(PdfTspan, null, () => 'not SVG text'),
+          }),
+        }),
+      }),
+    )
+
+    await expect(mountPdfComponent(Fixture)).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message: '<PdfTspan> is only supported inside SVG text.',
+    })
+  })
+
+  it.each([
+    { label: 'missing coordinates', props: { fill: '#f00' } },
+    { label: 'page-flow prop', props: { fixed: true, x: 0, y: 0 } },
+  ])('rejects SVG text with $label', async ({ props }) => {
+    await expect(mountSvgSubtree(() =>
+      h(PdfText as Component, props, () => 'invalid SVG text'),
+    )).rejects.toMatchObject({ code: 'PDF_TREE_INVALID' })
   })
 
   it('lets Defs hold gradients and clip paths but rejects raw shapes', async () => {
@@ -602,6 +986,17 @@ describe('Vue PDF SVG nesting', () => {
     })
     expect(rect.props).not.toHaveProperty('stroke-width')
 
+    mounted.unmount()
+  })
+
+  it('preserves numeric zero fill opacity for layout to resolve', async () => {
+    const mounted = await mountSvgSubtree(() => h(PdfRect, {
+      width: 10,
+      height: 10,
+      fillOpacity: 0,
+    }))
+
+    expect(elementChild(svgOf(mounted), 0).props.fillOpacity).toBe(0)
     mounted.unmount()
   })
 

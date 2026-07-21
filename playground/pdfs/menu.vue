@@ -132,7 +132,6 @@ definePdf<MenuProps>({
     :author="menu.name"
     creator="Nuxt PDF"
     subject="Dinner menu"
-    page-mode="useOutlines"
   >
     <!-- Page 1: masthead, starters, mains -->
     <PdfPage
