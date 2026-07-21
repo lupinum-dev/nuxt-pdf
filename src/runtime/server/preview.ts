@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto'
 import {
   defineEventHandler,
   getQuery,
@@ -38,20 +39,69 @@ export interface PdfPreviewRequest {
 // EXACT bytes the diagnostics panel describes — without it, a non-deterministic
 // template would show one render while the stats describe another. Dev-only,
 // bounded FIFO; a miss (evicted or direct raw link) falls back to a fresh render.
-const parkedRenders = new Map<string, Uint8Array>()
-const PARKED_RENDER_LIMIT = 8
-let parkedSequence = 0
+interface ParkedRender {
+  bytes: Uint8Array
+  expiresAt: number
+  key: string
+  scenario?: string
+}
 
-const parkRender = (bytes: Uint8Array): string => {
-  parkedSequence += 1
-  const token = String(parkedSequence)
-  parkedRenders.set(token, bytes)
+const parkedRenders = new Map<string, ParkedRender>()
+const PARKED_RENDER_LIMIT = 8
+const PARKED_RENDER_TTL_MS = 30_000
+
+const pruneExpiredRenders = (now: number): void => {
+  for (const [token, render] of parkedRenders) {
+    if (render.expiresAt <= now) parkedRenders.delete(token)
+  }
+}
+
+const createRenderToken = (): string => {
+  let token: string
+  do token = randomBytes(32).toString('base64url')
+  while (parkedRenders.has(token))
+  return token
+}
+
+const parkRender = (
+  bytes: Uint8Array,
+  key: string,
+  scenario?: string,
+): string => {
+  const now = Date.now()
+  pruneExpiredRenders(now)
+
+  const token = createRenderToken()
+  parkedRenders.set(token, {
+    bytes,
+    expiresAt: now + PARKED_RENDER_TTL_MS,
+    key,
+    scenario,
+  })
   while (parkedRenders.size > PARKED_RENDER_LIMIT) {
     const oldest = parkedRenders.keys().next().value
     if (oldest === undefined) break
     parkedRenders.delete(oldest)
   }
   return token
+}
+
+const takeParkedRender = (
+  token: string,
+  key: string,
+  scenario?: string,
+): Uint8Array | undefined => {
+  const render = parkedRenders.get(token)
+  if (!render) return undefined
+
+  if (render.expiresAt <= Date.now()) {
+    parkedRenders.delete(token)
+    return undefined
+  }
+  if (render.key !== key || render.scenario !== scenario) return undefined
+
+  parkedRenders.delete(token)
+  return render.bytes
 }
 
 const escapeHtml = (value: string): string => value
@@ -292,7 +342,7 @@ const viewerPage = async (
   try {
     const render = await template.renderForPreview(props)
     title = render.title || template.key
-    const token = parkRender(render.bytes)
+    const token = parkRender(render.bytes, template.key, scenario)
     body = diagnosticsPanel(render)
       + `<iframe title="${escapeHtml(title)}" src="${escapeHtml(rawUrl(rootPath, template.key, scenario, token))}"></iframe>`
   }
@@ -370,7 +420,7 @@ export const renderPdfPreview = async (
 
   const parked = request.render === undefined
     ? undefined
-    : parkedRenders.get(request.render)
+    : takeParkedRender(request.render, key, request.scenario)
   if (parked) {
     return new Response(parked as BodyInit, {
       headers: {

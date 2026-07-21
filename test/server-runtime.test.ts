@@ -97,11 +97,13 @@ const previewRender = (
 
 const createPreviewTemplate = (
   options: {
+    key?: string
     sampleData?: object
     scenarios?: Readonly<Record<string, object>>
     renderForPreview?: (props: object) => Promise<PdfPreviewRender>
   } = {},
 ) => {
+  const key = options.key ?? 'invoice'
   const sampleData = options.sampleData
   const scenarios = options.scenarios ?? {}
   const render = vi.fn(async () => createPdfRenderResult(
@@ -112,8 +114,8 @@ const createPreviewTemplate = (
     options.renderForPreview ?? (async () => previewRender()),
   )
   const template = {
-    key: 'invoice',
-    file: 'pdfs/invoice.vue',
+    key,
+    file: `pdfs/${key}.vue`,
     definition: { sampleData, scenarios },
     sampleData,
     scenarios,
@@ -132,6 +134,12 @@ const createPreviewTemplate = (
   }
 
   return { render, renderForPreview, template }
+}
+
+const getPreviewRenderToken = async (response: Response): Promise<string> => {
+  const token = /[?&](?:amp;)?render=([^"&]+)/.exec(await response.text())?.[1]
+  expect(token).toBeDefined()
+  return token!
 }
 
 describe('PDF render result', () => {
@@ -382,7 +390,7 @@ describe('development PDF preview', () => {
     expect(index.status).toBe(200)
     expect(await index.text()).toContain('href="/_pdf/invoice"')
     expect(page.status).toBe(200)
-    expect(await page.text()).toMatch(/src="\/_pdf\/invoice\.pdf\?render=\d+"/)
+    expect(await page.text()).toMatch(/src="\/_pdf\/invoice\.pdf\?render=[^"&]+"/)
   })
 
   it('renders raw scenario bytes through the template render path', async () => {
@@ -450,8 +458,27 @@ describe('development PDF preview', () => {
     expect(long).toMatch(/class="active" aria-current="page">long</)
 
     // The iframe source swaps with the scenario.
-    expect(def).toMatch(/src="\/_pdf\/invoice\.pdf\?render=\d+"/)
-    expect(long).toMatch(/src="\/_pdf\/invoice\.pdf\?scenario=long&(amp;)?render=\d+"/)
+    expect(def).toMatch(/src="\/_pdf\/invoice\.pdf\?render=[^"&]+"/)
+    expect(long).toMatch(/src="\/_pdf\/invoice\.pdf\?scenario=long&(amp;)?render=[^"&]+"/)
+  })
+
+  it('uses opaque, non-sequential parked-render tokens', async () => {
+    const { template } = createPreviewTemplate({ sampleData: { id: 'sample' } })
+    const registry = { invoice: template }
+
+    const first = await getPreviewRenderToken(
+      await renderPdfPreview(registry, { path: 'invoice' }),
+    )
+    const second = await getPreviewRenderToken(
+      await renderPdfPreview(registry, { path: 'invoice' }),
+    )
+
+    for (const token of [first, second]) {
+      expect(token).toMatch(/^[\w-]+$/)
+      expect(token.length).toBeGreaterThanOrEqual(32)
+      expect(token).not.toMatch(/^\d+$/)
+    }
+    expect(second).not.toBe(first)
   })
 
   it('serves the exact diagnosed bytes to the iframe via the parked render', async () => {
@@ -466,8 +493,7 @@ describe('development PDF preview', () => {
     const registry = { invoice: template }
 
     const viewer = await renderPdfPreview(registry, { path: 'invoice' })
-    const token = /render=(\d+)/.exec(await viewer.text())?.[1]
-    expect(token).toBeDefined()
+    const token = await getPreviewRenderToken(viewer)
 
     // The tokened raw route serves the very bytes the diagnostics describe —
     // no second render happens for the embedded viewer.
@@ -479,13 +505,100 @@ describe('development PDF preview', () => {
     expect(new Uint8Array(await raw.arrayBuffer())).toEqual(diagnosedBytes)
     expect(render).not.toHaveBeenCalled()
 
-    // A missing/evicted token falls back to a fresh render.
+    // Successful retrieval consumes the token, so replay falls back to a fresh
+    // render instead of serving the parked bytes again.
+    const replay = await renderPdfPreview(registry, {
+      path: 'invoice.pdf',
+      render: token,
+    })
+    expect(Buffer.from(await replay.arrayBuffer()).toString()).toBe('%PDF-preview')
+    expect(render).toHaveBeenCalledTimes(1)
+
+    // A missing/evicted token follows the same fresh-render path.
     const fallback = await renderPdfPreview(registry, {
       path: 'invoice.pdf',
       render: '999999',
     })
     expect(fallback.status).toBe(200)
-    expect(render).toHaveBeenCalledTimes(1)
+    expect(render).toHaveBeenCalledTimes(2)
+  })
+
+  it('binds parked renders to their template and scenario', async () => {
+    const diagnosedBytes = new TextEncoder().encode('%PDF-bound-render')
+    const scenarios = { long: { id: 'long' } }
+    const invoice = createPreviewTemplate({
+      sampleData: { id: 'sample' },
+      scenarios,
+      renderForPreview: async () => ({
+        ...previewRender(),
+        bytes: diagnosedBytes,
+      }),
+    })
+    const other = createPreviewTemplate({
+      key: 'other',
+      sampleData: { id: 'sample' },
+      scenarios,
+    })
+    const registry = { invoice: invoice.template, other: other.template }
+
+    const token = await getPreviewRenderToken(await renderPdfPreview(registry, {
+      path: 'invoice',
+      scenario: 'long',
+    }))
+
+    const wrongTemplate = await renderPdfPreview(registry, {
+      path: 'other.pdf',
+      scenario: 'long',
+      render: token,
+    })
+    expect(new Uint8Array(await wrongTemplate.arrayBuffer())).not.toEqual(diagnosedBytes)
+    expect(other.render).toHaveBeenCalledOnce()
+
+    const wrongScenario = await renderPdfPreview(registry, {
+      path: 'invoice.pdf',
+      render: token,
+    })
+    expect(new Uint8Array(await wrongScenario.arrayBuffer())).not.toEqual(diagnosedBytes)
+    expect(invoice.render).toHaveBeenCalledOnce()
+
+    // Rejected lookups do not consume another template/scenario's token.
+    const correct = await renderPdfPreview(registry, {
+      path: 'invoice.pdf',
+      scenario: 'long',
+      render: token,
+    })
+    expect(new Uint8Array(await correct.arrayBuffer())).toEqual(diagnosedBytes)
+    expect(invoice.render).toHaveBeenCalledOnce()
+  })
+
+  it('expires parked renders before serving them', async () => {
+    vi.useFakeTimers()
+    try {
+      const diagnosedBytes = new TextEncoder().encode('%PDF-expiring-render')
+      const { render, template } = createPreviewTemplate({
+        sampleData: { id: 'sample' },
+        renderForPreview: async () => ({
+          ...previewRender(),
+          bytes: diagnosedBytes,
+        }),
+      })
+      const registry = { invoice: template }
+      const token = await getPreviewRenderToken(
+        await renderPdfPreview(registry, { path: 'invoice' }),
+      )
+
+      vi.advanceTimersByTime(60_000)
+
+      const expired = await renderPdfPreview(registry, {
+        path: 'invoice.pdf',
+        render: token,
+      })
+      expect(new Uint8Array(await expired.arrayBuffer())).not.toEqual(diagnosedBytes)
+      expect(render).toHaveBeenCalledOnce()
+    }
+    finally {
+      vi.useRealTimers()
+    }
   })
 
   it('reports render diagnostics including passes and collected warnings', async () => {
