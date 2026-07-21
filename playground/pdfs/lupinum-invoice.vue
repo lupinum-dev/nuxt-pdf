@@ -49,18 +49,18 @@ const qrPath = Array.from({ length: qr.modules.size }, (_, row) => {
 
 const pageStyle = {
   backgroundColor: '#FFFFFF',
-  color: '#000914',
+  color: '#404040',
   fontFamily: 'Lupinum Sans',
-  fontSize: 9.2,
+  fontSize: 9.65,
   fontWeight: 300,
   lineHeight: 1.3,
   paddingBottom: 58,
   paddingHorizontal: 42,
-  paddingTop: 82,
+  paddingTop: 85,
 }
 
 const labelStyle = {
-  fontSize: 6.7,
+  fontSize: 8.7,
   fontWeight: 700,
   letterSpacing: 0.65,
   textTransform: 'uppercase' as const,
@@ -91,14 +91,15 @@ definePdf<LupinumInvoiceProps>({
       <PdfText
         fixed
         :style="{
-          fontSize: 6.6,
+          color: '#090909',
+          fontSize: 6,
           fontWeight: 700,
           left: 452,
           letterSpacing: 1.3,
           position: 'absolute',
           right: 42,
           textAlign: 'right',
-          top: 14,
+          top: 16,
         }"
       >
         {{ copy.documentLabel }} {{ invoice.number }}
@@ -119,9 +120,9 @@ definePdf<LupinumInvoiceProps>({
         fixed
         :href="invoice.company.contact.websiteUrl"
         :style="{
-          bottom: 26,
-          color: '#000914',
-          fontSize: 6.4,
+          bottom: 23.3,
+          color: '#090909',
+          fontSize: 7.8,
           left: 50,
           letterSpacing: 1.1,
           position: 'absolute',
@@ -134,9 +135,9 @@ definePdf<LupinumInvoiceProps>({
         fixed
         :href="`mailto:${invoice.company.contact.email}`"
         :style="{
-          bottom: 26,
-          color: '#000914',
-          fontSize: 6.4,
+          bottom: 23.3,
+          color: '#090909',
+          fontSize: 7.8,
           left: 148,
           letterSpacing: 1.1,
           position: 'absolute',
@@ -149,9 +150,9 @@ definePdf<LupinumInvoiceProps>({
         fixed
         :href="`tel:${invoice.company.contact.phone.replaceAll(' ', '')}`"
         :style="{
-          bottom: 26,
-          color: '#000914',
-          fontSize: 6.4,
+          bottom: 23.3,
+          color: '#090909',
+          fontSize: 7.8,
           left: 247,
           letterSpacing: 1.1,
           position: 'absolute',
@@ -165,7 +166,8 @@ definePdf<LupinumInvoiceProps>({
         :render="({ pageNumber, totalPages }) => `Seite ${pageNumber} / ${totalPages}`"
         :style="{
           bottom: 26,
-          fontSize: 6.4,
+          color: '#090909',
+          fontSize: 6.7,
           fontWeight: 700,
           letterSpacing: 1.1,
           position: 'absolute',
@@ -183,7 +185,7 @@ definePdf<LupinumInvoiceProps>({
         :wrap="false"
       >
         <PdfView :style="{ paddingTop: 1, width: 172 }">
-          <PdfText :style="{ fontSize: 9.2, fontWeight: 300, marginBottom: 3 }">
+          <PdfText :style="{ fontSize: 9.65, fontWeight: 300, marginBottom: 3 }">
             {{ invoice.company.name }}
           </PdfText>
           <PdfText>{{ invoice.company.address }}</PdfText>
@@ -213,7 +215,7 @@ definePdf<LupinumInvoiceProps>({
           <PdfText :style="{ ...labelStyle, marginBottom: 8 }">
             {{ copy.customerLabel }}
           </PdfText>
-          <PdfText :style="{ fontSize: 10.5, fontWeight: 300, marginBottom: 3 }">
+          <PdfText :style="{ fontSize: 9.65, fontWeight: 300, marginBottom: 3 }">
             {{ invoice.customer.name }}
           </PdfText>
           <PdfText>{{ invoice.customer.address }}</PdfText>
@@ -225,35 +227,35 @@ definePdf<LupinumInvoiceProps>({
             U-ID: {{ invoice.customer.vatId }}
           </PdfText>
         </PdfView>
-        <PdfView :style="{ width: 244 }">
+        <PdfView :style="{ fontSize: 9.4, width: 244 }">
           <PdfText :style="{ ...labelStyle, marginBottom: 8 }">
             {{ copy.detailsLabel }}
           </PdfText>
           <PdfView :style="{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }">
             <PdfText>{{ copy.invoiceNumberLabel }}</PdfText>
-            <PdfText :style="{ fontFamily: 'Lupinum Mono', fontSize: 8.2, fontWeight: 600 }">
+            <PdfText :style="{ color: '#000913', fontFamily: 'Lupinum Mono', fontSize: 12, fontWeight: 600 }">
               {{ invoice.number }}
             </PdfText>
           </PdfView>
           <PdfView :style="{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }">
             <PdfText>{{ copy.invoiceDateLabel }}</PdfText>
-            <PdfText :style="{ fontFamily: 'Lupinum Mono', fontSize: 8.2 }">
+            <PdfText :style="{ color: '#000913', fontFamily: 'Lupinum Mono', fontSize: 12 }">
               {{ date(invoice.issueDate) }}
             </PdfText>
           </PdfView>
           <PdfView :style="{ flexDirection: 'row', justifyContent: 'space-between' }">
             <PdfText>{{ copy.dueDateLabel }}</PdfText>
-            <PdfText :style="{ fontFamily: 'Lupinum Mono', fontSize: 8.2 }">
+            <PdfText :style="{ color: '#000913', fontFamily: 'Lupinum Mono', fontSize: 12 }">
               {{ date(dueDate) }}
             </PdfText>
           </PdfView>
         </PdfView>
       </PdfView>
 
-      <PdfText :style="{ fontSize: 18.5, fontWeight: 700, marginTop: 26, textTransform: 'uppercase' }">
+      <PdfText :style="{ color: '#000913', fontSize: 18, fontWeight: 700, marginTop: 23, textTransform: 'uppercase' }">
         {{ copy.documentLabel }} {{ invoice.number }}
       </PdfText>
-      <PdfText :style="{ fontSize: 9.2, marginTop: 16 }">
+      <PdfText :style="{ fontSize: 9.65, marginTop: 19.3 }">
         {{ invoice.intro }}
       </PdfText>
 
@@ -261,7 +263,7 @@ definePdf<LupinumInvoiceProps>({
         :style="{
           borderColor: '#DDE4ED',
           borderWidth: 1,
-          marginTop: 22,
+          marginTop: 15,
         }"
       >
         <PdfView
@@ -276,7 +278,7 @@ definePdf<LupinumInvoiceProps>({
           }"
           :wrap="false"
         >
-          <PdfText :style="{ ...labelStyle, color: '#5D708F', width: 407 }">
+          <PdfText :style="{ color: '#61738D', fontSize: 8, fontWeight: 500, letterSpacing: 2.3, textTransform: 'uppercase', width: 407 }">
             {{ copy.servicesLabel }}
           </PdfText>
         </PdfView>
@@ -288,31 +290,34 @@ definePdf<LupinumInvoiceProps>({
             borderBottomWidth: index === invoice.lines.length - 1 ? 0 : 0.55,
             flexDirection: 'row',
             minHeight: 41,
-            paddingBottom: 8,
+            paddingBottom: 3.3,
             paddingHorizontal: 15,
-            paddingTop: 8,
+            paddingTop: 8.7,
           }"
           :wrap="false"
         >
-          <PdfText :style="{ color: '#314766', fontFamily: 'Lupinum Mono', fontSize: 9, fontWeight: 600, width: 34 }">
+          <PdfText :style="{ color: '#45556C', fontSize: 10.5, fontWeight: 500, marginLeft: 6, marginTop: 1.3, width: 28 }">
             {{ index + 1 }}
           </PdfText>
           <PdfView :style="{ paddingRight: 16, width: 350 }">
-            <PdfText :style="{ fontSize: 9.2, fontWeight: 700, lineHeight: 1.18 }">
+            <PdfText :style="{ color: '#000913', fontSize: 9.3, fontWeight: 500, letterSpacing: 0.6, lineHeight: 1.18 }">
               {{ line.title }}
             </PdfText>
             <PdfText
               v-if="lupinumInvoiceLineDetail(line, invoice.locale)"
-              :style="{ color: '#5D708F', fontSize: 7.4, fontWeight: 300, lineHeight: 1.3, marginTop: 3 }"
+              :style="{ color: '#61738D', fontSize: 9, fontWeight: 300, lineHeight: 1.15, marginTop: 6 }"
             >
               {{ lupinumInvoiceLineDetail(line, invoice.locale) }}
             </PdfText>
           </PdfView>
           <PdfText
             :style="{
+              color: '#0E162B',
               fontFamily: 'Lupinum Mono',
-              fontSize: 8.4,
+              fontSize: 10,
               fontWeight: 400,
+              letterSpacing: 0.25,
+              marginTop: -1.3,
               textAlign: 'right',
               width: 97,
             }"
@@ -324,37 +329,45 @@ definePdf<LupinumInvoiceProps>({
 
       <PdfView
         :min-presence-ahead="110"
-        :style="{ alignItems: 'flex-end', marginTop: 6, paddingRight: 8 }"
+        :style="{ alignItems: 'flex-end', marginTop: 10, paddingRight: 3 }"
         :wrap="false"
       >
-        <PdfView :style="{ width: 205 }">
-          <PdfView :style="{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 }">
-            <PdfText>{{ totals.discount ? copy.subtotalLabel : copy.netLabel }}</PdfText>
-            <PdfText :style="{ fontFamily: 'Lupinum Mono', fontSize: 8.4 }">
+        <PdfView :style="{ width: 216 }">
+          <PdfView :style="{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 15, paddingVertical: 3 }">
+            <PdfText :style="{ color: '#45556C', fontSize: 10.7 }">
+              {{ totals.discount ? copy.subtotalLabel : copy.netLabel }}
+            </PdfText>
+            <PdfText :style="{ color: '#0E162B', fontFamily: 'Lupinum Mono', fontSize: 10, letterSpacing: 0.25 }">
               {{ money(totals.discount ? totals.subtotal : totals.net) }}
             </PdfText>
           </PdfView>
           <PdfView
             v-if="totals.discount"
-            :style="{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 }"
+            :style="{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 15, paddingVertical: 3 }"
           >
-            <PdfText>{{ invoice.discount?.label ?? 'Rabatt' }}</PdfText>
-            <PdfText :style="{ fontFamily: 'Lupinum Mono', fontSize: 8.4 }">
+            <PdfText :style="{ color: '#45556C', fontSize: 10.7 }">
+              {{ invoice.discount?.label ?? 'Rabatt' }}
+            </PdfText>
+            <PdfText :style="{ color: '#0E162B', fontFamily: 'Lupinum Mono', fontSize: 10, letterSpacing: 0.25 }">
               {{ money(-totals.discount) }}
             </PdfText>
           </PdfView>
           <PdfView
             v-if="totals.discount"
-            :style="{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 }"
+            :style="{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 15, paddingVertical: 3 }"
           >
-            <PdfText>{{ copy.netLabel }}</PdfText>
-            <PdfText :style="{ fontFamily: 'Lupinum Mono', fontSize: 8.4 }">
+            <PdfText :style="{ color: '#45556C', fontSize: 10.7 }">
+              {{ copy.netLabel }}
+            </PdfText>
+            <PdfText :style="{ color: '#0E162B', fontFamily: 'Lupinum Mono', fontSize: 10, letterSpacing: 0.25 }">
               {{ money(totals.net) }}
             </PdfText>
           </PdfView>
-          <PdfView :style="{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 }">
-            <PdfText>+ {{ vatPercent }}% {{ copy.vatLabel }}</PdfText>
-            <PdfText :style="{ fontFamily: 'Lupinum Mono', fontSize: 8.4 }">
+          <PdfView :style="{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 15, paddingVertical: 3 }">
+            <PdfText :style="{ color: '#45556C', fontSize: 10.7 }">
+              + {{ vatPercent }}% {{ copy.vatLabel }}
+            </PdfText>
+            <PdfText :style="{ color: '#0E162B', fontFamily: 'Lupinum Mono', fontSize: 10, letterSpacing: 0.25 }">
               {{ money(totals.vat, true) }}
             </PdfText>
           </PdfView>
@@ -364,28 +377,30 @@ definePdf<LupinumInvoiceProps>({
               borderTopWidth: 0.55,
               flexDirection: 'row',
               justifyContent: 'space-between',
-              marginTop: 4,
+              marginHorizontal: 6,
+              marginTop: 2,
               paddingBottom: 6,
+              paddingHorizontal: 9,
               paddingTop: 7,
             }"
           >
-            <PdfText :style="{ fontSize: 9.6, fontWeight: 700 }">
+            <PdfText :style="{ color: '#0E162B', fontSize: 10, fontWeight: 700 }">
               {{ copy.totalLabel }}
             </PdfText>
-            <PdfText :style="{ fontFamily: 'Lupinum Mono', fontSize: 9.2, fontWeight: 700 }">
+            <PdfText :style="{ color: '#0E162B', fontFamily: 'Lupinum Mono', fontSize: 10, fontWeight: 700, letterSpacing: 0.25 }">
               {{ money(totals.total) }}
             </PdfText>
           </PdfView>
-          <PdfView :style="{ backgroundColor: '#E3FCF9', height: 6 }" />
+          <PdfView :style="{ backgroundColor: '#E3FCF9', height: 6, marginHorizontal: 6 }" />
         </PdfView>
       </PdfView>
 
       <PdfView
         :min-presence-ahead="202"
-        :style="{ marginTop: 27 }"
+        :style="{ marginTop: 22 }"
         :wrap="false"
       >
-        <PdfText :style="{ fontSize: 9.1, marginBottom: 8 }">
+        <PdfText :style="{ fontSize: 9.65, marginBottom: 8 }">
           {{ copy.paymentLeadBeforeDays }} <PdfText :style="{ fontWeight: 700 }">
             {{ invoice.dueDays }} Tagen
           </PdfText> {{ copy.paymentLeadAfterDays }}
@@ -401,7 +416,7 @@ definePdf<LupinumInvoiceProps>({
             paddingVertical: 8,
           }"
         >
-          <PdfView :style="{ color: '#314766', justifyContent: 'center', width: 392 }">
+          <PdfView :style="{ color: '#314157', justifyContent: 'center', width: 392 }">
             <PdfView
               v-for="(entry, entryIndex) in [
                 [copy.accountHolderLabel, invoice.payment.accountHolder],
@@ -412,15 +427,15 @@ definePdf<LupinumInvoiceProps>({
               :key="entry[0]"
               :style="{ flexDirection: 'row', marginBottom: entryIndex === 3 ? 0 : 7.5 }"
             >
-              <PdfText :style="{ fontSize: 8.2, fontWeight: 300, width: 116 }">
+              <PdfText :style="{ fontSize: 8.7, fontWeight: 300, marginLeft: -2, width: 118 }">
                 {{ entry[0] }}
               </PdfText>
-              <PdfText :style="{ fontFamily: 'Lupinum Mono', fontSize: 8.2, fontWeight: 600 }">
+              <PdfText :style="{ fontSize: 10.5, fontWeight: 300 }">
                 {{ entry[1] }}
               </PdfText>
             </PdfView>
           </PdfView>
-          <PdfView :style="{ alignItems: 'center', justifyContent: 'center', width: 76 }">
+          <PdfView :style="{ alignItems: 'flex-end', justifyContent: 'center', width: 76 }">
             <PdfSvg
               :viewBox="`0 0 ${qrViewBoxSize} ${qrViewBoxSize}`"
               :style="{ height: 66, width: 66 }"
@@ -446,13 +461,13 @@ definePdf<LupinumInvoiceProps>({
           }"
         >
           <PdfView>
-            <PdfText :style="{ fontSize: 9.5, fontWeight: 300 }">
+            <PdfText :style="{ fontSize: 9.65, fontWeight: 300 }">
               {{ copy.thankYou }}
             </PdfText>
-            <PdfText :style="{ fontSize: 8.3, marginTop: 4 }">
+            <PdfText :style="{ fontSize: 9.65, marginTop: 4 }">
               {{ copy.greeting }}
             </PdfText>
-            <PdfText :style="{ fontSize: 8.3, fontWeight: 700, marginTop: 2 }">
+            <PdfText :style="{ fontSize: 8.7, fontWeight: 500, letterSpacing: 0.5, marginTop: 2 }">
               {{ copy.signature }}
             </PdfText>
           </PdfView>
@@ -460,7 +475,7 @@ definePdf<LupinumInvoiceProps>({
             <PdfText
               v-for="line in copy.qrCaption"
               :key="line"
-              :style="{ color: '#5D708F', fontSize: 7.6, lineHeight: 1.25, textAlign: 'right' }"
+              :style="{ color: '#61738D', fontSize: 9, lineHeight: 1.1, textAlign: 'right' }"
             >
               {{ line }}
             </PdfText>
