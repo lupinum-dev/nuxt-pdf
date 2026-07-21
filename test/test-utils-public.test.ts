@@ -80,6 +80,13 @@ describe('@lupinum/nuxt-pdf/test public surface', () => {
     )
 
     expect(bytes.length).toBeGreaterThan(0)
+    expect(result.diagnostics).toMatchObject({
+      byteLength: bytes.byteLength,
+      pageCount: 2,
+      passes: 1,
+      warnings: [],
+    })
+    expect(Object.isFrozen(result.diagnostics)).toBe(true)
 
     // The fluent assertions pass against a genuinely rendered document.
     expectPdf(parsed)

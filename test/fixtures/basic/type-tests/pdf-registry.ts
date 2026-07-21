@@ -18,6 +18,24 @@ void renderPdf('invoice', {
   number: 'INV-TYPED',
 })
 
+async function verifyRenderResult() {
+  const result = await pdf.invoice.render({
+    customer: 'Ada',
+    lines,
+    number: 'INV-TYPED',
+  })
+
+  result.diagnostics.byteLength satisfies number
+  result.diagnostics.warnings satisfies readonly string[]
+
+  // @ts-expect-error Completed results deliberately expose no fake stream API.
+  await result.toStream()
+  // @ts-expect-error Diagnostics are immutable facts about the completed render.
+  result.diagnostics.warnings.push('late mutation')
+}
+
+void verifyRenderResult
+
 declare const dynamicName: string
 declare const dynamicProps: Record<string, unknown>
 

@@ -25,6 +25,7 @@ describe('Nuxt PDF development workflow', async () => {
     expect(response.headers.get('content-disposition')).toContain(
       'filename="invoice-INV-001.pdf"',
     )
+    expect(response.headers.get('content-length')).toBe(String(bytes.byteLength))
     expect(pdf.pageCount).toBe(1)
     expect(pdf.pages[0]?.text).toContain('Invoice INV-001')
     expect(pdf.pages[0]?.text).toContain('PDF framework')
@@ -39,7 +40,7 @@ describe('Nuxt PDF development workflow', async () => {
     expect(await index.text()).toContain('href="/_pdf/invoice"')
     expect(preview.status).toBe(200)
     expect(await preview.text()).toMatch(
-      /src="\/_pdf\/invoice\.pdf\?render=\d+"/,
+      /src="\/_pdf\/invoice\.pdf\?render=[^"&]+"/,
     )
     expect(raw.headers.get('content-type')).toBe('application/pdf')
     expect(Buffer.from(await raw.arrayBuffer()).subarray(0, 5).toString())

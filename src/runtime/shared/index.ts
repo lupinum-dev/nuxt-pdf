@@ -14,6 +14,7 @@ export type {
   PdfDefinition,
   PdfDisposition,
   PdfMetadataValue,
+  PdfRenderDiagnostics,
   PdfRenderResult,
   PdfResponseInit,
   PdfTemplate,

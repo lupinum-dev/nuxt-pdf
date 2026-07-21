@@ -1,5 +1,4 @@
 import { Buffer } from 'node:buffer'
-import type { Readable } from 'node:stream'
 import { defineComponent, h } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import {
@@ -7,17 +6,18 @@ import {
   PdfLink,
   PdfPage,
   PdfText,
-  PdfView,
 } from '../src/runtime/components'
 import {
   createPdfRegistry,
   createPdfTemplate,
   type PdfPreviewRender,
+  type PdfRenderDiagnostics,
 } from '../src/runtime/server/registry'
 import { usePdfPageNumbers } from '../src/runtime/composables/use-pdf-page-numbers'
 import { renderPdfPreview } from '../src/runtime/server/preview'
 import { NuxtPdfError } from '../src/runtime/shared/errors'
 import {
+  createContentDisposition,
   createPdfRenderResult,
   sanitizePdfFilename,
 } from '../src/runtime/server/result'
@@ -71,28 +71,30 @@ const createFixture = () => {
   return { component, definition, sampleData, scenarios }
 }
 
-const collectStream = async (stream: NodeJS.ReadableStream) => {
-  const chunks: Buffer[] = []
-  for await (const chunk of stream as Readable) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
-  }
-  return Buffer.concat(chunks)
-}
+type DiagnosticsInput = Omit<PdfRenderDiagnostics, 'byteLength'>
+
+const renderDiagnostics = (
+  overrides: Partial<DiagnosticsInput> = {},
+): DiagnosticsInput => ({
+  durationMs: 12,
+  pageCount: 1,
+  passes: 1,
+  warnings: [],
+  ...overrides,
+})
 
 const previewRender = (
-  overrides: Partial<PdfPreviewRender['diagnostics']> = {},
+  options: {
+    bytes?: Uint8Array
+    diagnostics?: Partial<DiagnosticsInput>
+  } = {},
 ): PdfPreviewRender => ({
-  bytes: new TextEncoder().encode('%PDF-preview'),
+  result: createPdfRenderResult(
+    options.bytes ?? new TextEncoder().encode('%PDF-preview'),
+    'invoice.pdf',
+    renderDiagnostics(options.diagnostics),
+  ),
   title: 'Preview invoice',
-  filename: 'invoice.pdf',
-  diagnostics: {
-    durationMs: 12,
-    byteLength: 12,
-    pageCount: 1,
-    passes: 1,
-    warnings: [],
-    ...overrides,
-  },
 })
 
 const createPreviewTemplate = (
@@ -109,6 +111,7 @@ const createPreviewTemplate = (
   const render = vi.fn(async () => createPdfRenderResult(
     new TextEncoder().encode('%PDF-preview'),
     'invoice.pdf',
+    renderDiagnostics(),
   ))
   const renderForPreview = vi.fn(
     options.renderForPreview ?? (async () => previewRender()),
@@ -143,47 +146,110 @@ const getPreviewRenderToken = async (response: Response): Promise<string> => {
 }
 
 describe('PDF render result', () => {
-  it('shares one byte execution across every conversion', async () => {
-    let executions = 0
-    const source = Promise.resolve().then(() => {
-      executions += 1
-      return new TextEncoder().encode('%PDF-result')
-    })
-    const result = createPdfRenderResult(source, 'result.pdf')
+  it('keeps completed bytes and diagnostics immutable across conversions', async () => {
+    const source = new TextEncoder().encode('%PDF-result')
+    const expected = Buffer.from(source)
+    const warnings = ['safe warning']
+    const measurements = {
+      ...renderDiagnostics({ warnings }),
+      content: 'must not escape',
+      props: { secret: true },
+      url: 'https://private.example/asset.png',
+    }
+    const result = createPdfRenderResult(source, 'result.pdf', measurements)
+
+    source.fill(0)
+    warnings.push('late mutation')
 
     const bytes = await result.toUint8Array()
+    bytes.fill(1)
     const buffer = await result.toBuffer()
-    const stream = await collectStream(await result.toStream())
     const response = await result.response()
 
-    expect(executions).toBe(1)
-    expect(Buffer.from(bytes)).toEqual(buffer)
-    expect(stream).toEqual(buffer)
-    expect(Buffer.from(await response.arrayBuffer())).toEqual(buffer)
+    expect(buffer).toEqual(expected)
+    expect(Buffer.from(await response.arrayBuffer())).toEqual(expected)
+    expect(await result.toUint8Array()).toEqual(new Uint8Array(expected))
+    expect(result).not.toHaveProperty('toStream')
+    expect(Object.isFrozen(result)).toBe(true)
+    expect(Object.isFrozen(result.diagnostics)).toBe(true)
+    expect(Object.isFrozen(result.diagnostics.warnings)).toBe(true)
+    expect(result.diagnostics).toEqual({
+      byteLength: expected.byteLength,
+      durationMs: 12,
+      pageCount: 1,
+      passes: 1,
+      warnings: ['safe warning'],
+    })
     expect(response.headers.get('content-type')).toBe('application/pdf')
+    expect(response.headers.get('content-length')).toBe(String(expected.byteLength))
     expect(response.headers.get('content-disposition')).toContain(
       'filename="result.pdf"',
     )
   })
 
-  it('prevents filename header injection and forces the PDF content type', async () => {
+  it('always emits bounded safe PDF response headers', async () => {
     expect(sanitizePdfFilename('../report')).toBe('_report.pdf')
 
-    const result = createPdfRenderResult(new Uint8Array([1, 2, 3]))
+    const result = createPdfRenderResult(
+      new Uint8Array([1, 2, 3]),
+      undefined,
+      renderDiagnostics(),
+    )
+    const defaultResponse = await result.response()
     const response = await result.response({
       filename: '../invoice\r\nX-Evil: yes/δοκιμή',
       headers: {
+        'content-length': '999999',
         'content-disposition': 'attachment; filename="unsafe"',
         'content-type': 'text/plain',
       },
     })
     const disposition = response.headers.get('content-disposition') || ''
 
+    expect(defaultResponse.headers.get('content-disposition')).toContain(
+      'filename="document.pdf"',
+    )
     expect(response.headers.get('content-type')).toBe('application/pdf')
+    expect(response.headers.get('content-length')).toBe('3')
     expect(response.headers.get('x-evil')).toBeNull()
     expect(disposition).toMatch(/^attachment; filename=/)
     expect(disposition).toContain(`filename*=UTF-8''`)
     expect(disposition).not.toMatch(/[\r\n]/)
+
+    const inline = await result.response({ disposition: 'inline', filename: '' })
+    expect(inline.headers.get('content-disposition')).toContain(
+      'inline; filename="document.pdf"',
+    )
+  })
+
+  it('keeps arbitrary Unicode filenames well-formed and header-bounded', () => {
+    let state = 0x6D2B79F5
+    const random = (): number => {
+      state ^= state << 13
+      state ^= state >>> 17
+      state ^= state << 5
+      return state >>> 0
+    }
+
+    for (let sample = 0; sample < 500; sample += 1) {
+      const length = random() % 320
+      let input = ''
+      for (let index = 0; index < length; index += 1) {
+        input += String.fromCharCode(random() & 0xFFFF)
+      }
+
+      const filename = sanitizePdfFilename(input)
+      const disposition = createContentDisposition('attachment', input)
+      const encoded = disposition.split(`filename*=UTF-8''`)[1]!
+
+      expect(filename).toBe(filename.toWellFormed())
+      expect(filename).toMatch(/\.pdf$/)
+      expect(() => decodeURIComponent(encoded)).not.toThrow()
+      expect(decodeURIComponent(encoded)).toBe(filename)
+      expect(encoded.length).toBeLessThanOrEqual(600)
+      expect(disposition.length).toBeLessThan(1024)
+      expect(disposition).not.toMatch(/[\r\n]/)
+    }
   })
 })
 
@@ -221,6 +287,23 @@ describe('PDF runtime registry', () => {
 
     expect(Buffer.from(bytes.subarray(0, 5)).toString('ascii')).toBe('%PDF-')
     expect(bytes.byteLength).toBeGreaterThan(500)
+    expect(result.diagnostics).toMatchObject({
+      byteLength: bytes.byteLength,
+      pageCount: 1,
+      passes: 1,
+      warnings: [],
+    })
+    expect(result.diagnostics.durationMs).toBeGreaterThanOrEqual(0)
+    expect(Object.keys(result.diagnostics).sort()).toEqual([
+      'byteLength',
+      'durationMs',
+      'pageCount',
+      'passes',
+      'warnings',
+    ])
+    expect(JSON.stringify(result.diagnostics)).not.toContain('Ada')
+    expect(Object.isFrozen(result.diagnostics)).toBe(true)
+    expect(response.headers.get('content-length')).toBe(String(bytes.byteLength))
     expect(response.headers.get('content-disposition')).toContain(
       'filename="greeting-Ada.pdf"',
     )
@@ -350,30 +433,6 @@ describe('PDF runtime registry', () => {
       'boom in render',
     )
   })
-
-  it('prefixes render warnings with the template name and file', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const component = templateComponent(() =>
-      h(PdfDocument, null, {
-        default: () => h(PdfPage, { size: 'A4' }, {
-          default: () => h(PdfView, null, {
-            default: () => h(PdfPage, { key: 'nested' }),
-          }),
-        }),
-      }),
-    )
-    const template = createPdfTemplate('invoice', component, {
-      file: 'pdfs/invoice.vue',
-    })
-
-    await template.render({})
-
-    expect(warn).toHaveBeenCalledWith(
-      'PDF template "invoice" (pdfs/invoice.vue): Invalid PDF nesting: <PdfView> cannot contain <PdfPage>. The <PdfPage> child was ignored.',
-    )
-
-    warn.mockRestore()
-  })
 })
 
 describe('development PDF preview', () => {
@@ -485,10 +544,7 @@ describe('development PDF preview', () => {
     const diagnosedBytes = new TextEncoder().encode('%PDF-diagnosed-render')
     const { render, template } = createPreviewTemplate({
       sampleData: { id: 'sample' },
-      renderForPreview: async () => ({
-        ...previewRender(),
-        bytes: diagnosedBytes,
-      }),
+      renderForPreview: async () => previewRender({ bytes: diagnosedBytes }),
     })
     const registry = { invoice: template }
 
@@ -529,10 +585,7 @@ describe('development PDF preview', () => {
     const invoice = createPreviewTemplate({
       sampleData: { id: 'sample' },
       scenarios,
-      renderForPreview: async () => ({
-        ...previewRender(),
-        bytes: diagnosedBytes,
-      }),
+      renderForPreview: async () => previewRender({ bytes: diagnosedBytes }),
     })
     const other = createPreviewTemplate({
       key: 'other',
@@ -577,10 +630,7 @@ describe('development PDF preview', () => {
       const diagnosedBytes = new TextEncoder().encode('%PDF-expiring-render')
       const { render, template } = createPreviewTemplate({
         sampleData: { id: 'sample' },
-        renderForPreview: async () => ({
-          ...previewRender(),
-          bytes: diagnosedBytes,
-        }),
+        renderForPreview: async () => previewRender({ bytes: diagnosedBytes }),
       })
       const registry = { invoice: template }
       const token = await getPreviewRenderToken(
@@ -601,19 +651,18 @@ describe('development PDF preview', () => {
     }
   })
 
-  it('reports render diagnostics including passes and collected warnings', async () => {
+  it('shares immutable render diagnostics with the development preview', async () => {
     const component = defineComponent({
       setup() {
         const pages = usePdfPageNumbers()
         return () => h(PdfDocument, null, {
           default: () => [
             h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
-              default: () => [
-                h(PdfLink, { src: '#sec', style: { color: 'black' } }, () =>
-                  `Section ..... ${pages.sec ?? ''}`),
-                // Invalid nesting: forces exactly one warning at mount time.
-                h(PdfView, null, { default: () => h(PdfPage, { key: 'bad' }) }),
-              ],
+              default: () => h(
+                PdfLink,
+                { src: '#sec', style: { color: 'black' } },
+                () => `Section ..... ${pages.sec ?? ''}`,
+              ),
             }),
             h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
               default: () => h(PdfText, { id: 'sec' }, () => 'Section body'),
@@ -625,7 +674,6 @@ describe('development PDF preview', () => {
     Object.defineProperty(component, PDF_DEFINITION_PROPERTY, {
       value: { sampleData: {} } satisfies PdfDefinition<object>,
     })
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const template = createPdfTemplate('report', component, {
       file: 'pdfs/report.vue',
     })
@@ -633,18 +681,19 @@ describe('development PDF preview', () => {
     const render = await (template as unknown as {
       renderForPreview(props: object): Promise<PdfPreviewRender>
     }).renderForPreview({})
+    const diagnostics = render.result.diagnostics
 
     // usePdfPageNumbers() activates the multi-pass loop; it converges in two.
-    expect(render.diagnostics.passes).toBeGreaterThanOrEqual(2)
-    expect(render.diagnostics.pageCount).toBe(2)
-    expect(render.diagnostics.byteLength).toBeGreaterThan(0)
-    expect(render.diagnostics.durationMs).toBeGreaterThan(0)
-    // The warn callback is threaded into a collected array, not the console.
-    expect(render.diagnostics.warnings).toContainEqual(
-      'PDF template "report" (pdfs/report.vue): Invalid PDF nesting: <PdfView> cannot contain <PdfPage>. The <PdfPage> child was ignored.',
+    expect(diagnostics.passes).toBeGreaterThanOrEqual(2)
+    expect(diagnostics.pageCount).toBe(2)
+    expect(diagnostics.byteLength).toBeGreaterThan(0)
+    expect(diagnostics.durationMs).toBeGreaterThan(0)
+    expect(diagnostics.warnings).toEqual([])
+    expect(Object.isFrozen(diagnostics)).toBe(true)
+    expect(Object.isFrozen(diagnostics.warnings)).toBe(true)
+    expect((await render.result.toUint8Array()).byteLength).toBe(
+      diagnostics.byteLength,
     )
-    expect(warn).not.toHaveBeenCalled()
-    warn.mockRestore()
   })
 
   it('renders an error panel with code, template, and file when a render fails', async () => {

@@ -8,7 +8,12 @@ import {
 // @ts-ignore -- Nuxt generates this server-only virtual module.
 import { pdf } from '#pdf'
 import { NuxtPdfError } from '../shared/errors'
-import type { PdfPreviewRender, PdfTemplate } from '../shared/template'
+import type {
+  PdfPreviewRender,
+  PdfRenderDiagnostics,
+  PdfRenderResult,
+  PdfTemplate,
+} from '../shared/template'
 
 const PREVIEW_ROUTE = '/_pdf'
 
@@ -40,9 +45,9 @@ export interface PdfPreviewRequest {
 // template would show one render while the stats describe another. Dev-only,
 // bounded FIFO; a miss (evicted or direct raw link) falls back to a fresh render.
 interface ParkedRender {
-  bytes: Uint8Array
   expiresAt: number
   key: string
+  result: PdfRenderResult
   scenario?: string
 }
 
@@ -64,7 +69,7 @@ const createRenderToken = (): string => {
 }
 
 const parkRender = (
-  bytes: Uint8Array,
+  result: PdfRenderResult,
   key: string,
   scenario?: string,
 ): string => {
@@ -73,9 +78,9 @@ const parkRender = (
 
   const token = createRenderToken()
   parkedRenders.set(token, {
-    bytes,
     expiresAt: now + PARKED_RENDER_TTL_MS,
     key,
+    result,
     scenario,
   })
   while (parkedRenders.size > PARKED_RENDER_LIMIT) {
@@ -90,7 +95,7 @@ const takeParkedRender = (
   token: string,
   key: string,
   scenario?: string,
-): Uint8Array | undefined => {
+): PdfRenderResult | undefined => {
   const render = parkedRenders.get(token)
   if (!render) return undefined
 
@@ -101,7 +106,7 @@ const takeParkedRender = (
   if (render.key !== key || render.scenario !== scenario) return undefined
 
   parkedRenders.delete(token)
-  return render.bytes
+  return render.result
 }
 
 const escapeHtml = (value: string): string => value
@@ -269,8 +274,7 @@ const formatBytes = (bytes: number): string =>
     ? `${(bytes / (1024 * 1024)).toFixed(2)} MB`
     : `${(bytes / 1024).toFixed(1)} KB`
 
-const diagnosticsPanel = (render: PdfPreviewRender): string => {
-  const { diagnostics } = render
+const diagnosticsPanel = (diagnostics: PdfRenderDiagnostics): string => {
   const stat = (label: string, value: string): string =>
     `<div class="stat"><div class="label">${label}</div><div class="value">${escapeHtml(value)}</div></div>`
 
@@ -342,8 +346,8 @@ const viewerPage = async (
   try {
     const render = await template.renderForPreview(props)
     title = render.title || template.key
-    const token = parkRender(render.bytes, template.key, scenario)
-    body = diagnosticsPanel(render)
+    const token = parkRender(render.result, template.key, scenario)
+    body = diagnosticsPanel(render.result.diagnostics)
       + `<iframe title="${escapeHtml(title)}" src="${escapeHtml(rawUrl(rootPath, template.key, scenario, token))}"></iframe>`
   }
   catch (error) {
@@ -422,10 +426,9 @@ export const renderPdfPreview = async (
     ? undefined
     : takeParkedRender(request.render, key, request.scenario)
   if (parked) {
-    return new Response(parked as BodyInit, {
+    return parked.response({
+      disposition: 'inline',
       headers: {
-        'content-type': 'application/pdf',
-        'content-disposition': 'inline',
         'cache-control': 'no-store',
         'x-content-type-options': 'nosniff',
       },

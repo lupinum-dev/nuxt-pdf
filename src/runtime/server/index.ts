@@ -12,6 +12,7 @@ export type {
   PdfRegistryEntries,
 } from './registry'
 export type {
+  PdfRenderDiagnostics,
   PdfRenderResult,
   PdfTemplate,
 } from '../shared/template'

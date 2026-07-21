@@ -32,11 +32,13 @@ describe('Nuxt PDF production boundary', () => {
     const pdfResponse = await nuxtFetch('/api/invoice')
     const previewResponse = await nuxtFetch('/_pdf')
     const previewBody = await previewResponse.text()
-    const pdf = await parsePdf(
-      new Uint8Array(await pdfResponse.arrayBuffer()),
-    )
+    const pdfBytes = new Uint8Array(await pdfResponse.arrayBuffer())
+    const pdf = await parsePdf(pdfBytes)
 
     expect(pdfResponse.status).toBe(200)
+    expect(pdfResponse.headers.get('content-length')).toBe(
+      String(pdfBytes.byteLength),
+    )
     expect(pdf.pages[0]?.text).toContain('Invoice INV-001')
     expect(previewBody).toContain('<div>basic</div>')
     expect(previewBody).not.toContain('<h1>PDF templates</h1>')

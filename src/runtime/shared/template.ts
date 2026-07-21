@@ -41,32 +41,26 @@ export interface PdfResponseInit extends Omit<ResponseInit, 'headers'> {
   headers?: HeadersInit
 }
 
+/** Safe, content-free measurements from one completed PDF render. */
+export interface PdfRenderDiagnostics {
+  readonly durationMs: number
+  readonly byteLength: number
+  readonly pageCount: number
+  readonly passes: number
+  readonly warnings: readonly string[]
+}
+
 export interface PdfRenderResult {
+  readonly diagnostics: PdfRenderDiagnostics
   toUint8Array(): Promise<Uint8Array>
   toBuffer(): Promise<Buffer>
-  toStream(): Promise<NodeJS.ReadableStream>
   response(init?: PdfResponseInit): Promise<Response>
 }
 
-/**
- * Measured facts about one dev-preview render. Dev-only and never part of the
- * public render contract; declared here (engine-free) so the dev preview route
- * can reference it without dragging the server engine into type resolution.
- */
-export interface PdfPreviewDiagnostics {
-  durationMs: number
-  byteLength: number
-  pageCount: number
-  passes: number
-  warnings: readonly string[]
-}
-
-/** The bytes plus diagnostics the dev preview needs. Dev-only; never public API. */
+/** The completed result plus display metadata needed by the dev-only preview. */
 export interface PdfPreviewRender {
-  bytes: Uint8Array
+  result: PdfRenderResult
   title?: string
-  filename?: string
-  diagnostics: PdfPreviewDiagnostics
 }
 
 export interface PdfTemplate<Props extends object = Record<string, unknown>> {

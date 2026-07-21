@@ -384,6 +384,7 @@ try {
 
   assert(response.status === 200, `Production PDF route returned ${response.status}.`)
   assert(response.headers.get('content-type') === 'application/pdf', 'Production route has the wrong content type.')
+  assert(response.headers.get('content-length') === String(bytes.byteLength), 'Production route has the wrong content length.')
   assert(
     response.headers.get('content-disposition')?.startsWith('attachment; filename="invoice-QS-001.pdf"'),
     'Production route has the wrong content disposition.',

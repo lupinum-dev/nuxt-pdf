@@ -28,7 +28,7 @@ export interface RenderedPdfTemplate {
   bytes: Uint8Array
   /** The parsed document, ready for `expectPdf`. */
   parsed: ParsedPdf
-  /** The underlying render result (buffer/stream/`Response` accessors). */
+  /** The underlying completed result (diagnostics, bytes, buffer, and response). */
   result: PdfRenderResult
 }
 
