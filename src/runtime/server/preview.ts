@@ -26,6 +26,10 @@ export interface PdfPreviewRequest {
   scenario?: string
   /** Token of a parked viewer render the raw route should serve verbatim. */
   render?: string
+  /** Serve a raw response as a download instead of inline. */
+  download?: boolean
+  /** Nuxt/Vite client path used by the development-only auto-refresh hook. */
+  hmrClientPath?: string
 }
 
 // A viewer render is briefly parked here so the embedded iframe serves the
@@ -40,8 +44,31 @@ interface ParkedRender {
 }
 
 const parkedRenders = new Map<string, ParkedRender>()
+const lastSuccessfulRenders = new WeakMap<PreviewTemplate, Map<string, PdfRenderResult>>()
 const PARKED_RENDER_LIMIT = 8
 const PARKED_RENDER_TTL_MS = 30_000
+const DEFAULT_HMR_CLIENT_PATH = '/_nuxt/@vite/client'
+
+const scenarioCacheKey = (scenario?: string): string => scenario ?? '\0'
+
+const rememberSuccessfulRender = (
+  template: PreviewTemplate,
+  result: PdfRenderResult,
+  scenario?: string,
+): void => {
+  let renders = lastSuccessfulRenders.get(template)
+  if (!renders) {
+    renders = new Map()
+    lastSuccessfulRenders.set(template, renders)
+  }
+  renders.set(scenarioCacheKey(scenario), result)
+}
+
+const previousSuccessfulRender = (
+  template: PreviewTemplate,
+  scenario?: string,
+): PdfRenderResult | undefined =>
+  lastSuccessfulRenders.get(template)?.get(scenarioCacheKey(scenario))
 
 const pruneExpiredRenders = (now: number): void => {
   for (const [token, render] of parkedRenders) {
@@ -149,6 +176,7 @@ const htmlResponse = (
       .error dt { color: #c69a95; font-size: 0.8rem; }
       .error dd { margin: 0; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.85rem; word-break: break-all; }
       .error .message { color: #f0d9d6; line-height: 1.6; white-space: pre-wrap; }
+      .stale { border: 1px solid #755d25; background: #211b0e; color: #f1d88c; border-radius: 10px; padding: 12px 16px; margin: 16px 0; }
     </style>
   </head>
   <body><main>${content}</main></body>
@@ -229,10 +257,12 @@ const rawUrl = (
   key: string,
   scenario?: string,
   renderToken?: string,
+  download = false,
 ): string => {
   const params = new URLSearchParams()
   if (scenario !== undefined) params.set('scenario', scenario)
   if (renderToken !== undefined) params.set('render', renderToken)
+  if (download) params.set('download', '1')
   const query = params.size > 0 ? `?${params.toString()}` : ''
   return `${rootPath}/${encodeTemplatePath(key)}.pdf${query}`
 }
@@ -296,12 +326,22 @@ const errorDetails = (
   const file = error instanceof NuxtPdfError && error.templateFile
     ? error.templateFile
     : fallbackFile
-  const message = error instanceof Error
-    ? error.message
+  const message = error instanceof NuxtPdfError
+    ? {
+        PDF_ASSET_BLOCKED: 'A PDF resource was blocked by the configured policy.',
+        PDF_ASSET_INVALID: 'A PDF resource failed validation.',
+        PDF_LAYOUT_ERROR: 'PDF layout failed. Check the server output for details.',
+        PDF_LIMIT_EXCEEDED: 'The PDF exceeded a configured render limit.',
+        PDF_RENDER_ERROR: 'PDF serialization failed. Check the server output for details.',
+        PDF_TEMPLATE_INVALID: 'The PDF template definition is invalid.',
+        PDF_TEMPLATE_NOT_FOUND: 'The PDF template is not registered.',
+        PDF_TREE_INVALID: 'The rendered PDF component tree is invalid.',
+      }[error.code]
     : `Failed to render PDF template "${fallbackKey}".`
 
-  const fileRow = file
-    ? `<dt>File</dt><dd>${escapeHtml(file)}</dd>`
+  const safeFile = file && !/^(?:[A-Z]:\\|\/)/u.test(file) ? file : undefined
+  const fileRow = safeFile
+    ? `<dt>File</dt><dd>${escapeHtml(safeFile)}</dd>`
     : ''
 
   return `<div class="error">`
@@ -317,6 +357,7 @@ const viewerPage = async (
   props: object,
   rootPath: string,
   scenario?: string,
+  hmrClientPath = DEFAULT_HMR_CLIENT_PATH,
 ): Promise<Response> => {
   const handle = template.template
   const base = `${rootPath}/${encodeTemplatePath(handle.key)}`
@@ -329,6 +370,7 @@ const viewerPage = async (
   const actions = `<span class="actions">`
     + `<a href="${escapeHtml(refreshHref)}">Refresh</a>`
     + `<a href="${escapeHtml(rawUrl(rootPath, handle.key, scenario))}">Raw PDF</a>`
+    + `<a href="${escapeHtml(rawUrl(rootPath, handle.key, scenario, undefined, true))}">Download</a>`
     + `<a href="${escapeHtml(rootPath)}">All templates</a>`
     + `</span>`
 
@@ -336,6 +378,7 @@ const viewerPage = async (
   let title: string
   try {
     const result = await handle.render(props)
+    rememberSuccessfulRender(template, result, scenario)
     title = result.metadata.title || handle.key
     const token = parkRender(result, handle.key, scenario)
     body = diagnosticsPanel(result.diagnostics)
@@ -344,11 +387,18 @@ const viewerPage = async (
   catch (error) {
     title = handle.key
     body = errorDetails(error, handle.key, template.file)
+    const stale = previousSuccessfulRender(template, scenario)
+    if (stale) {
+      const token = parkRender(stale, handle.key, scenario)
+      body += '<div class="stale" role="status">Render failed. Showing the previous successful PDF; it is stale.</div>'
+        + `<iframe title="${escapeHtml(title)} (stale)" src="${escapeHtml(rawUrl(rootPath, handle.key, scenario, token))}"></iframe>`
+    }
   }
 
   return htmlResponse(
     title,
-    `<header><h1>${escapeHtml(title)}</h1>${actions}</header>${nav}${body}`,
+    `<header><h1>${escapeHtml(title)}</h1>${actions}</header>${nav}${body}`
+    + `<script type="module">import { createHotContext } from ${JSON.stringify(hmrClientPath)};createHotContext('/_pdf').on('nuxt-pdf:update',()=>location.reload());</script>`,
   )
 }
 
@@ -411,14 +461,24 @@ export const renderPdfPreview = async (
     )
   }
 
-  if (!raw) return viewerPage(template, props, rootPath, request.scenario)
+  if (!raw) {
+    return viewerPage(
+      template,
+      props,
+      rootPath,
+      request.scenario,
+      request.hmrClientPath,
+    )
+  }
+
+  const disposition = request.download ? 'attachment' : 'inline'
 
   const parked = request.render === undefined
     ? undefined
     : takeParkedRender(request.render, key, request.scenario)
   if (parked) {
     return parked.response({
-      disposition: 'inline',
+      disposition,
       headers: {
         'cache-control': 'no-store',
         'x-content-type-options': 'nosniff',
@@ -429,7 +489,7 @@ export const renderPdfPreview = async (
   try {
     const result = await template.template.render(props)
     return result.response({
-      disposition: 'inline',
+      disposition,
       headers: {
         'cache-control': 'no-store',
         'x-content-type-options': 'nosniff',
@@ -439,12 +499,14 @@ export const renderPdfPreview = async (
   catch (error) {
     // The registry has already stamped the message with the template name and
     // file; surface the error code alongside it so the failing stage is visible.
-    const message = error instanceof NuxtPdfError
-      ? `${error.code}: ${error.message}`
-      : error instanceof Error
-        ? error.message
-        : `Failed to render PDF template "${key}".`
-    return errorPage('PDF render failed', message, rootPath, 500)
+    return errorPage(
+      'PDF render failed',
+      error instanceof NuxtPdfError
+        ? `${error.code}: The PDF could not be rendered. Check the server output for attributed details.`
+        : `Failed to render PDF template "${key}". Check the server output for details.`,
+      rootPath,
+      500,
+    )
   }
 }
 
@@ -468,5 +530,6 @@ export default defineEventHandler(async (event) => {
     ...route,
     scenario: typeof query.scenario === 'string' ? query.scenario : undefined,
     render: typeof query.render === 'string' ? query.render : undefined,
+    download: query.download === '1',
   })
 })

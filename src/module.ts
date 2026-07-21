@@ -1,5 +1,5 @@
 import { stat } from 'node:fs/promises'
-import { join } from 'node:path'
+import { isAbsolute, join, resolve as resolvePath } from 'node:path'
 import {
   addImports,
   addServerHandler,
@@ -277,6 +277,25 @@ export default defineNuxtModule<ModuleOptions>({
     })
 
     if (nuxt.options.dev) {
+      let clientViteServer: {
+        ws: { send(payload: { data: object, event: string, type: 'custom' }): void }
+      } | undefined
+
+      nuxt.hook('vite:serverCreated', (viteServer, environment) => {
+        if (environment.isClient) clientViteServer = viteServer
+      })
+      nuxt.hook('builder:watch', (_event, path) => {
+        const absolutePath = isAbsolute(path)
+          ? path
+          : resolvePath(nuxt.options.rootDir, path)
+        if (!pdfSfcFiles.has(absolutePath)) return
+        clientViteServer?.ws.send({
+          type: 'custom',
+          event: 'nuxt-pdf:update',
+          data: {},
+        })
+      })
+
       addServerHandler({ route: '/_pdf', handler: previewHandler })
       addServerHandler({ route: '/_pdf/**', handler: previewHandler })
     }

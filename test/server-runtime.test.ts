@@ -221,6 +221,28 @@ describe('PDF render result', () => {
     )
   })
 
+  it('isolates concurrent conversions from one completed result', async () => {
+    const expected = new TextEncoder().encode('%PDF-concurrent-result')
+    const result = createPdfRenderResult(
+      expected,
+      { filename: 'concurrent.pdf' },
+      renderDiagnostics(),
+    )
+
+    const [first, second, buffer, response] = await Promise.all([
+      result.toUint8Array(),
+      result.toUint8Array(),
+      result.toBuffer(),
+      result.response(),
+    ])
+    first.fill(1)
+    second.fill(2)
+    buffer.fill(3)
+
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(expected)
+    expect(await result.toUint8Array()).toEqual(expected)
+  })
+
   it('always emits bounded safe PDF response headers', async () => {
     expect(sanitizePdfFilename('../report')).toBe('_report.pdf')
 
@@ -619,6 +641,22 @@ describe('development PDF preview', () => {
     // The iframe source swaps with the scenario.
     expect(def).toMatch(/src="\/_pdf\/invoice\.pdf\?render=[^"&]+"/)
     expect(long).toMatch(/src="\/_pdf\/invoice\.pdf\?scenario=long&(amp;)?render=[^"&]+"/)
+    expect(long).toContain('createHotContext(\'/_pdf\').on(\'nuxt-pdf:update\'')
+    expect(long).toContain('location.reload()')
+  })
+
+  it('offers distinct inline and download actions', async () => {
+    const { template } = createPreviewTemplate({ sampleData: { id: 'sample' } })
+    const registry = { invoice: template }
+    const page = await (await renderPdfPreview(registry, { path: 'invoice' })).text()
+    const download = await renderPdfPreview(registry, {
+      path: 'invoice.pdf',
+      download: true,
+    })
+
+    expect(page).toContain('>Raw PDF<')
+    expect(page).toContain('invoice.pdf?download=1')
+    expect(download.headers.get('content-disposition')).toMatch(/^attachment;/)
   })
 
   it('uses opaque, non-sequential parked-render tokens', async () => {
@@ -844,8 +882,59 @@ describe('development PDF preview', () => {
     expect(body).toContain('PDF_LAYOUT_ERROR')
     expect(body).toContain('invoice')
     expect(body).toContain('pdfs/invoice.vue')
-    expect(body).toContain('Font family not registered')
+    expect(body).toContain('Check the server output for details')
     // No iframe and no stack dump surface for a failed render.
     expect(body).not.toContain('<iframe')
+  })
+
+  it('marks the previous successful render stale after an error', async () => {
+    let shouldFail = false
+    const { template } = createPreviewTemplate({
+      sampleData: { id: 'sample' },
+      render: async () => {
+        if (shouldFail) {
+          throw new NuxtPdfError('PDF_LAYOUT_ERROR', 'PDF layout failed safely.')
+        }
+        return previewResult({ bytes: new TextEncoder().encode('%PDF-last-good') })
+      },
+    })
+    const registry = { invoice: template }
+
+    await renderPdfPreview(registry, { path: 'invoice' })
+    shouldFail = true
+    const failed = await renderPdfPreview(registry, { path: 'invoice' })
+    const body = await failed.text()
+    const token = await getPreviewRenderToken(new Response(body))
+    const stale = await renderPdfPreview(registry, {
+      path: 'invoice.pdf',
+      render: token,
+    })
+
+    expect(body).toContain('previous successful PDF')
+    expect(body).toContain('(stale)')
+    expect(Buffer.from(await stale.arrayBuffer()).toString()).toBe('%PDF-last-good')
+  })
+
+  it('redacts unsafe detail from preview errors', async () => {
+    const { template } = createPreviewTemplate({
+      sampleData: { id: 'sample' },
+      render: async () => {
+        throw new NuxtPdfError(
+          'PDF_RENDER_ERROR',
+          'Customer Ada failed at https://private.example/orders/ada?token=secret in /Users/ada/private.pdf',
+          { templateFile: '/Users/ada/private.vue', templateKey: 'invoice' },
+        )
+      },
+    })
+    const body = await (await renderPdfPreview(
+      { invoice: template },
+      { path: 'invoice' },
+    )).text()
+
+    expect(body).not.toContain('token=secret')
+    expect(body).not.toContain('/Users/ada')
+    expect(body).not.toContain('private.example/orders')
+    expect(body).not.toContain('Customer Ada')
+    expect(body).toContain('Check the server output for details')
   })
 })

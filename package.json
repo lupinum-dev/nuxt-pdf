@@ -20,6 +20,7 @@
   "types": "./dist/types.d.mts",
   "files": [
     "dist",
+    "API_REPORT.md",
     "CHANGELOG.md",
     "CONFORMANCE.md",
     "THIRD_PARTY_NOTICES.md"
@@ -36,18 +37,21 @@
     "dev:build": "nuxt build playground",
     "dev:prepare": "nuxt-module-build build --stub && nuxt-module-build prepare && nuxt prepare playground",
     "build": "nuxt-module-build build",
+    "api:write": "node scripts/check-api-report.mjs --write",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:api": "node scripts/check-api-report.mjs",
     "test:dependencies": "node scripts/check-production-dependencies.mjs",
     "test:docs": "pnpm --dir docs check",
     "test:package": "node scripts/check-package.mjs",
+    "test:package-metadata": "node scripts/check-api-report.mjs && publint && attw --pack . --profile esm-only",
     "test:production": "vitest run --config vitest.production.config.ts",
     "test:quickstart": "node scripts/test-package-quickstart.mjs",
     "test:release-metadata": "node scripts/check-release-metadata.mjs",
     "test:serverless": "vitest run --config vitest.serverless.config.ts",
     "test:watch": "vitest watch",
     "test:types": "vue-tsc --noEmit && nuxt prepare test/fixtures/basic && vue-tsc --noEmit -p test/fixtures/basic/tsconfig.json && pnpm --dir playground exec vue-tsc --noEmit",
-    "verify": "pnpm lint && pnpm test:types && pnpm test:docs && pnpm test:release-metadata && pnpm test:dependencies && pnpm test && pnpm test:production && pnpm test:serverless && pnpm build && pnpm dev:build && pnpm test:package && pnpm test:quickstart"
+    "verify": "pnpm lint && pnpm test:types && pnpm test:docs && pnpm test:release-metadata && pnpm test:dependencies && pnpm test && pnpm test:production && pnpm test:serverless && pnpm build && pnpm test:package-metadata && pnpm dev:build && pnpm test:package && pnpm test:quickstart"
   },
   "dependencies": {
     "@nuxt/kit": "^4.4.8",
@@ -75,6 +79,7 @@
     }
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
     "@napi-rs/canvas": "0.1.97",
     "@nuxt/devtools": "^3.2.4",
     "@nuxt/eslint-config": "^1.15.2",
@@ -88,6 +93,7 @@
     "eslint": "^10.4.1",
     "nuxt": "^4.4.8",
     "pdfjs-dist": "5.6.205",
+    "publint": "^0.3.21",
     "react": "19.2.0",
     "typescript": "~5.9.3",
     "vitest": "^4.1.8",
