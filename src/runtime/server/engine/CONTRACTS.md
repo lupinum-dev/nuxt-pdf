@@ -309,10 +309,9 @@ Protected by the local-font conformance fixture. Asset policy, path validation, 
 
 ## Remote resource boundary
 
-Both of React PDF's remote fetch seams are structurally unreachable under every
-configuration, because our code converts any remote URL into embedded bytes (an
-image `{data, format}` buffer) or a `data:font/...` URL **before** layout or the
-font store runs.
+Both of React PDF's remote fetch seams are structurally unreachable. Our code
+converts every allowlisted remote image into validated bytes before layout, and
+only registers build-embedded local font data URLs.
 
 - **Image seam.** `@react-pdf/image` `resolve.ts` `fetchRemoteFile` calls global
   `fetch(src.uri, {method, headers, body, credentials})` and reads
@@ -326,14 +325,12 @@ font store runs.
   only registers `data:font/(otf|ttf);base64,...` sources, so `FontSource._load`
   always takes the data-URL branch and never reaches `fetchFont`.
 
-When `pdf.remote` is configured, the fetching is done by our own
-`fetchRemoteResource` (`assets/remote.ts`): https-only allowlist match re-checked
-on every manual redirect hop, `GET` with no headers/credentials, a per-hop
-`AbortController` timeout, and a streamed byte cap. It returns raw bytes that the
-image or font caller validates with the same signature checks as local assets.
-Remote images are resolved at render time (their `src` is a dynamic prop);
-remote fonts are resolved at build time inside `bundlePdfFonts`, keeping the
-render path zero-network. The engine's own fetch code stays dead. Protected by
+When `pdf.remote` is configured, `fetchRemoteResource` (`assets/remote.ts`)
+accepts exact HTTPS image prefixes only, re-checks every one of at most three
+redirects, sends credential-less `GET`s, and uses the render's shared deadline,
+abort signal, request/concurrency limits, and byte budgets. PNG/JPEG structure
+and dimensions are validated before the engine receives bytes. Remote fonts are
+unconditionally rejected. The engine's own fetch code stays dead. Protected by
 `test/remote.test.ts`.
 
 ## Deliberately unused contracts

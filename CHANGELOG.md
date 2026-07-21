@@ -4,6 +4,27 @@ All notable changes to `@lupinum/nuxt-pdf` are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- One canonical `pdf.limits` budget covering tree nodes/depth/text, pages,
+  image count/source bytes/decoded pixels, remote request count/concurrency,
+  the whole-render deadline, and completed output bytes.
+- Structural PNG/JPEG dimension validation before engine admission, aggregate
+  per-render image accounting, atomic output-cap failure, and fatal sibling
+  request cancellation.
+
+### Breaking changes
+
+- `pdf.remote` now permits images only and contains only `allow` plus
+  `timeoutMs`. Move former `maxImageBytes` configuration to
+  `pdf.limits.maxImageBytes`; remote fonts must become local `pdfs/fonts`
+  inputs.
+- Allowlist entries must be exact `https://host/path/` prefixes. Wildcard hosts
+  and prefixes without a trailing slash are rejected. Redirects are capped at
+  three hops.
+
 ## 0.2.0
 
 The contract widens from 0.1.0's core layout primitives to vector graphics, a

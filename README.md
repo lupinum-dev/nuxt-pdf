@@ -313,7 +313,7 @@ embedded into the server build. Absolute paths, traversal, symlink escapes,
 and runtime filesystem fallbacks are rejected. Remote URLs fail closed unless
 you opt in with an explicit `pdf.remote.allow` allowlist (see below).
 
-## Remote images and fonts (opt-in)
+## Remote images (opt-in)
 
 Remote fetching is off by default. Configure an `https`-only allowlist to let
 the module — never the engine — fetch and embed allowlisted resources:
@@ -329,12 +329,12 @@ export default defineNuxtConfig({
 })
 ```
 
-Each entry is an `https://` URL prefix naming an explicit host (or a single
-leading `*.` subdomain wildcard) plus a path-segment prefix. The allowlist is
-re-checked on every redirect hop, byte
-caps and signature validation match local assets, and fetches are credential-less
-`GET`s with a per-hop timeout. Remote fonts embed at build time; remote images
-resolve at render time with per-render deduplication. See
+Each entry is an exact `https://host/path/` prefix. Wildcards, credentials,
+fragments, and prefixes without a trailing slash are rejected. The allowlist is
+re-checked on every redirect hop; byte, pixel, fan-out, concurrency, and output
+caps come from `pdf.limits`; and fetches are credential-less `GET`s bounded by
+the render deadline. Remote images are deduplicated only within one render.
+Fonts must be local build inputs. See
 [CONFORMANCE.md](./CONFORMANCE.md) for the full tested boundary.
 
 ## Testing your PDFs

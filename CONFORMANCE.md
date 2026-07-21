@@ -305,48 +305,39 @@ The tested boundary includes:
 This is a fail-closed local-resource boundary, not a general remote-fetching
 or filesystem sandbox claim.
 
-### Opt-in remote resources
+### Opt-in remote images
 
 Remote fetching is off by default: with `pdf.remote` absent the module performs
-zero network I/O and every URL image or font source fails closed, exactly as
-when the feature is absent. When an operator configures `pdf.remote.allow`, the module — never React
-PDF's engine — fetches allowlisted resources and converts them to the same
-embedded form as local assets before layout or the font store sees a URL. The
-tested boundary guarantees:
+zero network I/O and every URL image source fails closed. Remote fonts are
+unconditionally rejected. When an operator configures `pdf.remote.allow`, the
+module — never React PDF's engine — fetches allowlisted images and converts them
+to bytes before layout. The tested boundary guarantees:
 
-- `https://` only; `http://`, embedded credentials, and non-matching hosts,
-  ports, or path prefixes are blocked. An allowlist entry is an explicit host
-  (or a single leading `*.` subdomain wildcard on a registrable domain) plus a
-  pathname prefix; prefixes match only on path-segment boundaries, and the query
-  string is ignored for matching but preserved for the fetch. Wildcards on the
-  most common public suffixes (`*.co.uk`, `*.github.io`, …) are rejected at
-  setup; the list is deliberately non-exhaustive and the allowlist remains the
-  operator's trust decision. Error messages redact query strings (for image and
-  font URLs alike) but keep path segments — a URL scheme that signs in the path
-  still surfaces those segments in messages, so prefer query-signed URLs for
-  tokenized sources.
+- Allowlist entries are exact `https://host/path/` prefixes. `http://`, wildcard
+  hosts, embedded credentials, fragments, missing trailing slashes, and
+  non-matching hosts, ports, or paths are blocked. Runtime errors expose only
+  scheme/host and redact the path, query, and fragment.
 - Redirects are followed manually and the allowlist is re-checked on every hop
-  (bounded to five), so an allowlisted host cannot redirect out of the allowlist.
-- Byte caps reuse the local image (10MB) and font (5MB) limits and are enforced
-  from `Content-Length` and while streaming a body with no `Content-Length`; the
-  stream is aborted the moment the cap is exceeded.
+  (bounded to three), so an allowlisted host cannot redirect out of the allowlist.
+- `pdf.limits` is the only source for per-image and aggregate byte/pixel caps,
+  request count, concurrency, output size, and the whole-render deadline. Source
+  byte caps are enforced from `Content-Length` and while streaming; fatal
+  failures abort sibling requests.
 - The byte signature is authoritative: a deceptive `Content-Type` cannot make
-  non-image or non-font bytes validate (PNG/JPEG for images, TTF/OTF for fonts;
-  SVG and font collections stay rejected).
+  non-image bytes validate. PNG/JPEG structure and dimensions are inspected
+  before decode or engine admission; SVG stays rejected.
 - Fetches are `GET` only, send no request headers, and carry no credentials; a
   per-hop timeout (default 10s) covers the body read.
 - Remote images resolve at render time with per-render deduplication (a repeated
-  URL is fetched once, with no cross-render cache); remote fonts resolve at build
-  time and embed as the same `data:font/...` URL as local fonts, keeping the
-  render path zero-network.
+  URL is fetched once, with no cross-render cache).
 
 These are intentional Nuxt-PDF-only guarantees. React PDF has no allowlist,
 timeout, byte cap, or per-hop redirect policy, so the blocked, oversized,
 redirect, timeout, and unconfigured behaviors have no React oracle; once the
 policy admits bytes they take the same embedded-bytes path the local-image
 conformance fixture already rasters against React. Not claimed: authenticated
-fetches, request headers or bodies, cookies/credentials, private-IP or DNS
-rebinding protection beyond the allowlist, and any cross-render caching.
+fetches, request headers or bodies, cookies/credentials, remote fonts,
+private-IP or DNS rebinding exceptions, and any cross-render caching.
 
 ### Render limits
 
