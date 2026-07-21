@@ -235,8 +235,8 @@ const documentWith = (...children: PdfElementNode[]): PdfDocumentNode => ({
   }],
 })
 
-const resolvedSource = (node: PdfElementNode): { data: Buffer, format: string } =>
-  (node.props.src ?? node.props.source) as { data: Buffer, format: string }
+const resolvedSource = (node: PdfElementNode): Buffer =>
+  (node.props.src ?? node.props.source) as Buffer
 
 const expectAssetError = async (
   promise: Promise<unknown>,
@@ -315,9 +315,8 @@ describe('remote images', () => {
 
     expect(resolved).toBe(document)
     const source = resolvedSource(node)
-    expect(source.format).toBe('png')
-    expect(Buffer.isBuffer(source.data)).toBe(true)
-    expect(source.data.equals(SAMPLE_PNG)).toBe(true)
+    expect(Buffer.isBuffer(source)).toBe(true)
+    expect(source.equals(SAMPLE_PNG)).toBe(true)
     expect(requests.filter(path => path === '/sample-png')).toHaveLength(1)
 
     const result = await renderDocument(document as unknown as DocumentNode, {
@@ -329,7 +328,7 @@ describe('remote images', () => {
   it('accepts the { uri } source form', async () => {
     const node = image({ source: { uri: `${origin}/png` } })
     await resolvePdfImageAssets(documentWith(node), { assets: {}, remote: policyFor() })
-    expect(resolvedSource(node).data.equals(PNG)).toBe(true)
+    expect(resolvedSource(node).equals(PNG)).toBe(true)
   })
 
   it('blocks a non-allowlisted host', async () => {
@@ -416,7 +415,7 @@ describe('remote images', () => {
 
     const node = image({ src: `${origin}/redirect-internal` })
     await resolvePdfImageAssets(documentWith(node), { assets: {}, remote: policyFor() })
-    expect(resolvedSource(node).data.equals(PNG)).toBe(true)
+    expect(resolvedSource(node).equals(PNG)).toBe(true)
   })
 
   it('fails closed with no network when pdf.remote is unconfigured', async () => {
@@ -433,14 +432,33 @@ describe('remote images', () => {
     expect(requests).toHaveLength(0)
   })
 
-  it('fetches a repeated URL once per render', async () => {
+  it('shares a repeated URL buffer within one render but isolates renders', async () => {
     requests = []
-    const document = documentWith(
-      image({ src: `${origin}/png` }),
-      image({ src: `${origin}/png` }),
+    const firstImages = [
+      image({ src: `${origin}/sample-png` }),
+      image({ src: `${origin}/sample-png` }),
+    ]
+    const firstDocument = documentWith(...firstImages)
+    const secondImage = image({ src: `${origin}/sample-png` })
+
+    await resolvePdfImageAssets(
+      firstDocument,
+      { assets: {}, remote: policyFor() },
     )
-    await resolvePdfImageAssets(document, { assets: {}, remote: policyFor() })
-    expect(requests.filter(path => path === '/png')).toHaveLength(1)
+    expect(requests.filter(path => path === '/sample-png')).toHaveLength(1)
+
+    const first = resolvedSource(firstImages[0]!)
+    expect(resolvedSource(firstImages[1]!)).toBe(first)
+    const rendered = await renderDocument(firstDocument as unknown as DocumentNode)
+    expect(Buffer.from(rendered.bytes.subarray(0, 5)).toString('ascii')).toBe('%PDF-')
+
+    await resolvePdfImageAssets(
+      documentWith(secondImage),
+      { assets: {}, remote: policyFor() },
+    )
+
+    expect(requests.filter(path => path === '/sample-png')).toHaveLength(2)
+    expect(resolvedSource(secondImage)).not.toBe(first)
   })
 
   it('aborts a hanging endpoint within the timeout', async () => {

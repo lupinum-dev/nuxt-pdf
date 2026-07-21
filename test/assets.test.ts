@@ -189,18 +189,43 @@ describe('PDF image tree resolution', () => {
     const resolved = await resolvePdfImageAssets(document, { assets })
 
     expect(resolved).toBe(document)
-    expect(images.map((node) => {
-      const source = (node.props.src ?? node.props.source) as {
-        data: Uint8Array
-        format: string
-      }
-      return [source.format, Buffer.isBuffer(source.data)]
-    })).toEqual([
-      ['png', true],
-      ['jpg', true],
-      ['png', true],
-      ['jpg', true],
+    expect(images.map(node =>
+      Buffer.isBuffer(node.props.src ?? node.props.source),
+    )).toEqual([true, true, true, true])
+    expect(images.map(node =>
+      Buffer.from((node.props.src ?? node.props.source) as Uint8Array),
+    )).toEqual([PNG, JPEG, PNG, JPEG])
+  })
+
+  it('shares repeated image buffers within one render but isolates renders', async () => {
+    const assets: PdfImageAssetMap = Object.freeze({
+      'images/logo.png': Object.freeze({ data: PNG, format: 'png' }),
+    })
+    const firstImages = [
+      image({ src: 'images/logo.png' }),
+      image({ src: 'images/logo.png' }),
+    ]
+    const secondImages = [
+      image({ src: 'images/logo.png' }),
+      image({ src: 'images/logo.png' }),
+    ]
+
+    await Promise.all([
+      resolvePdfImageAssets(documentWith(...firstImages), { assets }),
+      resolvePdfImageAssets(documentWith(...secondImages), { assets }),
     ])
+
+    const first = firstImages[0]!.props.src
+    const repeatedFirst = firstImages[1]!.props.src
+    const second = secondImages[0]!.props.src
+    const repeatedSecond = secondImages[1]!.props.src
+
+    expect(Buffer.isBuffer(first)).toBe(true)
+    expect(first).toBe(repeatedFirst)
+    expect(second).toBe(repeatedSecond)
+    expect(second).not.toBe(first)
+    expect(first).not.toBe(PNG)
+    expect(second).not.toBe(PNG)
   })
 
   it.each([

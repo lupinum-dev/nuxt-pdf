@@ -61,6 +61,8 @@ type ResolvedPdfImageAsset = Readonly<{
   format: PdfImageFormat
 }>
 
+type ImageResolutionCache = Map<unknown, Promise<Buffer>>
+
 type ImageTarget = {
   node: PdfElementNode
   prop: 'source' | 'src'
@@ -383,6 +385,24 @@ const resolveLocalImage = (
 const isRemoteCandidate = (source: string): boolean =>
   /^https?:/i.test(source)
 
+// Deduplicate the source forms authors naturally repeat in one document without
+// hashing image bytes. String sources share by value; byte-backed sources share
+// only when the same object is reused. Keep the declared local-object format in
+// the key so caching can never bypass its path/format agreement validation.
+const imageResolutionCacheKey = (source: unknown): unknown => {
+  if (typeof source === 'string') return `string\0${source}`
+  if (!source || typeof source !== 'object') return source
+
+  const record = source as Record<string, unknown>
+  if (typeof record.uri === 'string') {
+    return isRemoteCandidate(record.uri)
+      ? `remote\0${record.uri}`
+      : `local\0${record.uri}\0${String(record.format ?? '')}`
+  }
+
+  return source
+}
+
 const resolveRemoteImage = async (
   url: string,
   remote: RemoteAssetPolicy | undefined,
@@ -480,6 +500,29 @@ const resolveImageSource = async (
   )
 }
 
+const resolveImageBuffer = (
+  source: unknown,
+  assets: PdfImageAssetMap,
+  maxBytes: number,
+  remote: RemoteAssetPolicy | undefined,
+  inflight: Map<string, Promise<Buffer>>,
+  resolved: ImageResolutionCache,
+): Promise<Buffer> => {
+  const key = imageResolutionCacheKey(source)
+  const existing = resolved.get(key)
+  if (existing) return existing
+
+  const promise = resolveImageSource(
+    source,
+    assets,
+    maxBytes,
+    remote,
+    inflight,
+  ).then(image => image.data)
+  resolved.set(key, promise)
+  return promise
+}
+
 const collectImageNodes = (document: PdfDocumentNode): PdfElementNode[] => {
   const images: PdfElementNode[] = []
   const pending: PdfElementNode[] = [document]
@@ -515,6 +558,7 @@ export const resolvePdfImageAssets = async (
   }
 
   const inflight = new Map<string, Promise<Buffer>>()
+  const resolvedImages: ImageResolutionCache = new Map()
   const targets: ImageTarget[] = []
 
   for (const node of collectImageNodes(document)) {
@@ -534,12 +578,13 @@ export const resolvePdfImageAssets = async (
   }
 
   const resolved = await Promise.all(targets.map(target =>
-    resolveImageSource(
+    resolveImageBuffer(
       target.node.props[target.prop],
       options.assets,
       maxBytes,
       options.remote,
       inflight,
+      resolvedImages,
     ),
   ))
 
