@@ -14,6 +14,7 @@ export type {
   ParsedPdf,
   ParsedPdfLink,
   ParsedPdfPage,
+  ParsedPdfTextRun,
   PdfInput,
   PdfOutlineItem,
   PdfPageImage,
@@ -36,6 +37,9 @@ export type {
   RenderPdfTemplateOptions,
   RenderedPdfTemplate,
 } from '../test-utils/render-template'
+
+export { loadPdfSfc, renderPdfSfc } from '../test-utils/render-sfc'
+export type { RenderPdfSfcOptions } from '../test-utils/render-sfc'
 
 export { comparePdfSnapshot } from '../test-utils/snapshot'
 export type {

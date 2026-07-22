@@ -57,7 +57,7 @@ import { Component } from 'vue';
 import { PdfImageAssetMap } from '../dist/runtime/server/assets/resolve-asset.js';
 import { RemoteAssetPolicy } from '../dist/runtime/server/assets/remote.js';
 import { PdfRenderLimits } from '../dist/runtime/server/engine/limits.js';
-import { BundledPdfFontDescriptor } from '../dist/runtime/server/fonts.js';
+import { BundledPdfFontDescriptor, PdfFontDeclaration } from '../dist/runtime/server/fonts.js';
 
 /** Raw PDF (or PNG) bytes accepted by the low-level readers. */
 type PdfData = ArrayBuffer | Uint8Array;
@@ -217,6 +217,17 @@ interface RenderedPdfTemplate {
  */
 declare function renderPdfTemplate<Props extends object>(component: Component, props: Props, options?: RenderPdfTemplateOptions): Promise<RenderedPdfTemplate>;
 
+interface RenderPdfSfcOptions extends Omit<RenderPdfTemplateOptions, 'assets' | 'file' | 'fonts'> {
+    /** Font faces declared exactly as in `pdf.fonts`; resolved from `pdfs/fonts`. */
+    fonts?: readonly PdfFontDeclaration[];
+    /** Application root containing `pdfs/`; inferred from the template path. */
+    rootDir?: string;
+}
+/** Compile a real PDF SFC graph with the same compiler used by the Nuxt module. */
+declare function loadPdfSfc(filename: string): Promise<Component>;
+/** Compile and render a real `pdfs/*.vue` template with production resource handling. */
+declare function renderPdfSfc<Props extends object>(filename: string, props: Props, options?: RenderPdfSfcOptions): Promise<RenderedPdfTemplate>;
+
 interface ComparePdfSnapshotOptions {
     /** Directory for expected, actual, diff, and JSON failure artifacts. */
     artifactDir?: string;
@@ -249,6 +260,6 @@ interface PdfSnapshotResult {
  */
 declare function comparePdfSnapshot(input: PdfInput, baselineDir: string, options?: ComparePdfSnapshotOptions): Promise<PdfSnapshotResult>;
 
-export { PdfAssertionError, comparePdfSnapshot, expectPdf, parsePdf, rasterizePdf, renderPdfTemplate, toPdfBytes };
-export type { ComparePdfSnapshotOptions, LinkQuery, OutlineShape, ParsedPdf, ParsedPdfLink, ParsedPdfPage, PdfExpectation, PdfInput, PdfOutlineItem, PdfPageImage, PdfSnapshotResult, RasterizePdfOptions, RenderPdfTemplateOptions, RenderedPdfTemplate, ToContainTextOptions };
+export { PdfAssertionError, comparePdfSnapshot, expectPdf, loadPdfSfc, parsePdf, rasterizePdf, renderPdfSfc, renderPdfTemplate, toPdfBytes };
+export type { ComparePdfSnapshotOptions, LinkQuery, OutlineShape, ParsedPdf, ParsedPdfLink, ParsedPdfPage, ParsedPdfTextRun, PdfExpectation, PdfInput, PdfOutlineItem, PdfPageImage, PdfSnapshotResult, RasterizePdfOptions, RenderPdfSfcOptions, RenderPdfTemplateOptions, RenderedPdfTemplate, ToContainTextOptions };
 ```

@@ -1,6 +1,6 @@
 import { copyFile, mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineComponent, h } from 'vue'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -20,8 +20,10 @@ import {
   comparePdfSnapshot,
   expectPdf,
   parsePdf,
+  renderPdfSfc,
   renderPdfTemplate,
 } from '../src/test/index'
+import { sampleInvoice } from '../playground/shared/invoice'
 
 const fontSource = fileURLToPath(new URL('./fixtures/assets/Roboto-Regular.ttf', import.meta.url))
 
@@ -111,6 +113,21 @@ describe('@lupinum/nuxt-pdf/test public surface', () => {
         y: expect.any(Number),
       }),
     ]))
+  }, 30_000)
+
+  it('compiles a real nested PDF SFC graph with local resources', async () => {
+    const rendered = await renderPdfSfc(
+      resolve('playground/pdfs/invoice.vue'),
+      { invoice: sampleInvoice },
+      {
+        fonts: [{ family: 'Fieldnote Sans', src: 'Roboto-Regular.ttf' }],
+      },
+    )
+
+    expectPdf(rendered.parsed)
+      .toContainText(sampleInvoice.number)
+      .toContainText(sampleInvoice.customer.name)
+    expect(rendered.result.diagnostics.pageCount).toBeGreaterThan(0)
   }, 30_000)
 
   it('throws PdfAssertionError with actionable messages on failure', async () => {

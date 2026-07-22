@@ -54,8 +54,10 @@ const installedVersion = async (name) => {
 const writeFixture = async (appDir, tarball, manager) => {
   const packageSpec = `file:${relative(appDir, tarball).replaceAll('\\', '/')}`
   const versions = {
+    '@napi-rs/canvas': await installedVersion('@napi-rs/canvas'),
     '@types/node': await installedVersion('@types/node'),
     'nuxt': await installedVersion('nuxt'),
+    'pdfjs-dist': await installedVersion('pdfjs-dist'),
     'typescript': await installedVersion('typescript'),
     'vue': await installedVersion('vue'),
     'vue-tsc': await installedVersion('vue-tsc'),
@@ -82,7 +84,9 @@ const writeFixture = async (appDir, tarball, manager) => {
       vue: versions.vue,
     },
     devDependencies: {
+      '@napi-rs/canvas': versions['@napi-rs/canvas'],
       '@types/node': versions['@types/node'],
+      'pdfjs-dist': versions['pdfjs-dist'],
       'typescript': versions.typescript,
       'vue-tsc': versions['vue-tsc'],
     },
@@ -230,6 +234,47 @@ export default defineEventHandler(async () => {
 
   return (await pdf.invoice.render(props)).response()
 })
+`)
+
+  await writeFile(join(appDir, 'test-pdf-sfc.mjs'), `import { fileURLToPath } from 'node:url'
+import {
+  expectPdf,
+  rasterizePdf,
+  renderPdfSfc,
+} from '${packageJson.name}/test'
+
+const props = {
+  invoice: {
+    customer: 'Ada Lovelace',
+    number: 'QS-001',
+    total: 'EUR 1,250.00',
+  },
+}
+const rendered = await renderPdfSfc(
+  fileURLToPath(new URL('./pdfs/invoice.vue', import.meta.url)),
+  props,
+  {
+    fonts: [
+      { family: 'Source Code Pro', src: 'SourceCodePro-Regular.ttf', fontWeight: 400 },
+      { family: 'Source Code Pro', src: 'SourceCodePro-Bold.ttf', fontWeight: 700 },
+    ],
+  },
+)
+
+expectPdf(rendered.parsed)
+  .toHavePageCount(1)
+  .toContainText('Invoice QS-001')
+  .toContainText('Prepared for Ada Lovelace')
+  .toContainText('Page 1 of 1')
+
+const title = rendered.parsed.pages[0].textRuns.find(run => run.text.includes('Installable'))
+if (!title || title.fontSize !== 24 || title.x < 40 || title.y < 700) {
+  throw new Error('Unexpected packed-SFC title geometry: ' + JSON.stringify(title))
+}
+const [page] = await rasterizePdf(rendered.bytes)
+if (!page || page.width < 590 || page.height < 840 || page.png.byteLength === 0) {
+  throw new Error('Packed-SFC raster evidence is missing or malformed.')
+}
 `)
 }
 
@@ -393,6 +438,7 @@ try {
       run('npm', ['install', '--cache', join(temporaryDirectory, 'npm-cache'), '--no-audit', '--no-fund'], appDir)
       run('npm', ['exec', '--', 'nuxt', 'prepare'], appDir)
       run('npm', ['exec', '--', 'vue-tsc', '--noEmit'], appDir)
+      run(process.execPath, ['test-pdf-sfc.mjs'], appDir)
       run('npm', ['exec', '--', 'nuxt', 'build'], appDir)
     }
     else {
@@ -400,6 +446,7 @@ try {
       run('pnpm', ['install', '--store-dir', store], appDir)
       run('pnpm', ['exec', 'nuxt', 'prepare'], appDir)
       run('pnpm', ['exec', 'vue-tsc', '--noEmit'], appDir)
+      run(process.execPath, ['test-pdf-sfc.mjs'], appDir)
       run('pnpm', ['exec', 'nuxt', 'build'], appDir)
     }
 
