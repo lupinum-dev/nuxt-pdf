@@ -137,6 +137,24 @@ reviewed baselines.
 - `maxLines` with `textOverflow: 'ellipsis'` clamps to the line count and appends
   the ellipsis (U+2026).
 
+**International typography** (`test/international-text.test.ts`):
+
+- Latin Extended, Greek, and Cyrillic render and extract exactly with an
+  explicitly registered covering font;
+- representative Chinese/Japanese text renders, extracts, and matches a
+  reviewed raster with a test-only Noto subset (experimental broader CJK claim);
+- representative Arabic shapes visually, reports an RTL text run, and exposes
+  the expected bidi extraction reorder (experimental);
+- combining marks render correctly but extraction can detach mark association
+  (experimental);
+- a variable Source Code TTF renders and extracts at its default instance
+  (experimental; no axis-selection API); and
+- face emoji fail faithful serialization and are explicitly unsupported.
+
+`PdfRenderDiagnostics.registeredFontFaces` reports only configured family,
+weight, and style. Missing-glyph detection and family fallback chains are not
+claimed.
+
 **Images** (`test/corpus/images.test.ts`):
 
 - JPEG file paths, base64 `data:` URLs, and `{ data, format }` buffer sources all
@@ -390,6 +408,8 @@ the same shipped code — there is one parser, not two. Claimed:
 - `renderPdfTemplate`, which renders a Vue PDF component through the real
   registry pipeline (assets, fonts, single- or multi-pass layout) without Nuxt,
   with or without `definePdf` metadata;
+- `renderPdfSfc`, which uses the production SFC compiler and resource admission
+  path for a real nested `pdfs/*.vue` graph;
 - `rasterizePdf` and `comparePdfSnapshot`, the reviewed per-page PNG baseline
   flow with an `UPDATE_PDF_BASELINES` update mode; and
 - `pdfjs-dist` and `@napi-rs/canvas` as optional peer dependencies, loaded

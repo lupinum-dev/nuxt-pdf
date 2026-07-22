@@ -263,7 +263,7 @@ const result = await pdf.invoice.render({ invoice })
 
 await result.toUint8Array()
 await result.toBuffer()
-result.diagnostics // duration, byte size, pages, passes, warnings
+result.diagnostics // duration, bytes, pages, passes, registered faces, warnings
 await result.response({
   disposition: 'inline',
   filename: 'invoice.pdf',

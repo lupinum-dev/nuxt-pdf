@@ -22,6 +22,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   expected, actual, diff, and JSON metrics for every changed page.
 - One-tarball npm/pnpm consumer verification, pinned CI/release workflows,
   CycloneDX SBOM and checksum generation, and registry post-publish smoke tests.
+- Safe registered-font-face diagnostics and an international typography
+  calibration fixture that classifies CJK, bidi text, combining marks, variable
+  fonts, emoji, fallback, and hyphenation from semantic and raster evidence.
 
 ### Breaking changes
 
