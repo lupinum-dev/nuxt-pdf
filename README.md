@@ -376,6 +376,10 @@ describe('invoice.vue', () => {
 `parsePdf` also accepts a `PdfRenderResult` straight from the server registry —
 `await parsePdf(await pdf.invoice.render(props))` — so route tests read naturally.
 
+`renderPdfSfc('./pdfs/invoice.vue', props, { fonts })` compiles the real template
+and nested child SFCs, discovers local images, and admits local fonts through the
+same validated path as a Nuxt production build.
+
 For pixel-level regressions, `comparePdfSnapshot` follows a reviewed-baseline
 policy: it writes per-page PNG baselines into a directory when
 `UPDATE_PDF_BASELINES=1` (or `{ update: true }`) is set, and otherwise compares
