@@ -37,12 +37,27 @@ export interface ParsedPdfLink {
   url?: string
 }
 
+/** A normalized PDF.js text run for tolerant layout and typography assertions. */
+export interface ParsedPdfTextRun {
+  direction: string
+  fontName: string
+  fontSize: number
+  height: number
+  text: string
+  width: number
+  x: number
+  y: number
+}
+
 export interface ParsedPdfPage {
   annotations: PdfAnnotation[]
+  height: number
   number: number
   rawText: string
   text: string
   textItems: string[]
+  textRuns: ParsedPdfTextRun[]
+  width: number
 }
 
 export interface PdfOutlineItem {
@@ -238,18 +253,37 @@ export async function parsePdf(input: PdfInput): Promise<ParsedPdf> {
       try {
         const textContent = await page.getTextContent()
         const textItems = textContent.items.flatMap(item => 'str' in item ? [item.str] : [])
+        const textRuns = textContent.items.flatMap((item) => {
+          if (!('str' in item)) return []
+
+          const [scaleX = 0, scaleY = 0, , , x = 0, y = 0] = item.transform
+          return [{
+            direction: item.dir,
+            fontName: item.fontName,
+            fontSize: roundCoordinate(Math.hypot(scaleX, scaleY)),
+            height: roundCoordinate(item.height),
+            text: item.str,
+            width: roundCoordinate(item.width),
+            x: roundCoordinate(x),
+            y: roundCoordinate(y),
+          }]
+        })
         const rawText = textContent.items
           .flatMap(item => 'str' in item ? [item.str, item.hasEOL ? '\n' : ''] : [])
           .join('')
         const annotations = (await page.getAnnotations({ intent: 'display' }))
           .map(normalizeAnnotation)
+        const viewport = page.getViewport({ scale: 1 })
 
         pages.push({
           annotations,
+          height: roundCoordinate(viewport.height),
           number: pageNumber,
           rawText,
           text: normalizePdfText(rawText),
           textItems,
+          textRuns,
+          width: roundCoordinate(viewport.width),
         })
       }
       finally {

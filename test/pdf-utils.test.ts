@@ -21,9 +21,19 @@ describe('PDF verification utilities', () => {
 
     expect(parsed.pageCount).toBe(1)
     expect(parsed.pages[0]).toMatchObject({
+      height: 200,
       number: 1,
       text: 'Hello PDF',
       textItems: ['Hello PDF'],
+      textRuns: [{
+        direction: 'ltr',
+        fontSize: 12,
+        height: 12,
+        text: 'Hello PDF',
+        x: 20,
+        y: 100,
+      }],
+      width: 200,
     })
     expect(parsed.pages[0]?.annotations).toContainEqual(expect.objectContaining({
       subtype: 'Link',

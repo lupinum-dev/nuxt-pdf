@@ -101,6 +101,16 @@ describe('@lupinum/nuxt-pdf/test public surface', () => {
     const fromResult = await parsePdf(result)
     expect(fromResult.pageCount).toBe(2)
     expect(fromResult.links.map(link => link.destination)).toContain('terms')
+    expect(fromResult.pages[0]?.width).toBeCloseTo(595.28, 1)
+    expect(fromResult.pages[0]?.height).toBeCloseTo(841.89, 1)
+    expect(fromResult.pages[0]?.textRuns).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        fontSize: 20,
+        text: 'Invoice for Acme Corp',
+        x: expect.any(Number),
+        y: expect.any(Number),
+      }),
+    ]))
   }, 30_000)
 
   it('throws PdfAssertionError with actionable messages on failure', async () => {

@@ -85,12 +85,26 @@ interface ParsedPdfLink {
     /** External URL, when the link points outside the document. */
     url?: string;
 }
+/** A normalized PDF.js text run for tolerant layout and typography assertions. */
+interface ParsedPdfTextRun {
+    direction: string;
+    fontName: string;
+    fontSize: number;
+    height: number;
+    text: string;
+    width: number;
+    x: number;
+    y: number;
+}
 interface ParsedPdfPage {
     annotations: PdfAnnotation[];
+    height: number;
     number: number;
     rawText: string;
     text: string;
     textItems: string[];
+    textRuns: ParsedPdfTextRun[];
+    width: number;
 }
 interface PdfOutlineItem {
     title: string;
