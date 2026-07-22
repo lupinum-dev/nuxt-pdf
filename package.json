@@ -29,7 +29,7 @@
     "access": "public"
   },
   "engines": {
-    "node": "^22.12.0 || ^24.11.0 || >=26.0.0"
+    "node": "^22.12.0 || ^24.11.0 || ^26.0.0"
   },
   "scripts": {
     "prepack": "nuxt-module-build build",
@@ -45,7 +45,7 @@
     "test:dependencies": "node scripts/check-production-dependencies.mjs",
     "test:docs": "pnpm --dir docs check",
     "test:package": "node scripts/check-package.mjs",
-    "test:package-metadata": "node scripts/check-api-report.mjs && publint && attw --pack . --profile esm-only",
+    "test:package-metadata": "node scripts/check-api-report.mjs",
     "test:production": "vitest run --config vitest.production.config.ts",
     "test:quickstart": "node scripts/test-package-quickstart.mjs",
     "test:release-metadata": "node scripts/check-release-metadata.mjs",

@@ -47,6 +47,16 @@ try {
     NUXT_PDF_PACK_REPORT: reportPath,
     NUXT_PDF_TARBALL: tarball,
   }
+  execFileSync('pnpm', ['exec', 'publint', tarball], {
+    cwd: rootDir,
+    env,
+    stdio: 'inherit',
+  })
+  execFileSync('pnpm', ['exec', 'attw', tarball, '--profile', 'esm-only'], {
+    cwd: rootDir,
+    env,
+    stdio: 'inherit',
+  })
   execFileSync(process.execPath, ['scripts/check-package.mjs'], {
     cwd: rootDir,
     env,
