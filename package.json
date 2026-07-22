@@ -46,6 +46,7 @@
     "test:docs": "pnpm --dir docs check",
     "test:package": "node scripts/check-package.mjs",
     "test:package-metadata": "node scripts/check-api-report.mjs",
+    "test:performance": "node --expose-gc ./node_modules/vitest/vitest.mjs run --config vitest.performance.config.ts",
     "test:production": "vitest run --config vitest.production.config.ts",
     "test:quickstart": "node scripts/test-package-quickstart.mjs",
     "test:release-metadata": "node scripts/check-release-metadata.mjs",

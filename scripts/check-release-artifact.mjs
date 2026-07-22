@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -38,6 +38,16 @@ try {
     },
   )
   const report = parsePackReport(output)
+  const performanceBaseline = JSON.parse(await readFile(
+    join(rootDir, 'test', 'fixtures', 'performance', 'linux-node24.json'),
+    'utf8',
+  ))
+  if (report.size > performanceBaseline.packageTarballBytes * 1.1) {
+    throw new Error(`Package tarball size regressed from ${performanceBaseline.packageTarballBytes} to ${report.size} bytes.`)
+  }
+  if (report.unpackedSize > performanceBaseline.packageUnpackedBytes * 1.1) {
+    throw new Error(`Unpacked package size regressed from ${performanceBaseline.packageUnpackedBytes} to ${report.unpackedSize} bytes.`)
+  }
   const tarball = join(temporaryDirectory, basename(report.filename))
   const reportPath = join(temporaryDirectory, 'pack-report.json')
   await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`)

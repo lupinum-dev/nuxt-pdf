@@ -5,6 +5,7 @@ export default defineConfig({
     exclude: [
       ...configDefaults.exclude,
       'test/production.test.ts',
+      'test/performance.test.ts',
       'test/serverless-build.test.ts',
     ],
     fileParallelism: false,

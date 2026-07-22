@@ -197,4 +197,11 @@ jobs:
       - run: npm install --global corepack@0.35.0 && corepack enable
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec vitest run test/isolation-stress.test.ts
+      - run: NUXT_PDF_PERF_GATE=1 pnpm test:performance
       - run: pnpm audit --audit-level high
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        if: always()
+        with:
+          name: performance-report
+          path: reports/performance.json
+          if-no-files-found: error
