@@ -322,6 +322,11 @@ export const createPdfTemplate = <Props extends object>(
       durationMs: performance.now() - start,
       pageCount,
       passes,
+      registeredFontFaces: (options.fonts ?? []).map(font => ({
+        family: font.family,
+        fontStyle: font.fontStyle,
+        fontWeight: font.fontWeight,
+      })),
       warnings,
     })
 

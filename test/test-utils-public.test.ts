@@ -86,6 +86,11 @@ describe('@lupinum/nuxt-pdf/test public surface', () => {
       byteLength: bytes.byteLength,
       pageCount: 2,
       passes: 1,
+      registeredFontFaces: [{
+        family: 'Roboto',
+        fontStyle: undefined,
+        fontWeight: undefined,
+      }],
       warnings: [],
     })
     expect(Object.isFrozen(result.diagnostics)).toBe(true)

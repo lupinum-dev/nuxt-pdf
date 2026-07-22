@@ -80,6 +80,7 @@ const renderDiagnostics = (
   durationMs: 12,
   pageCount: 1,
   passes: 1,
+  registeredFontFaces: [],
   warnings: [],
   ...overrides,
 })
@@ -201,12 +202,14 @@ describe('PDF render result', () => {
     expect(Object.isFrozen(result)).toBe(true)
     expect(Object.isFrozen(result.metadata)).toBe(true)
     expect(Object.isFrozen(result.diagnostics)).toBe(true)
+    expect(Object.isFrozen(result.diagnostics.registeredFontFaces)).toBe(true)
     expect(Object.isFrozen(result.diagnostics.warnings)).toBe(true)
     expect(result.diagnostics).toEqual({
       byteLength: expected.byteLength,
       durationMs: 12,
       pageCount: 1,
       passes: 1,
+      registeredFontFaces: [],
       warnings: ['safe warning'],
     })
     expect(result.metadata).toEqual({
@@ -366,6 +369,7 @@ describe('PDF runtime registry', () => {
       'durationMs',
       'pageCount',
       'passes',
+      'registeredFontFaces',
       'warnings',
     ])
     expect(JSON.stringify(result.diagnostics)).not.toContain('Ada')
@@ -657,6 +661,27 @@ describe('development PDF preview', () => {
     expect(page).toContain('>Raw PDF<')
     expect(page).toContain('invoice.pdf?download=1')
     expect(download.headers.get('content-disposition')).toMatch(/^attachment;/)
+  })
+
+  it('shows safe registered font-face facts without paths or font bytes', async () => {
+    const { template } = createPreviewTemplate({
+      sampleData: { id: 'sample' },
+      render: async () => previewResult({
+        diagnostics: {
+          registeredFontFaces: [{
+            family: 'Invoice <Sans>',
+            fontStyle: 'italic',
+            fontWeight: 600,
+          }],
+        },
+      }),
+    })
+    const page = await (await renderPdfPreview({ invoice: template }, { path: 'invoice' })).text()
+
+    expect(page).toContain('Registered font faces')
+    expect(page).toContain('Invoice &lt;Sans&gt; — 600 italic')
+    expect(page).not.toContain('data:font')
+    expect(page).not.toContain('/pdfs/fonts/')
   })
 
   it('uses opaque, non-sequential parked-render tokens', async () => {

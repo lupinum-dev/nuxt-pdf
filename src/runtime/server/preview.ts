@@ -303,7 +303,17 @@ const diagnosticsPanel = (diagnostics: PdfRenderDiagnostics): string => {
     stat('Size', formatBytes(diagnostics.byteLength)),
     stat('Pages', String(diagnostics.pageCount)),
     stat('Layout passes', String(diagnostics.passes)),
+    stat('Font faces', String(diagnostics.registeredFontFaces.length)),
   ].join('')
+
+  const fonts = diagnostics.registeredFontFaces.length > 0
+    ? `<div class="warnings"><div class="label">Registered font faces</div><ul>${
+      diagnostics.registeredFontFaces.map((face) => {
+        const attributes = [face.fontWeight, face.fontStyle].filter(value => value !== undefined)
+        return `<li>${escapeHtml(face.family)}${attributes.length > 0 ? ` — ${escapeHtml(attributes.join(' '))}` : ''}</li>`
+      }).join('')
+    }</ul></div>`
+    : ''
 
   const warnings = diagnostics.warnings.length > 0
     ? `<div class="warnings"><div class="label">${diagnostics.warnings.length} warning${diagnostics.warnings.length === 1 ? '' : 's'}</div><ul>${
@@ -311,7 +321,7 @@ const diagnosticsPanel = (diagnostics: PdfRenderDiagnostics): string => {
     }</ul></div>`
     : ''
 
-  return `<div class="diagnostics">${stats}</div>${warnings}`
+  return `<div class="diagnostics">${stats}</div>${fonts}${warnings}`
 }
 
 const errorDetails = (

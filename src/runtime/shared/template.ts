@@ -47,7 +47,14 @@ export interface PdfRenderDiagnostics {
   readonly byteLength: number
   readonly pageCount: number
   readonly passes: number
+  readonly registeredFontFaces: readonly PdfRegisteredFontFace[]
   readonly warnings: readonly string[]
+}
+
+export interface PdfRegisteredFontFace {
+  readonly family: string
+  readonly fontStyle?: string
+  readonly fontWeight?: number
 }
 
 export interface PdfRenderResult {
