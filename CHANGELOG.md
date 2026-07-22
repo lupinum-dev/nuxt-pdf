@@ -16,6 +16,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   request cancellation.
 - Structural SFNT table-directory validation for local TTF/OTF files plus mixed
   20-render concurrency, 100 sequential-render, and 100-page isolation suites.
+- Immutable resolved render metadata, development-only preview sidecars, stale
+  preview state after render failures, and automatic SFC preview refresh.
+- Normalized PDF text-run geometry and complete raster failure artifacts with
+  expected, actual, diff, and JSON metrics for every changed page.
+- One-tarball npm/pnpm consumer verification, pinned CI/release workflows,
+  CycloneDX SBOM and checksum generation, and registry post-publish smoke tests.
 
 ### Breaking changes
 
