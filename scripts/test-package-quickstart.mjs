@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
 import {
   mkdtemp,
   mkdir,
@@ -9,7 +9,8 @@ import {
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, join, relative, resolve } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
+import { createServer } from 'node:net'
 
 const rootDir = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const packageJson = JSON.parse(
@@ -49,74 +50,8 @@ const installedVersion = async (name) => {
   return dependency.version
 }
 
-const installedDependencyOverrides = () => {
-  const projects = JSON.parse(execFileSync(
-    'pnpm',
-    ['list', '--depth', 'Infinity', '--json'],
-    { cwd: rootDir, encoding: 'utf8', maxBuffer: 100 * 1024 * 1024 },
-  ))
-  const overrides = new Map()
-
-  // Compare the trailing semver of an override value (`1.2.3` or
-  // `npm:alias@1.2.3`) numerically; a higher tuple wins.
-  const versionOf = value => value.slice(value.lastIndexOf('@') + 1)
-  const isHigher = (candidate, existing) => {
-    const left = versionOf(candidate).split('.').map(Number)
-    const right = versionOf(existing).split('.').map(Number)
-    for (let index = 0; index < Math.max(left.length, right.length); index += 1) {
-      const a = left[index] ?? 0
-      const b = right[index] ?? 0
-      if (a !== b) return a > b
-    }
-    return false
-  }
-
-  const addOverride = (selector, name, dependency) => {
-    const version = dependency.version
-    if (!version || version.startsWith('link:')) return
-    const value = dependency.from && dependency.from !== name
-      ? `npm:${dependency.from}@${version}`
-      : version
-
-    // A pnpm workspace can resolve the same `parent@version>child` edge to
-    // several versions across peer-variant instances (the docs workspace pulls
-    // a different Nuxt/unimport stack than the module). Every candidate is
-    // already in the offline store, so any pins install offline; pick the
-    // highest deterministically rather than failing the gate.
-    const existing = overrides.get(selector)
-    if (existing === undefined || isHigher(value, existing)) {
-      overrides.set(selector, value)
-    }
-  }
-
-  const visit = (parentName, parentVersion, dependencies = {}) => {
-    for (const [name, dependency] of Object.entries(dependencies)) {
-      addOverride(`${parentName}@${parentVersion}>${name}`, name, dependency)
-      visit(
-        dependency.from ?? name,
-        dependency.version,
-        dependency.dependencies,
-      )
-    }
-  }
-
-  for (const project of projects) {
-    for (const [name, dependency] of Object.entries(project.dependencies ?? {})) {
-      addOverride(name, name, dependency)
-      visit(dependency.from ?? name, dependency.version, dependency.dependencies)
-    }
-    for (const [name, dependency] of Object.entries(project.devDependencies ?? {})) {
-      addOverride(name, name, dependency)
-      visit(dependency.from ?? name, dependency.version, dependency.dependencies)
-    }
-  }
-
-  return [...overrides].sort(([left], [right]) => left.localeCompare(right))
-}
-
-const writeFixture = async (appDir, tarball) => {
+const writeFixture = async (appDir, tarball, manager) => {
   const packageSpec = `file:${relative(appDir, tarball).replaceAll('\\', '/')}`
-  const dependencyOverrides = installedDependencyOverrides()
   const versions = {
     '@types/node': await installedVersion('@types/node'),
     'nuxt': await installedVersion('nuxt'),
@@ -134,7 +69,9 @@ const writeFixture = async (appDir, tarball) => {
     name: 'nuxt-pdf-package-smoke',
     private: true,
     type: 'module',
-    packageManager: packageJson.packageManager,
+    packageManager: manager === 'npm'
+      ? `npm@${process.env.npm_config_user_agent?.match(/npm\/([^ ]+)/)?.[1] ?? '11'}`
+      : packageJson.packageManager,
     dependencies: {
       [packageJson.name]: packageSpec,
       nuxt: versions.nuxt,
@@ -147,17 +84,16 @@ const writeFixture = async (appDir, tarball) => {
     },
   }, null, 2)}\n`)
 
-  await writeFile(join(appDir, 'pnpm-workspace.yaml'), `packages:
+  if (manager === 'pnpm') {
+    await writeFile(join(appDir, 'pnpm-workspace.yaml'), `packages:
   - .
 
 allowBuilds:
   '@parcel/watcher': true
   esbuild: true
   unrs-resolver: true
-
-overrides:
-${dependencyOverrides.map(([name, version]) => `  ${JSON.stringify(name)}: ${JSON.stringify(version)}`).join('\n')}
 `)
+  }
 
   await writeFile(join(appDir, 'nuxt.config.ts'), `export default defineNuxtConfig({
   compatibilityDate: '2026-07-20',
@@ -271,41 +207,62 @@ const assertPdfSemantics = async (bytes) => {
   }
 }
 
+const availablePort = () => new Promise((resolvePort, reject) => {
+  const server = createServer()
+  server.once('error', reject)
+  server.listen(0, '127.0.0.1', () => {
+    const address = server.address()
+    const port = typeof address === 'object' && address ? address.port : 0
+    server.close(error => error ? reject(error) : resolvePort(port))
+  })
+})
+
 const executeBuiltRoute = async (appDir) => {
-  const routeDirectory = join(
-    appDir,
-    '.output/server/chunks/routes/api',
-  )
-  const routePath = join(routeDirectory, 'invoice.get.mjs')
-  const isolatedRoutePath = join(routeDirectory, 'invoice.get.isolated.mjs')
-  const routeSource = await readFile(routePath, 'utf8')
-  const nitroImport = 'import { d as defineEventHandler } from \'../../nitro/nitro.mjs\';\n'
+  const port = await availablePort()
+  const output = []
+  const server = spawn(process.execPath, ['.output/server/index.mjs'], {
+    cwd: appDir,
+    env: {
+      ...process.env,
+      HOST: '127.0.0.1',
+      PORT: String(port),
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+  server.stdout.on('data', chunk => output.push(String(chunk)))
+  server.stderr.on('data', chunk => output.push(String(chunk)))
 
-  assert(
-    routeSource.startsWith(nitroImport),
-    'The production route no longer has the expected Nitro handler boundary.',
-  )
-
-  // The Node preset's shared Nitro chunk starts a listener on import. Replace
-  // only that wrapper in a temporary copy so this package gate needs no port;
-  // the regular production fixture still covers the HTTP route boundary.
-  await writeFile(
-    isolatedRoutePath,
-    routeSource.replace(
-      nitroImport,
-      'const defineEventHandler = handler => handler;\n',
-    ),
-  )
-
-  const routeModule = await import(pathToFileURL(isolatedRoutePath).href)
-  assert(
-    typeof routeModule.default === 'function',
-    'The production build did not export the invoice route handler.',
-  )
-
-  const response = await routeModule.default({})
-  assert(response instanceof Response, 'The production route did not return a Response.')
-  return response
+  try {
+    const deadline = Date.now() + 30_000
+    while (Date.now() < deadline) {
+      if (server.exitCode !== null) {
+        throw new Error(`Built Nuxt server exited early:\n${output.join('')}`)
+      }
+      try {
+        const response = await fetch(`http://127.0.0.1:${port}/api/invoice`)
+        if (response.status !== 503) {
+          return {
+            bytes: Buffer.from(await response.arrayBuffer()),
+            headers: response.headers,
+            status: response.status,
+          }
+        }
+      }
+      catch {
+        // Server is still starting.
+      }
+      await new Promise(resolveDelay => setTimeout(resolveDelay, 100))
+    }
+    throw new Error(`Timed out waiting for the built Nuxt server:\n${output.join('')}`)
+  }
+  finally {
+    if (server.exitCode === null) {
+      await new Promise((resolveExit) => {
+        server.once('exit', resolveExit)
+        server.kill('SIGTERM')
+      })
+    }
+  }
 }
 
 const assertProductionBoundary = async (appDir) => {
@@ -341,58 +298,66 @@ const assertProductionBoundary = async (appDir) => {
 }
 
 const temporaryDirectory = await mkdtemp(join(tmpdir(), 'nuxt-pdf-quickstart-'))
-const appDir = join(temporaryDirectory, 'app')
 
 try {
-  await mkdir(appDir)
-
-  const output = execFileSync(
-    'npm',
-    ['pack', '--json', '--pack-destination', temporaryDirectory],
-    {
-      cwd: rootDir,
-      encoding: 'utf8',
-      env: {
-        ...process.env,
-        npm_config_cache: join(temporaryDirectory, 'npm-cache'),
-        npm_config_loglevel: 'silent',
+  let tarball
+  if (process.env.NUXT_PDF_TARBALL) {
+    tarball = resolve(process.env.NUXT_PDF_TARBALL)
+  }
+  else {
+    const output = execFileSync(
+      'npm',
+      ['pack', '--json', '--pack-destination', temporaryDirectory],
+      {
+        cwd: rootDir,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          npm_config_cache: join(temporaryDirectory, 'pack-cache'),
+          npm_config_loglevel: 'silent',
+        },
+        maxBuffer: 10 * 1024 * 1024,
       },
-      maxBuffer: 10 * 1024 * 1024,
-    },
-  )
-  const report = parsePackReport(output)
-  const tarball = join(temporaryDirectory, basename(report.filename))
+    )
+    const report = parsePackReport(output)
+    tarball = join(temporaryDirectory, basename(report.filename))
 
-  assert(report.name === '@lupinum/nuxt-pdf', `Quickstart packed the wrong package: ${report.name}.`)
-  assert(report.version === packageJson.version, `Quickstart packed the wrong version: ${report.version}.`)
+    assert(report.name === packageJson.name, `Quickstart packed the wrong package: ${report.name}.`)
+    assert(report.version === packageJson.version, `Quickstart packed the wrong version: ${report.version}.`)
+  }
 
-  await writeFixture(appDir, tarball)
+  for (const manager of ['npm', 'pnpm']) {
+    const appDir = join(temporaryDirectory, manager)
+    await mkdir(appDir)
+    await writeFixture(appDir, tarball, manager)
 
-  const storePath = execFileSync(
-    'pnpm',
-    ['store', 'path', '--silent'],
-    { cwd: rootDir, encoding: 'utf8' },
-  ).trim()
+    if (manager === 'npm') {
+      run('npm', ['install', '--cache', join(temporaryDirectory, 'npm-cache'), '--no-audit', '--no-fund'], appDir)
+      run('npm', ['exec', '--', 'nuxt', 'prepare'], appDir)
+      run('npm', ['exec', '--', 'vue-tsc', '--noEmit'], appDir)
+      run('npm', ['exec', '--', 'nuxt', 'build'], appDir)
+    }
+    else {
+      const store = join(temporaryDirectory, 'pnpm-store')
+      run('pnpm', ['install', '--store-dir', store], appDir)
+      run('pnpm', ['exec', 'nuxt', 'prepare'], appDir)
+      run('pnpm', ['exec', 'vue-tsc', '--noEmit'], appDir)
+      run('pnpm', ['exec', 'nuxt', 'build'], appDir)
+    }
 
-  run('pnpm', ['install', '--offline', '--store-dir', storePath], appDir)
-  run('pnpm', ['exec', 'nuxt', 'prepare'], appDir)
-  run('pnpm', ['exec', 'vue-tsc', '--noEmit'], appDir)
-  run('pnpm', ['exec', 'nuxt', 'build'], appDir)
+    const { bytes, headers, status } = await executeBuiltRoute(appDir)
+    assert(status === 200, `${manager} production PDF route returned ${status}.`)
+    assert(headers.get('content-type') === 'application/pdf', `${manager} production route has the wrong content type.`)
+    assert(headers.get('content-length') === String(bytes.byteLength), `${manager} production route has the wrong content length.`)
+    assert(
+      headers.get('content-disposition')?.startsWith('attachment; filename="invoice-QS-001.pdf"'),
+      `${manager} production route has the wrong content disposition.`,
+    )
+    await assertPdfSemantics(bytes)
+    await assertProductionBoundary(appDir)
 
-  const response = await executeBuiltRoute(appDir)
-  const bytes = Buffer.from(await response.arrayBuffer())
-
-  assert(response.status === 200, `Production PDF route returned ${response.status}.`)
-  assert(response.headers.get('content-type') === 'application/pdf', 'Production route has the wrong content type.')
-  assert(response.headers.get('content-length') === String(bytes.byteLength), 'Production route has the wrong content length.')
-  assert(
-    response.headers.get('content-disposition')?.startsWith('attachment; filename="invoice-QS-001.pdf"'),
-    'Production route has the wrong content disposition.',
-  )
-  await assertPdfSemantics(bytes)
-  await assertProductionBoundary(appDir)
-
-  console.log(`Verified ${packageJson.name}@${packageJson.version} in a fresh Nuxt production application.`)
+    console.log(`Verified ${packageJson.name}@${packageJson.version} with ${manager} in a fresh Nuxt production application.`)
+  }
 }
 finally {
   await rm(temporaryDirectory, { force: true, recursive: true })

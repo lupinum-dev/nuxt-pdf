@@ -13,6 +13,7 @@ const expectedRelease = {
 }
 
 const requiredFiles = [
+  'API_REPORT.md',
   'CHANGELOG.md',
   'CONFORMANCE.md',
   'LICENSE',
@@ -76,22 +77,30 @@ const readTarEntry = (tarball, path) => execFileSync(
 const temporaryDirectory = await mkdtemp(join(tmpdir(), 'nuxt-pdf-pack-'))
 
 try {
-  const output = execFileSync(
-    'npm',
-    ['pack', '--json', '--pack-destination', temporaryDirectory],
-    {
-      cwd: rootDir,
-      encoding: 'utf8',
-      env: {
-        ...process.env,
-        npm_config_cache: join(temporaryDirectory, 'npm-cache'),
-        npm_config_loglevel: 'silent',
+  let report
+  let tarball
+  if (process.env.NUXT_PDF_TARBALL && process.env.NUXT_PDF_PACK_REPORT) {
+    tarball = resolve(process.env.NUXT_PDF_TARBALL)
+    report = JSON.parse(await readFile(resolve(process.env.NUXT_PDF_PACK_REPORT), 'utf8'))
+  }
+  else {
+    const output = execFileSync(
+      'npm',
+      ['pack', '--json', '--pack-destination', temporaryDirectory],
+      {
+        cwd: rootDir,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          npm_config_cache: join(temporaryDirectory, 'npm-cache'),
+          npm_config_loglevel: 'silent',
+        },
+        maxBuffer: 10 * 1024 * 1024,
       },
-      maxBuffer: 10 * 1024 * 1024,
-    },
-  )
-  const report = parsePackReport(output)
-  const tarball = join(temporaryDirectory, basename(report.filename))
+    )
+    report = parsePackReport(output)
+    tarball = join(temporaryDirectory, basename(report.filename))
+  }
   const files = report.files.map(file => file.path).sort()
   const fileSet = new Set(files)
 

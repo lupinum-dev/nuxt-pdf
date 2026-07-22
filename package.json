@@ -41,6 +41,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:api": "node scripts/check-api-report.mjs",
+    "test:artifact": "node scripts/check-release-artifact.mjs",
     "test:dependencies": "node scripts/check-production-dependencies.mjs",
     "test:docs": "pnpm --dir docs check",
     "test:package": "node scripts/check-package.mjs",
@@ -51,7 +52,7 @@
     "test:serverless": "vitest run --config vitest.serverless.config.ts",
     "test:watch": "vitest watch",
     "test:types": "vue-tsc --noEmit && nuxt prepare test/fixtures/basic && vue-tsc --noEmit -p test/fixtures/basic/tsconfig.json && pnpm --dir playground exec vue-tsc --noEmit",
-    "verify": "pnpm lint && pnpm test:types && pnpm test:docs && pnpm test:release-metadata && pnpm test:dependencies && pnpm test && pnpm test:production && pnpm test:serverless && pnpm build && pnpm test:package-metadata && pnpm dev:build && pnpm test:package && pnpm test:quickstart"
+    "verify": "pnpm lint && pnpm test:types && pnpm test:docs && pnpm test:release-metadata && pnpm test:dependencies && pnpm test && pnpm test:production && pnpm test:serverless && pnpm build && pnpm test:package-metadata && pnpm dev:build && pnpm test:artifact"
   },
   "dependencies": {
     "@nuxt/kit": "^4.4.8",
