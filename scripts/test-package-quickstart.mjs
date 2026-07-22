@@ -1,5 +1,6 @@
 import { execFileSync, spawn } from 'node:child_process'
 import {
+  copyFile,
   mkdtemp,
   mkdir,
   readFile,
@@ -61,6 +62,9 @@ const writeFixture = async (appDir, tarball, manager) => {
   }
 
   await Promise.all([
+    mkdir(join(appDir, 'pdfs', 'assets'), { recursive: true }),
+    mkdir(join(appDir, 'pdfs', 'components'), { recursive: true }),
+    mkdir(join(appDir, 'pdfs', 'fonts'), { recursive: true }),
     mkdir(join(appDir, 'pdfs'), { recursive: true }),
     mkdir(join(appDir, 'server', 'api'), { recursive: true }),
   ])
@@ -98,6 +102,12 @@ allowBuilds:
   await writeFile(join(appDir, 'nuxt.config.ts'), `export default defineNuxtConfig({
   compatibilityDate: '2026-07-20',
   modules: [${JSON.stringify(packageJson.name)}],
+  pdf: {
+    fonts: [
+      { family: 'Source Code Pro', src: 'SourceCodePro-Regular.ttf', fontWeight: 400 },
+      { family: 'Source Code Pro', src: 'SourceCodePro-Bold.ttf', fontWeight: 700 },
+    ],
+  },
 })
 `)
 
@@ -111,7 +121,47 @@ allowBuilds:
 </template>
 `)
 
+  await Promise.all([
+    copyFile(
+      join(rootDir, 'test', 'fixtures', 'assets', 'sample.png'),
+      join(appDir, 'pdfs', 'assets', 'brand.png'),
+    ),
+    copyFile(
+      join(rootDir, 'node_modules', 'source-code-pro', 'TTF', 'SourceCodePro-Regular.ttf'),
+      join(appDir, 'pdfs', 'fonts', 'SourceCodePro-Regular.ttf'),
+    ),
+    copyFile(
+      join(rootDir, 'node_modules', 'source-code-pro', 'TTF', 'SourceCodePro-Bold.ttf'),
+      join(appDir, 'pdfs', 'fonts', 'SourceCodePro-Bold.ttf'),
+    ),
+  ])
+
+  await writeFile(join(appDir, 'pdfs', 'components', 'InvoiceHeader.vue'), `<script setup lang="ts">
+defineProps<{
+  customer: string
+  number: string
+}>()
+</script>
+
+<template>
+  <PdfView :style="{ alignItems: 'center', flexDirection: 'row', marginBottom: 24 }">
+    <PdfImage
+      src="brand.png"
+      :style="{ height: 32, marginRight: 12, width: 32 }"
+    />
+    <PdfView>
+      <PdfText :style="{ fontSize: 18, fontWeight: 700 }">
+        Invoice {{ number }}
+      </PdfText>
+      <PdfText>Prepared for {{ customer }}</PdfText>
+    </PdfView>
+  </PdfView>
+</template>
+`)
+
   await writeFile(join(appDir, 'pdfs', 'invoice.vue'), `<script setup lang="ts">
+import InvoiceHeader from './components/InvoiceHeader.vue'
+
 // Mirrors the documented quickstart shape exactly: nested props, so the gate
 // proves the same registry typegen and prop inference the docs teach.
 type InvoiceProps = {
@@ -142,12 +192,15 @@ definePdf<InvoiceProps>({
   <PdfDocument>
     <PdfPage
       size="A4"
-      :style="{ padding: 48 }"
+      :style="{ fontFamily: 'Source Code Pro', padding: 48 }"
     >
-      <PdfText :style="{ fontSize: 24 }">
+      <InvoiceHeader
+        :customer="props.invoice.customer"
+        :number="props.invoice.number"
+      />
+      <PdfText :style="{ fontSize: 24, fontWeight: 700 }">
         Installable invoice {{ props.invoice.number }}
       </PdfText>
-      <PdfText>Prepared for {{ props.invoice.customer }}</PdfText>
       <PdfText>Total: {{ props.invoice.total }}</PdfText>
       <PdfText
         fixed
@@ -195,9 +248,12 @@ const assertPdfSemantics = async (bytes) => {
     assert(document.numPages === 1, `Expected one PDF page; received ${document.numPages}.`)
     const page = await document.getPage(1)
     const content = await page.getTextContent()
-    const text = content.items.flatMap(item => 'str' in item ? [item.str] : []).join(' ')
+    const text = content.items
+      .flatMap(item => 'str' in item ? [item.str] : [])
+      .join(' ')
+      .replace(/\s+/g, ' ')
 
-    assert(text.includes('Installable invoice QS-001'), 'PDF is missing the typed invoice data.')
+    assert(text.includes('Installable invoice QS-001'), `PDF is missing the typed invoice data. Extracted: ${JSON.stringify(text)}`)
     assert(text.includes('Prepared for Ada Lovelace'), 'PDF is missing the customer data.')
     assert(text.includes('Total: EUR 1,250.00'), 'PDF is missing the nested total.')
     assert(text.includes('Page 1 of 1'), 'PDF is missing dynamic page text.')
@@ -326,7 +382,9 @@ try {
     assert(report.version === packageJson.version, `Quickstart packed the wrong version: ${report.version}.`)
   }
 
-  for (const manager of ['npm', 'pnpm']) {
+  const managers = process.env.NUXT_PDF_PACKAGE_MANAGERS?.split(',') ?? ['npm', 'pnpm']
+  for (const manager of managers) {
+    assert(manager === 'npm' || manager === 'pnpm', `Unsupported package manager: ${manager}.`)
     const appDir = join(temporaryDirectory, manager)
     await mkdir(appDir)
     await writeFixture(appDir, tarball, manager)
