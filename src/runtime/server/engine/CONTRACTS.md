@@ -335,6 +335,21 @@ unconditionally rejected. The engine's own fetch code stays dead. Protected by
 
 ## Deliberately unused contracts
 
+### Worker cancellation decision
+
+The post-admission spike mounted 12,000 ordinary View/Text rows (about 36,000
+canonical nodes, below the default 50,000-node cap) under a 10 ms deadline. On
+the development reference machine it reached the first cooperative check after
+roughly 4.5 seconds. This proves the deadline is not hard cancellation.
+
+A worker was not adopted. The Vue component and its setup/module closures are
+the canonical document source and cannot be transferred to a worker. Re-importing
+the generated Nitro registry inside a worker requires a second worker-specific
+entry/bundle and did not satisfy the single portable Node/Nitro path required for
+both node-server and serverless builds. Serializing a second document schema is
+explicitly out of scope. Admission budgets plus cooperative checks therefore
+remain the supported boundary; hard cancellation is a documented non-feature.
+
 - React reconciler and renderer lifecycle
 - React hooks and DOM helpers
 - `PDFViewer`, `PDFDownloadLink`, and `BlobProvider`

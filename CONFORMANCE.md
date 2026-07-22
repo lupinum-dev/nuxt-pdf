@@ -294,8 +294,8 @@ The module validates and embeds configured resources during the Nuxt build.
 The tested boundary includes:
 
 - PNG and JPEG extension/signature validation and source byte limits;
-- TTF and OTF signature validation, registration validation, and source byte
-  limits;
+- TTF and OTF signature/extension/SFNT table-directory validation,
+  registration validation, source byte limits, and source-removal rendering;
 - explicit local `pdfs/assets` and `pdfs/fonts` roots;
 - rejection of absolute paths, traversal, missing assets, ambiguous sources,
   unsupported URLs, and symlink escapes; and

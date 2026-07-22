@@ -14,6 +14,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Structural PNG/JPEG dimension validation before engine admission, aggregate
   per-render image accounting, atomic output-cap failure, and fatal sibling
   request cancellation.
+- Structural SFNT table-directory validation for local TTF/OTF files plus mixed
+  20-render concurrency, 100 sequential-render, and 100-page isolation suites.
 
 ### Breaking changes
 
