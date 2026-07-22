@@ -388,6 +388,10 @@ const { bytes } = await renderPdfTemplate(Invoice, { customer: 'Acme Corp' })
 await comparePdfSnapshot(bytes, './test/baselines/invoice')
 ```
 
+Failures produce expected, actual, and diff PNGs for every changed page plus
+machine-readable metrics under `reports/pdf-snapshots`. `parsePdf` also exposes
+normalized page dimensions and text-run geometry for tolerant layout checks.
+
 ## Alpha boundary
 
 Nuxt PDF is currently designed for invoices, reports, certificates, tickets,
