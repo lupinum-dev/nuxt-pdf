@@ -218,6 +218,8 @@ interface RenderedPdfTemplate {
 declare function renderPdfTemplate<Props extends object>(component: Component, props: Props, options?: RenderPdfTemplateOptions): Promise<RenderedPdfTemplate>;
 
 interface ComparePdfSnapshotOptions {
+    /** Directory for expected, actual, diff, and JSON failure artifacts. */
+    artifactDir?: string;
     /** Maximum ratio of changed pixels allowed per page (default 0.005). */
     threshold?: number;
     /** Maximum per-channel RGBA difference for a matching pixel (default 25). */

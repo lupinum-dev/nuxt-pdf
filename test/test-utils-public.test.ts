@@ -1,4 +1,4 @@
-import { copyFile, mkdir, mkdtemp, rm } from 'node:fs/promises'
+import { copyFile, mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -152,8 +152,20 @@ describe('@lupinum/nuxt-pdf/test public surface', () => {
         { customer: 'A Completely Different Customer Name Entirely' },
         { fonts },
       )
-      await expect(comparePdfSnapshot(other, baselineDir))
-        .rejects.toThrow(/does not match its reviewed baseline/)
+      const artifactDir = join(baselineDir, 'failure-artifacts')
+      await expect(comparePdfSnapshot(other, baselineDir, { artifactDir }))
+        .rejects.toThrow(/Expected, actual, diff, and metrics artifacts/)
+      expect(await readdir(artifactDir)).toEqual(expect.arrayContaining([
+        'metrics.json',
+        'page-1-actual.png',
+        'page-1-diff.png',
+        'page-1-expected.png',
+      ]))
+      const metrics = JSON.parse(await readFile(join(artifactDir, 'metrics.json'), 'utf8'))
+      expect(metrics.pages[0]).toMatchObject({
+        matches: false,
+        page: 1,
+      })
     }
     finally {
       await rm(baselineDir, { force: true, recursive: true })

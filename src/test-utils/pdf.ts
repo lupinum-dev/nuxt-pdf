@@ -387,6 +387,18 @@ export async function decodePngPage(
   }
 }
 
+/** Encode a validated RGBA page image as PNG bytes. */
+export function encodePngPage(image: PdfPageImage): Uint8Array {
+  assertPageImage(image, 'encoded')
+  const { createCanvas } = loadCanvas()
+  const canvas = createCanvas(image.width, image.height)
+  const context = canvas.getContext('2d')
+  const data = context.createImageData(image.width, image.height)
+  data.data.set(image.pixels)
+  context.putImageData(data, 0, 0)
+  return new Uint8Array(canvas.encodeSync('png'))
+}
+
 /** Compare two rasterized pages using explicit per-channel and page thresholds. */
 export function comparePageImages(
   actual: PdfPageImage,
