@@ -24,6 +24,9 @@ import {
 } from '../src/runtime/server/fonts'
 
 const fixtureFont = resolve('test/fixtures/assets/Roboto-Regular.ttf')
+const fixtureOpenTypeFont = resolve(
+  'node_modules/source-code-pro/OTF/SourceCodePro-Regular.otf',
+)
 const temporaryDirectories: string[] = []
 
 const createFontRoot = async (): Promise<string> => {
@@ -110,6 +113,24 @@ describe('local PDF fonts', () => {
     )
   })
 
+  it('embeds a structurally validated OTF and renders it', async () => {
+    const fontRoot = await createFontRoot()
+    const target = join(fontRoot, 'SourceCodePro-Regular.otf')
+    await copyFile(fixtureOpenTypeFont, target)
+    const descriptors = await bundlePdfFonts([{
+      family: 'Bundled Source Code',
+      src: 'SourceCodePro-Regular.otf',
+    }], { fontRoots: [fontRoot] })
+
+    expect(descriptors[0]?.src).toMatch(/^data:font\/otf;base64,/)
+    await rm(target)
+    const result = await renderDocument(
+      createFontDocument('Bundled Source Code'),
+      { fontStore: createPdfFontStore(descriptors) },
+    )
+    expect(Buffer.from(result.bytes.subarray(0, 5)).toString('ascii')).toBe('%PDF-')
+  })
+
   it.each([
     '../Roboto-Regular.ttf',
     '/tmp/Roboto-Regular.ttf',
@@ -162,8 +183,15 @@ describe('local PDF fonts', () => {
     const fontRoot = await createFontRoot()
     await installFixtureFont(fontRoot, 'large.ttf')
     await writeFile(join(fontRoot, 'invalid.ttf'), 'not-a-font!!')
-    const openTypeBytes = Buffer.concat([Buffer.from('OTTO'), Buffer.alloc(8)])
-    await writeFile(join(fontRoot, 'valid.otf'), openTypeBytes)
+    const openTypeBytes = Buffer.concat([
+      Buffer.from('OTTO'),
+      Buffer.from([0, 1, 0, 0, 0, 0, 0, 0]),
+      Buffer.from('head'),
+      Buffer.alloc(4),
+      Buffer.from([0, 0, 0, 64, 0, 0, 0, 32]),
+    ])
+    await writeFile(join(fontRoot, 'corrupt.otf'), openTypeBytes)
+    await copyFile(fixtureFont, join(fontRoot, 'mismatch.otf'))
     await writeFile(join(fontRoot, 'collection.ttf'), 'ttcf00000000')
     await writeFile(join(fontRoot, 'font.woff'), 'wOFF00000000')
     await mkdir(join(fontRoot, 'directory.ttf'))
@@ -177,6 +205,14 @@ describe('local PDF fonts', () => {
       { fontRoots: [fontRoot] },
     )).rejects.toThrow('unsupported TTF or OTF signature')
     await expect(bundlePdfFonts(
+      [{ family: 'Corrupt', src: 'corrupt.otf' }],
+      { fontRoots: [fontRoot] },
+    )).rejects.toThrow(/table directory|required SFNT tables/)
+    await expect(bundlePdfFonts(
+      [{ family: 'Mismatch', src: 'mismatch.otf' }],
+      { fontRoots: [fontRoot] },
+    )).rejects.toThrow('extension does not match')
+    await expect(bundlePdfFonts(
       [{ family: 'Collection', src: 'collection.ttf' }],
       { fontRoots: [fontRoot] },
     )).rejects.toThrow('unsupported TTF or OTF signature')
@@ -189,13 +225,6 @@ describe('local PDF fonts', () => {
       { fontRoots: [fontRoot] },
     )).rejects.toThrow('must be a regular file')
 
-    const [openType] = await bundlePdfFonts(
-      [{ family: 'OpenType', src: 'valid.otf' }],
-      { fontRoots: [fontRoot], maxBytes: openTypeBytes.byteLength },
-    )
-    expect(openType?.src).toBe(
-      `data:font/otf;base64,${openTypeBytes.toString('base64')}`,
-    )
     expect(DEFAULT_MAX_PDF_FONT_BYTES).toBe(5 * 1024 * 1024)
   })
 

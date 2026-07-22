@@ -271,6 +271,50 @@ const detectFontFormat = (bytes: Uint8Array): 'otf' | 'ttf' | undefined => {
   return undefined
 }
 
+const validateSfntStructure = (
+  source: string,
+  bytes: Uint8Array,
+  format: 'otf' | 'ttf',
+): void => {
+  const data = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  const tableCount = data.readUInt16BE(4)
+  const directoryEnd = 12 + tableCount * 16
+  if (tableCount < 1 || tableCount > 4096 || directoryEnd > data.byteLength) {
+    throw fontError(source, 'the SFNT table directory is corrupt or truncated.')
+  }
+
+  const tables = new Set<string>()
+  for (let index = 0; index < tableCount; index += 1) {
+    const record = 12 + index * 16
+    const tag = data.toString('latin1', record, record + 4)
+    const offset = data.readUInt32BE(record + 8)
+    const length = data.readUInt32BE(record + 12)
+    const end = offset + length
+    if (
+      !/^[\x20-\x7E]{4}$/u.test(tag)
+      || tables.has(tag)
+      || offset < directoryEnd
+      || !Number.isSafeInteger(end)
+      || end > data.byteLength
+    ) {
+      throw fontError(source, 'the SFNT table directory is corrupt or truncated.')
+    }
+    tables.add(tag)
+  }
+
+  const outlineTable = format === 'ttf'
+    ? tables.has('glyf')
+    : tables.has('CFF ') || tables.has('CFF2')
+  if (
+    !tables.has('head')
+    || !tables.has('maxp')
+    || !tables.has('cmap')
+    || !outlineTable
+  ) {
+    throw fontError(source, 'the font is missing required SFNT tables.')
+  }
+}
+
 const fontFormat = (
   source: string,
   bytes: Uint8Array,
@@ -287,6 +331,10 @@ const fontFormat = (
   if (!format) {
     throw fontError(source, 'the file has an unsupported TTF or OTF signature.')
   }
+  if (`.${format}` !== extension) {
+    throw fontError(source, 'the file extension does not match its TTF or OTF signature.')
+  }
+  validateSfntStructure(source, bytes, format)
 
   return format
 }
