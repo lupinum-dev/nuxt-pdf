@@ -142,10 +142,31 @@ describe('fixed-environment performance evidence', () => {
     if (process.env.NUXT_PDF_PERF_GATE === '1') {
       const baseline = JSON.parse(await readFile(baselinePath, 'utf8')) as { metrics: Metrics }
       for (const [name, value] of Object.entries(metrics)) {
+        if (name.endsWith('Ms'))
+          continue
         const previous = baseline.metrics[name]
         expect(previous, `Missing performance baseline for ${name}`).toBeTypeOf('number')
         const ratio = name.endsWith('OutputBytes') ? 1.1 : 1.2
         expect(value, `${name} regressed from ${previous} to ${value}`).toBeLessThanOrEqual(previous! * ratio)
+      }
+
+      // Hosted runners do not provide fixed CPU capacity, so absolute wall-clock
+      // thresholds are false precision. Keep raw timings in the report, but gate
+      // each heavier workload relative to the same run's warm invoice median.
+      const timingRatios: Metrics = {
+        coldToWarm: coldRenderMs / metrics.warmInvoiceMs!,
+        hundredPagesToWarm: metrics.hundredPagesMs! / metrics.warmInvoiceMs!,
+        multiPassToWarm: metrics.multiPassReportMs! / metrics.warmInvoiceMs!,
+      }
+      const baselineTimingRatios: Metrics = {
+        coldToWarm: baseline.metrics.coldRenderMs! / baseline.metrics.warmInvoiceMs!,
+        hundredPagesToWarm: baseline.metrics.hundredPagesMs! / baseline.metrics.warmInvoiceMs!,
+        multiPassToWarm: baseline.metrics.multiPassReportMs! / baseline.metrics.warmInvoiceMs!,
+      }
+      for (const [name, value] of Object.entries(timingRatios)) {
+        const previous = baselineTimingRatios[name]!
+        expect(value, `${name} regressed from ${previous} to ${value}`)
+          .toBeLessThanOrEqual(previous * 1.2)
       }
     }
   }, 120_000)
