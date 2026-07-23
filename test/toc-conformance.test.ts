@@ -1,4 +1,5 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineComponent, h, type VNode } from 'vue'
 import { describe, expect, it } from 'vitest'
@@ -153,8 +154,21 @@ describe('table-of-contents conformance (Vue-only)', () => {
         await mkdir(baselineDirectory, { recursive: true })
         await writeFile(`${baselineDirectory}/${baselineName}`, tocPage!.png)
       }
-      const baseline = await decodePngPage(await readFile(`${baselineDirectory}/${baselineName}`), 1)
+      const baselinePng = await readFile(`${baselineDirectory}/${baselineName}`)
+      const baseline = await decodePngPage(baselinePng, 1)
       const regression = comparePageImages(tocPage!, baseline, rasterThresholds)
+      if (!regression.matches) {
+        const artifactDirectory = resolve('reports/pdf-snapshots/toc')
+        await mkdir(artifactDirectory, { recursive: true })
+        await Promise.all([
+          writeFile(`${artifactDirectory}/actual.png`, tocPage!.png),
+          writeFile(`${artifactDirectory}/expected.png`, baselinePng),
+          writeFile(
+            `${artifactDirectory}/metrics.json`,
+            `${JSON.stringify(regression, null, 2)}\n`,
+          ),
+        ])
+      }
       expect(regression, 'TOC page reviewed baseline mismatch').toMatchObject({
         dimensionsMatch: true,
         matches: true,
