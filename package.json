@@ -53,7 +53,7 @@
     "test:version-headings": "node scripts/check-version-headings.mjs",
     "test:serverless": "vitest run --config vitest.serverless.config.ts",
     "test:watch": "vitest watch",
-    "test:types": "nuxt prepare && vue-tsc --noEmit && nuxt prepare test/fixtures/basic && vue-tsc --noEmit -p test/fixtures/basic/tsconfig.json && nuxt prepare playground && pnpm --dir playground exec vue-tsc --noEmit",
+    "test:types": "nuxt prepare && vue-tsc --noEmit && nuxt prepare test/fixtures/basic && vue-tsc --noEmit -p test/fixtures/basic/tsconfig.json && pnpm dev:prepare && pnpm --dir playground exec vue-tsc --noEmit",
     "verify": "pnpm lint && pnpm test:types && pnpm test:docs && pnpm test:version-headings && pnpm test:dependencies && pnpm test && pnpm test:production && pnpm test:serverless && pnpm build && pnpm test:package-metadata && pnpm dev:build && pnpm test:artifact"
   },
   "dependencies": {
