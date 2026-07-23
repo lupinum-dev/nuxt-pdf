@@ -1,4 +1,4 @@
-Copyright (c) 2011-2023, The Inter, Lora, and Geist Project Authors,
+Copyright (c) 2011-2023, The Inter and Lora Project Authors,
 with Reserved Font Names as declared by their respective projects.
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
