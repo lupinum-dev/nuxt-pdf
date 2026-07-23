@@ -53,7 +53,7 @@ jobs:
           path: release-artifacts
       - name: Validate npm publication
         if: inputs.dry_run
-        run: npm publish release-artifacts/*.tgz --dry-run --tag "${{ inputs.tag }}"
+        run: npm publish ./release-artifacts/*.tgz --dry-run --tag "${{ inputs.tag }}"
       - name: Publish with npm provenance
         if: ${{ !inputs.dry_run }}
-        run: npm publish release-artifacts/*.tgz --provenance --access public --tag "${{ inputs.tag }}"
+        run: npm publish ./release-artifacts/*.tgz --provenance --access public --tag "${{ inputs.tag }}"
