@@ -213,7 +213,7 @@ section's **first** page, because a table-of-contents entry names where a sectio
   only the derived, disposable layout.
 
 The printed TOC number and the jump target thus share one source of truth.
-Protected by `test/toc-multipass-attack.test.ts` (the page-spanning regression),
+Protected by `test/toc-multipass-invariants.test.ts` (the page-spanning regression),
 `test/toc-multipass.test.ts`, and `test/internal-links.test.ts` (paired with
 React on non-splitting targets, where first- and last-page resolution agree).
 

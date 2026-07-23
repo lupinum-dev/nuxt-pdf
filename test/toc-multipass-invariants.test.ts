@@ -22,24 +22,9 @@ import {
 import { createPdfFontStore } from '../src/runtime/server/fonts'
 import { installPdfCanvasGlobals, parsePdf } from './utils/pdf'
 
-// ===========================================================================
-// SPIKE-ATTACK TESTS for the multi-pass TOC layout (layout-passes.ts).
-//
-// These adversarial fixtures probe the spike's load-bearing claims:
-//   1. Contamination — re-laying-out the re-patched tree yields byte- and
-//      geometry-identical output to a fresh single layout of the same final
-//      state (no stale box/line/style state leaks between passes).
-//   3. Dynamic text (page-number footers) survives the loop.
-//   4. The dynamic-lineHeight shield does not accumulate or contaminate.
-//
-// They HOLD, and are asserted green below.
-//
-// Attack 2 (id on a page-spanning node) surfaced a genuine defect in the spike:
-// the destination resolved to the section's LAST page instead of its first. That
-// is now FIXED — `extractDestinationPages` is first-writer-wins and serialization
-// anchors the destination at the first fragment — and Attack 2 is a permanent
-// regression test at the bottom of this file.
-// ===========================================================================
+// Regression coverage for state that is reused across layout passes. Each
+// fixture compares the converged render with a fresh render of the same final
+// page-number map or asserts a destination invariant directly.
 
 const mountedSource = (
   mounted: Awaited<ReturnType<typeof mountPdfComponent>>,
@@ -136,7 +121,7 @@ const NormalDoc = defineComponent({
   },
 })
 
-describe('ATTACK 1 — contamination across passes (holds)', () => {
+describe('multi-pass state isolation', () => {
   it('converged multipass geometry equals a fresh single layout of the final state', async () => {
     const b = await mountPdfComponent(NormalDoc, { resolved: {} })
     const result = await renderDocumentMultiPass(mountedSource(b))
@@ -167,14 +152,8 @@ describe('ATTACK 1 — contamination across passes (holds)', () => {
   })
 })
 
-// ---------------------------------------------------------------------------
-// ATTACK 3 — bookmarks (outline) + multipass. resolveBookmarks mutates
-// props.bookmark IN PLACE (documented spike risk). Verify re-layout does not
-// corrupt the outline: the converged outline AND bytes match a single fresh
-// render of the same final state. (Holds: resolveBookmarks is idempotent under a
-// structurally identical tree — refs increment identically each pass and the
-// `{ ref, parent, ...bookmark }` spread re-derives the same values.)
-// ---------------------------------------------------------------------------
+// Bookmark resolution mutates layout data. Comparing with a fresh final-state
+// render proves that reuse across passes does not corrupt the outline.
 const readOutline = async (bytes: Uint8Array): Promise<unknown> => {
   installPdfCanvasGlobals()
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
@@ -224,7 +203,7 @@ const BookmarkDoc = defineComponent({
   },
 })
 
-describe('ATTACK 3 — bookmarks + multipass (holds)', () => {
+describe('multi-pass bookmark isolation', () => {
   it('converged outline and bytes equal a single fresh render (no in-place corruption)', async () => {
     const b = await mountPdfComponent(BookmarkDoc, { resolved: {} })
     const multi = await renderDocumentMultiPass(mountedSource(b), { compress: false })
@@ -242,14 +221,8 @@ describe('ATTACK 3 — bookmarks + multipass (holds)', () => {
   })
 })
 
-// ---------------------------------------------------------------------------
-// ATTACK 4 — dynamic-lineHeight shield with a STABLE style reference. The shield
-// appends `{ lineHeight: '' }` to node.style each pass and is only reset when the
-// renderer re-patches `style`. A stable object reference makes Vue skip the patch,
-// so the shield could accumulate or contaminate. Verify the converged geometry
-// still equals a fresh single layout. (Holds: the shield value is idempotent and,
-// for object styles, re-spread rather than grown.)
-// ---------------------------------------------------------------------------
+// A stable style reference makes Vue skip the style patch between passes. The
+// dynamic-line-height normalization must therefore remain idempotent.
 const STABLE_FOOTER_STYLE = { position: 'absolute', bottom: 24, left: 40, right: 40, fontSize: 9, textAlign: 'center', lineHeight: 2 } as const
 
 const StableStyleDoc = defineComponent({
@@ -277,7 +250,7 @@ const StableStyleDoc = defineComponent({
   },
 })
 
-describe('ATTACK 4 — shield accumulation with a stable style reference (holds)', () => {
+describe('multi-pass dynamic line-height isolation', () => {
   it('converged geometry equals a fresh single layout; the shield does not contaminate', async () => {
     const b = await mountPdfComponent(StableStyleDoc, { resolved: {} })
     const result = await renderDocumentMultiPass(mountedSource(b))
@@ -297,25 +270,8 @@ describe('ATTACK 4 — shield accumulation with a stable style reference (holds)
   })
 })
 
-// ---------------------------------------------------------------------------
-// ATTACK 2 — convergence to a WRONG number (FINDING, committed skipped).
-//
-// When the id-carrying node spans a page boundary, `extractDestinationPages`
-// (last-writer-wins over the ordered page list) maps the id to the section's
-// LAST page, and pdfkit's named-destination table (last `add` wins) also points
-// the jump at the last page. So a section whose body spans pages 3–4 gets a TOC
-// entry that prints "4" and a link that jumps to page 4 — even though the section
-// STARTS on page 3. The loop still reaches a self-consistent fixed point (printed
-// number == jump target), so it neither oscillates nor errors; it silently ships
-// a wrong page number for a common authoring pattern (`<PdfView :id> … </PdfView>`
-// wrapping a multi-page section).
-//
-// The recommended pattern (id on a small, non-splitting heading Text) sidesteps
-// this, which is why the spike's own fixtures never hit it. Skipped until
-// extractDestinationPages resolves an id to the FIRST page it appears on (and the
-// named destination is emitted on the first fragment) or the constraint is
-// documented as a hard requirement.
-// ---------------------------------------------------------------------------
+// A destination on a page-spanning node belongs to the first fragment. Both the
+// printed TOC number and the PDF named destination must use that start page.
 const SplitDoc = defineComponent({
   props: { resolved: { type: Object, default: () => ({}) } },
   setup(props) {
@@ -344,11 +300,9 @@ const SplitDoc = defineComponent({
   },
 })
 
-// The first-page guarantee has two independent mechanisms — first-writer-wins
-// extraction and the serialization-time destination anchoring — so each gets
-// its OWN test: a regression in one must fail its own assertion even if the
-// other also regresses (a single sequential test would mask the second half).
-describe('ATTACK 2 — id on a page-spanning container points at the section START', () => {
+// Extraction and serialization enforce the first-page guarantee independently,
+// so regressions receive separate assertions.
+describe('page-spanning destination anchoring', () => {
   const renderSplitDoc = async () => {
     const m = await mountPdfComponent(SplitDoc, { resolved: {} })
     try {

@@ -400,11 +400,14 @@ describe('Vue PDF host renderer', () => {
     })
   })
 
-  it('rejects internal links that name a missing destination', async () => {
+  it.each(['src', 'href'] as const)('rejects a missing internal destination supplied through %s', async (prop) => {
+    const linkProps = prop === 'src'
+      ? { src: '#missing' }
+      : { href: '#missing' }
     const Fixture = defineComponent(() => () =>
       h(PdfDocument, null, {
         default: () => h(PdfPage, null, {
-          default: () => h(PdfLink, { src: '#missing' }, () => 'Broken'),
+          default: () => h(PdfLink, linkProps, () => 'Broken'),
         }),
       }),
     )

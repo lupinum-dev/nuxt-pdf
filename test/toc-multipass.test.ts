@@ -122,7 +122,7 @@ const parseTocNumbers = (tocText: string): DestinationPageMap => {
   return printed
 }
 
-describe('multi-pass TOC layout (spike)', () => {
+describe('multi-pass TOC layout', () => {
   it('converges to correct page numbers and re-patches (not re-mounts) between passes', async () => {
     const mounted = await mountPdfComponent(NormalDoc, { resolved: {} })
 
@@ -244,7 +244,7 @@ const PathologicalDoc = defineComponent({
   },
 })
 
-describe('multi-pass TOC layout — non-convergence (spike)', () => {
+describe('multi-pass TOC layout — non-convergence', () => {
   it('fails cleanly with an actionable NuxtPdfError instead of looping forever', async () => {
     const mounted = await mountPdfComponent(PathologicalDoc, { resolved: {} })
     let feeds = 0
