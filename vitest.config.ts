@@ -7,6 +7,7 @@ export default defineConfig({
       'test/production.test.ts',
       'test/performance.test.ts',
       'test/serverless-build.test.ts',
+      'test/toc-raster.test.ts',
     ],
     fileParallelism: false,
     include: ['test/**/*.test.ts'],

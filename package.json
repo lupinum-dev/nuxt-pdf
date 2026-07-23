@@ -51,6 +51,7 @@
     "test:prepare": "pnpm dev:prepare && nuxt prepare test/fixtures/layers",
     "test:production": "vitest run --config vitest.production.config.ts",
     "test:quickstart": "node scripts/test-package-quickstart.mjs",
+    "test:raster": "vitest run --config vitest.raster.config.ts",
     "test:version-headings": "node scripts/check-version-headings.mjs",
     "test:serverless": "vitest run --config vitest.serverless.config.ts",
     "test:watch": "vitest watch",

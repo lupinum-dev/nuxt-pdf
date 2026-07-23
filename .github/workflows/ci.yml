@@ -91,6 +91,7 @@ jobs:
           test/svg-conformance.test.ts
           test/test-utils-public.test.ts
           test/toc-conformance.test.ts
+      - run: pnpm test:raster
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         if: always()
         with:
