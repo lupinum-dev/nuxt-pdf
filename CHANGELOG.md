@@ -6,6 +6,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+## 0.3.0 - 2026-07-23
+
 ### Added
 
 - One canonical `pdf.limits` budget covering tree nodes/depth/text, pages,

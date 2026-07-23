@@ -1,6 +1,6 @@
 {
   "name": "@lupinum/nuxt-pdf",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Author and render PDFs with Vue components in Nuxt",
   "repository": "github:Mat4m0/nuxt-pdf",
   "license": "MIT",
