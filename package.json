@@ -40,7 +40,7 @@
     "build": "nuxt-module-build build",
     "api:write": "node scripts/check-api-report.mjs --write",
     "lint": "eslint .",
-    "test": "vitest run",
+    "test": "pnpm test:prepare && vitest run",
     "test:api": "node scripts/check-api-report.mjs",
     "test:artifact": "node scripts/check-release-artifact.mjs",
     "test:dependencies": "node scripts/check-production-dependencies.mjs",
@@ -48,12 +48,13 @@
     "test:package": "node scripts/check-package.mjs",
     "test:package-metadata": "node scripts/check-api-report.mjs",
     "test:performance": "node --expose-gc ./node_modules/vitest/vitest.mjs run --config vitest.performance.config.ts",
+    "test:prepare": "pnpm dev:prepare && nuxt prepare test/fixtures/layers",
     "test:production": "vitest run --config vitest.production.config.ts",
     "test:quickstart": "node scripts/test-package-quickstart.mjs",
     "test:version-headings": "node scripts/check-version-headings.mjs",
     "test:serverless": "vitest run --config vitest.serverless.config.ts",
     "test:watch": "vitest watch",
-    "test:types": "nuxt prepare && vue-tsc --noEmit && nuxt prepare test/fixtures/basic && vue-tsc --noEmit -p test/fixtures/basic/tsconfig.json && pnpm dev:prepare && pnpm --dir playground exec vue-tsc --noEmit",
+    "test:types": "nuxt prepare && vue-tsc --noEmit && nuxt prepare test/fixtures/basic && vue-tsc --noEmit -p test/fixtures/basic/tsconfig.json && pnpm test:prepare && pnpm --dir playground exec vue-tsc --noEmit",
     "verify": "pnpm lint && pnpm test:types && pnpm test:docs && pnpm test:version-headings && pnpm test:dependencies && pnpm test && pnpm test:production && pnpm test:serverless && pnpm build && pnpm test:package-metadata && pnpm dev:build && pnpm test:artifact"
   },
   "dependencies": {

@@ -129,6 +129,7 @@ jobs:
           node-version: 24.11.1
       - run: npm install --global pnpm@10.34.5
       - run: pnpm install --frozen-lockfile
+      - run: pnpm test:prepare
       - run: pnpm exec vitest run test/assets.test.ts test/build.test.ts test/fonts.test.ts test/layers.test.ts test/pdf-sfc-plugin.test.ts
 
   package:
