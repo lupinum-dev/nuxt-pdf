@@ -80,28 +80,18 @@ const orderedTemplates = (
   templates: readonly PdfTemplate[],
 ): PdfTemplate[] => {
   const result = [...templates].sort((left, right) =>
-    compareText(left.canonicalKey, right.canonicalKey),
+    compareText(left.key, right.key),
   )
-  const canonicalKeys = new Map<string, PdfTemplate>()
-  const propertyKeys = new Map<string, PdfTemplate>()
+  const keys = new Map<string, PdfTemplate>()
 
   for (const template of result) {
-    const canonicalDuplicate = canonicalKeys.get(template.canonicalKey)
-    if (canonicalDuplicate) {
+    const duplicate = keys.get(template.key)
+    if (duplicate) {
       throw new TypeError(
-        `Cannot generate duplicate PDF template key "${template.canonicalKey}" from "${canonicalDuplicate.filePath}" and "${template.filePath}".`,
+        `Cannot generate duplicate PDF template key "${template.key}" from "${duplicate.filePath}" and "${template.filePath}".`,
       )
     }
-
-    const propertyDuplicate = propertyKeys.get(template.propertyKey)
-    if (propertyDuplicate) {
-      throw new TypeError(
-        `Cannot generate duplicate PDF property "${template.propertyKey}" for "${propertyDuplicate.canonicalKey}" and "${template.canonicalKey}".`,
-      )
-    }
-
-    canonicalKeys.set(template.canonicalKey, template)
-    propertyKeys.set(template.propertyKey, template)
+    keys.set(template.key, template)
   }
 
   return result
@@ -149,7 +139,7 @@ export const generatePdfRuntimeRegistry = (
         ? ', __pdfRuntimeOptions'
         : ''
     lines.push(
-      `  ${quote(template.propertyKey)}: createPdfTemplate(${quote(template.canonicalKey)}, __pdfTemplate${index}${runtimeArgument}),`,
+      `  ${quote(template.key)}: createPdfTemplate(${quote(template.key)}, __pdfTemplate${index}${runtimeArgument}),`,
     )
   })
 
@@ -159,7 +149,7 @@ export const generatePdfRuntimeRegistry = (
     lines.push('', 'export const pdfPreview = Object.freeze({')
     ordered.forEach((template, index) => {
       lines.push(
-        `  ${quote(template.propertyKey)}: createPdfPreviewEntry(registry.pdf[${quote(template.propertyKey)}], __pdfTemplate${index}, { file: ${quote(`pdfs/${template.relativePath}`)} }),`,
+        `  ${quote(template.key)}: createPdfPreviewEntry(registry.pdf[${quote(template.key)}], __pdfTemplate${index}, { file: ${quote(`pdfs/${template.relativePath}`)} }),`,
       )
     })
     lines.push('})')
@@ -200,7 +190,7 @@ export const generatePdfRegistryTypes = (
 
   ordered.forEach((template, index) => {
     lines.push(
-      `  readonly ${quote(template.propertyKey)}: PdfTemplate<PdfProps${index}>`,
+      `  readonly ${quote(template.key)}: PdfTemplate<PdfProps${index}>`,
     )
   })
 
@@ -215,7 +205,7 @@ export const generatePdfRegistryTypes = (
   else {
     ordered.forEach((template, index) => {
       lines.push(
-        `export declare function renderPdf(name: ${quote(template.canonicalKey)}, props: PdfProps${index}): Promise<PdfRenderResult>`,
+        `export declare function renderPdf(name: ${quote(template.key)}, props: PdfProps${index}): Promise<PdfRenderResult>`,
       )
     })
 
@@ -227,14 +217,14 @@ export const generatePdfRegistryTypes = (
 
     ordered.forEach((template, index) => {
       lines.push(
-        `export declare function getPdfTemplate(name: ${quote(template.canonicalKey)}): PdfTemplate<PdfProps${index}>`,
+        `export declare function getPdfTemplate(name: ${quote(template.key)}): PdfTemplate<PdfProps${index}>`,
       )
     })
   }
 
   lines.push(
     '',
-    `export declare const pdfTemplateKeys: readonly [${ordered.map(template => quote(template.canonicalKey)).join(', ')}]`,
+    `export declare const pdfTemplateKeys: readonly [${ordered.map(template => quote(template.key)).join(', ')}]`,
     'export type PdfTemplateKey = typeof pdfTemplateKeys[number]',
     `export { NuxtPdfError, PDF_ERROR_CODES } from ${quote(options.runtimeImport)}`,
     `export type { PdfErrorCode } from ${quote(options.runtimeImport)}`,

@@ -317,7 +317,7 @@ describe('PDF runtime registry', () => {
       'reports/greeting',
       fixture.component,
     )
-    const registry = createPdfRegistry({ reportsGreeting: template })
+    const registry = createPdfRegistry({ 'reports/greeting': template })
     const preview = createPdfPreviewEntry(template, fixture.component, {
       file: 'pdfs/reports/greeting.vue',
     })
@@ -342,9 +342,10 @@ describe('PDF runtime registry', () => {
       'metadata props must be an object',
     )
 
-    expect(registry.pdf).toEqual({ reportsGreeting: template })
+    expect(registry.pdf).toEqual({ 'reports/greeting': template })
     expect(registry.pdfTemplateKeys).toEqual(['reports/greeting'])
     expect(registry.getPdfTemplate('reports/greeting')).toBe(template)
+    expect(registry.pdf['reports/greeting']).toBe(template)
 
     const result = await registry.renderPdf(
       'reports/greeting',

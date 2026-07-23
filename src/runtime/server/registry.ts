@@ -421,27 +421,22 @@ export const createPdfPreviewEntry = <Props extends object>(
 export const createPdfRegistry = <
   const Entries extends Record<string, PdfTemplateIdentity>,
 >(entries: Entries): PdfRegistry<Entries> => {
-  const canonicalKeys = new Set<string>()
-
-  for (const [property, template] of Object.entries(entries)) {
+  for (const [key, template] of Object.entries(entries)) {
     if (!template?.key) {
-      throw new TypeError(`PDF registry entry "${property}" is invalid.`)
+      throw new TypeError(`PDF registry entry "${key}" is invalid.`)
     }
-    if (canonicalKeys.has(template.key)) {
-      throw new TypeError(`Duplicate PDF template key "${template.key}".`)
+    if (template.key !== key) {
+      throw new TypeError(
+        `PDF registry entry "${key}" must use the same key as createPdfTemplate ("${template.key}").`,
+      )
     }
-    canonicalKeys.add(template.key)
   }
 
   const pdf = Object.freeze(entries)
-  const pdfTemplateKeys = Object.freeze(
-    Object.values(pdf).map(template => template.key),
-  )
+  const pdfTemplateKeys = Object.freeze(Object.keys(pdf))
 
-  const getTemplate = (key: string): Entries[keyof Entries] | undefined => {
-    const template = Object.values(pdf).find(entry => entry.key === key)
-    return template as Entries[keyof Entries] | undefined
-  }
+  const getTemplate = (key: string): Entries[keyof Entries] | undefined =>
+    pdf[key as keyof Entries]
 
   return Object.freeze({
     pdf,
