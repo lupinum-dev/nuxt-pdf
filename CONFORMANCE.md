@@ -297,7 +297,10 @@ and exposes it through one composable and existing props. The tested boundary:
   node object) keeps its destination, anchored at its first page.
 - **Internal links** are verified paired against React PDF on non-splitting
   targets (where first- and last-page resolution agree): matching `Link`
-  annotations and matching named-destination pages.
+  annotations and matching named-destination pages. An internal `#id` that does
+  not match any destination in the mounted document fails closed with
+  `PDF_TREE_INVALID` before layout. A `PdfDocument` without at least one
+  `PdfPage` likewise fails closed.
 - **Bookmarks (outline).** The upstream `bookmark` prop (a string or
   `{ title, expanded, … }`) on `PdfPage`/`PdfView`/`PdfText`/`PdfImage` builds a
   nested PDF outline. Verified paired against React PDF via pdfjs `getOutline`

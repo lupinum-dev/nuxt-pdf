@@ -348,6 +348,8 @@ const validateSvgDefinitions = (svg: PdfElementNode): void => {
 /** Validate invariants that require the complete mounted document tree. */
 export const validatePdfDocumentTree = (document: PdfDocumentNode): void => {
   const destinationIds = new Set<string>()
+  const internalLinkTargets = new Set<string>()
+  let pageCount = 0
   const pending: Array<{ node: PdfElementNode, insideSvg: boolean }> = [{
     node: document,
     insideSvg: false,
@@ -365,6 +367,18 @@ export const validatePdfDocumentTree = (document: PdfDocumentNode): void => {
     validateTextContext(node, insideSvg)
 
     if (node.type === PDF_PRIMITIVES.Svg) validateSvgDefinitions(node)
+    if (node.type === PDF_PRIMITIVES.Page) pageCount += 1
+
+    if (node.type === PDF_PRIMITIVES.Link) {
+      const target = hasProp(node, 'href') ? node.props.href : node.props.src
+      if (typeof target === 'string' && target.startsWith('#')) {
+        const id = target.slice(1)
+        if (id.trim() === '') {
+          treeInvalid('<PdfLink> internal destinations must name a non-empty id.')
+        }
+        internalLinkTargets.add(id)
+      }
+    }
 
     const id = DESTINATION_TYPES.has(node.type)
       ? validateDestinationId(node.props.id)
@@ -387,6 +401,16 @@ export const validatePdfDocumentTree = (document: PdfDocumentNode): void => {
           insideSvg: insideSvg || node.type === PDF_PRIMITIVES.Svg,
         })
       }
+    }
+  }
+
+  if (pageCount === 0) {
+    treeInvalid('<PdfDocument> requires at least one <PdfPage>.')
+  }
+
+  for (const target of internalLinkTargets) {
+    if (!destinationIds.has(target)) {
+      treeInvalid('<PdfLink> internal destination does not match any id in the document.')
     }
   }
 }

@@ -391,6 +391,45 @@ describe('Vue PDF host renderer', () => {
     expect((error as Error).message).not.toContain('private-customer-id')
   })
 
+  it('rejects a document with no PdfPage', async () => {
+    const Fixture = defineComponent(() => () => h(PdfDocument))
+
+    await expect(mountPdfComponent(Fixture)).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message: '<PdfDocument> requires at least one <PdfPage>.',
+    })
+  })
+
+  it('rejects internal links that name a missing destination', async () => {
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, null, {
+          default: () => h(PdfLink, { src: '#missing' }, () => 'Broken'),
+        }),
+      }),
+    )
+
+    await expect(mountPdfComponent(Fixture)).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message: '<PdfLink> internal destination does not match any id in the document.',
+    })
+  })
+
+  it('rejects empty internal destination fragments', async () => {
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, null, {
+          default: () => h(PdfLink, { src: '#' }, () => 'Empty'),
+        }),
+      }),
+    )
+
+    await expect(mountPdfComponent(Fixture)).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message: '<PdfLink> internal destinations must name a non-empty id.',
+    })
+  })
+
   it.each([
     '',
     '   ',

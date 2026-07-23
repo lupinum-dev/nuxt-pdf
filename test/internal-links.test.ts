@@ -201,4 +201,23 @@ describe('single-pass destination anchoring', () => {
     // The destination still exists and resolves to the first page.
     expect(await destinationPageNumbers(bytes, ['brand'])).toEqual({ brand: 1 })
   }, 20_000)
+
+  it('rejects an unresolved internal destination before layout', async () => {
+    const MissingDoc = defineComponent({
+      name: 'MissingDoc',
+      setup() {
+        return () =>
+          h(PdfDocument, {}, {
+            default: () => h(PdfPage, { size: 'A4' }, {
+              default: () => h(PdfLink, { src: '#missing' }, { default: () => 'Broken' }),
+            }),
+          })
+      },
+    })
+
+    await expect(mountPdfComponent(MissingDoc, {})).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message: '<PdfLink> internal destination does not match any id in the document.',
+    })
+  })
 })
