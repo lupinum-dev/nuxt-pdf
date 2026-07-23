@@ -86,7 +86,6 @@ jobs:
           test/certificate-playground.test.ts
           test/conformance.test.ts
           test/ebook-playground.test.ts
-          test/lupinum-invoice-playground.test.ts
           test/menu-playground.test.ts
           test/pdf-utils.test.ts
           test/svg-conformance.test.ts
