@@ -91,7 +91,6 @@ describe('@lupinum/nuxt-pdf/test public surface', () => {
         fontStyle: undefined,
         fontWeight: undefined,
       }],
-      warnings: [],
     })
     expect(Object.isFrozen(result.diagnostics)).toBe(true)
 

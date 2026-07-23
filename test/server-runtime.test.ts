@@ -82,7 +82,6 @@ const renderDiagnostics = (
   pageCount: 1,
   passes: 1,
   registeredFontFaces: [],
-  warnings: [],
   ...overrides,
 })
 
@@ -173,9 +172,9 @@ describe('PDF render result', () => {
   it('keeps completed bytes and diagnostics immutable across conversions', async () => {
     const source = new TextEncoder().encode('%PDF-result')
     const expected = Buffer.from(source)
-    const warnings = ['safe warning']
+    const faces = [{ family: 'Roboto', fontWeight: 400 as const }]
     const measurements = {
-      ...renderDiagnostics({ warnings }),
+      ...renderDiagnostics({ registeredFontFaces: faces }),
       content: 'must not escape',
       props: { secret: true },
       url: 'https://private.example/asset.png',
@@ -189,7 +188,7 @@ describe('PDF render result', () => {
 
     source.fill(0)
     metadata.title = 'Late mutation'
-    warnings.push('late mutation')
+    faces.push({ family: 'Late', fontWeight: 700 })
 
     const bytes = await result.toUint8Array()
     bytes.fill(1)
@@ -204,14 +203,12 @@ describe('PDF render result', () => {
     expect(Object.isFrozen(result.metadata)).toBe(true)
     expect(Object.isFrozen(result.diagnostics)).toBe(true)
     expect(Object.isFrozen(result.diagnostics.registeredFontFaces)).toBe(true)
-    expect(Object.isFrozen(result.diagnostics.warnings)).toBe(true)
     expect(result.diagnostics).toEqual({
       byteLength: expected.byteLength,
       durationMs: 12,
       pageCount: 1,
       passes: 1,
-      registeredFontFaces: [],
-      warnings: ['safe warning'],
+      registeredFontFaces: [{ family: 'Roboto', fontWeight: 400 }],
     })
     expect(result.metadata).toEqual({
       filename: 'result.pdf',
@@ -362,7 +359,6 @@ describe('PDF runtime registry', () => {
       byteLength: bytes.byteLength,
       pageCount: 1,
       passes: 1,
-      warnings: [],
     })
     expect(result.diagnostics.durationMs).toBeGreaterThanOrEqual(0)
     expect(Object.keys(result.diagnostics).sort()).toEqual([
@@ -371,7 +367,6 @@ describe('PDF runtime registry', () => {
       'pageCount',
       'passes',
       'registeredFontFaces',
-      'warnings',
     ])
     expect(JSON.stringify(result.diagnostics)).not.toContain('Ada')
     expect(Object.isFrozen(result.diagnostics)).toBe(true)
@@ -918,9 +913,8 @@ describe('development PDF preview', () => {
     expect(diagnostics.pageCount).toBe(2)
     expect(diagnostics.byteLength).toBeGreaterThan(0)
     expect(diagnostics.durationMs).toBeGreaterThan(0)
-    expect(diagnostics.warnings).toEqual([])
     expect(Object.isFrozen(diagnostics)).toBe(true)
-    expect(Object.isFrozen(diagnostics.warnings)).toBe(true)
+    expect(Object.isFrozen(diagnostics.registeredFontFaces)).toBe(true)
     expect((await result.toUint8Array()).byteLength).toBe(
       diagnostics.byteLength,
     )

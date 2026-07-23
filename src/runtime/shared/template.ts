@@ -48,7 +48,6 @@ export interface PdfRenderDiagnostics {
   readonly pageCount: number
   readonly passes: number
   readonly registeredFontFaces: readonly PdfRegisteredFontFace[]
-  readonly warnings: readonly string[]
 }
 
 export interface PdfRegisteredFontFace {

@@ -371,24 +371,6 @@ describe('Vue PDF host renderer', () => {
     })
   })
 
-  it('does not downgrade invalid nesting when a warning sink is provided', async () => {
-    const warn = vi.fn()
-    const Fixture = defineComponent(() => () =>
-      h(PdfDocument, null, {
-        default: () => h(PdfPage, null, {
-          default: () => h(PdfView, null, {
-            default: () => h(PdfPage, { key: 'invalid-page' }),
-          }),
-        }),
-      }),
-    )
-
-    await expect(mountPdfComponent(Fixture, {}, warn)).rejects.toMatchObject({
-      code: 'PDF_TREE_INVALID',
-    })
-    expect(warn).not.toHaveBeenCalled()
-  })
-
   it('rejects duplicate destination ids without echoing the identifier', async () => {
     const Fixture = defineComponent(() => () =>
       h(PdfDocument, null, {

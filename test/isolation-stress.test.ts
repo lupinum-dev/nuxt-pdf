@@ -129,7 +129,6 @@ describe('render isolation stress', () => {
         language: undefined,
         title: `Stress ${job.token}`,
       })
-      expect(job.result.diagnostics.warnings).toEqual([])
       expect(job.result.diagnostics.passes).toBe(job.mode === 0 ? 1 : 2)
       expect(text).toContain(job.token)
       expect(job.pdf.outline).toMatchObject([{ title: `Bookmark ${job.index}` }])

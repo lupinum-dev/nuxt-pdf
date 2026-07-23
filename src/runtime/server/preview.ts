@@ -166,10 +166,10 @@ const htmlResponse = (
       .stat { border: 1px solid #343a35; border-radius: 10px; padding: 12px 14px; }
       .stat .label { color: #8b948b; font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; }
       .stat .value { font-size: 1.35rem; font-variant-numeric: tabular-nums; margin-top: 4px; }
-      .warnings { border: 1px solid #6b5a1f; background: #1d1a10; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; }
-      .warnings .label { color: #e6c651; font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 8px; }
-      .warnings ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-      .warnings li { color: #e9ddb3; font-size: 0.85rem; line-height: 1.5; }
+      .font-faces { border: 1px solid #343a35; background: #151815; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; }
+      .font-faces .label { color: #8b948b; font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 8px; }
+      .font-faces ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+      .font-faces li { color: #d7ddd7; font-size: 0.85rem; line-height: 1.5; }
       .error { border: 1px solid #6b2f2b; background: #1d1210; border-left: 3px solid #ef786f; border-radius: 10px; padding: 18px 20px; }
       .error h2 { margin: 0 0 12px; font-size: 1.1rem; color: #f3d7d3; }
       .error dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0 0 12px; }
@@ -307,7 +307,7 @@ const diagnosticsPanel = (diagnostics: PdfRenderDiagnostics): string => {
   ].join('')
 
   const fonts = diagnostics.registeredFontFaces.length > 0
-    ? `<div class="warnings"><div class="label">Registered font faces</div><ul>${
+    ? `<div class="font-faces"><div class="label">Registered font faces</div><ul>${
       diagnostics.registeredFontFaces.map((face) => {
         const attributes = [face.fontWeight, face.fontStyle].filter(value => value !== undefined)
         return `<li>${escapeHtml(face.family)}${attributes.length > 0 ? ` — ${escapeHtml(attributes.join(' '))}` : ''}</li>`
@@ -315,13 +315,7 @@ const diagnosticsPanel = (diagnostics: PdfRenderDiagnostics): string => {
     }</ul></div>`
     : ''
 
-  const warnings = diagnostics.warnings.length > 0
-    ? `<div class="warnings"><div class="label">${diagnostics.warnings.length} warning${diagnostics.warnings.length === 1 ? '' : 's'}</div><ul>${
-      diagnostics.warnings.map(message => `<li>${escapeHtml(message)}</li>`).join('')
-    }</ul></div>`
-    : ''
-
-  return `<div class="diagnostics">${stats}</div>${fonts}${warnings}`
+  return `<div class="diagnostics">${stats}</div>${fonts}`
 }
 
 const errorDetails = (

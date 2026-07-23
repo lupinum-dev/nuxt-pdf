@@ -35,7 +35,6 @@ import {
 import {
   createPdfNodeOps,
   createPdfRoot,
-  type PdfRendererWarning,
 } from './node-ops'
 import { NuxtPdfError, PDF_ERROR_CODES } from '../shared/errors'
 import {
@@ -100,10 +99,9 @@ const requireDocument = (root: PdfRoot): PdfDocumentNode => {
 export const mountPdfComponent = async (
   component: Component,
   initialProps: PdfComponentProps = {},
-  warn?: PdfRendererWarning,
 ): Promise<MountedPdfComponent> => {
   const renderer = createRenderer<PdfHostNode, PdfHostElement>(
-    createPdfNodeOps(warn),
+    createPdfNodeOps(),
   )
   const root = createPdfRoot()
   const currentProps = shallowRef(initialProps)

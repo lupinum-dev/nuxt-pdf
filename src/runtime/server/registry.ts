@@ -225,20 +225,14 @@ const completedMetadata = (
 })
 
 const renderTemplate = async <Props extends object>(
-  key: string,
   component: Component,
   props: Props,
   metadata: ResolvedPdfMetadata,
   options: PdfTemplateRuntimeOptions,
   maxPasses: number | undefined,
   limits: RenderLimits,
-  // One sink serves the public render path in every environment. The caller
-  // records the same prefixed messages it logs, so diagnostics stay truthful.
-  warnSink: (message: string) => void,
 ): Promise<TemplateRenderOutput> => {
   let mounted: Awaited<ReturnType<typeof mountPdfComponent>> | undefined
-  const warn = (message: string): void =>
-    warnSink(`${templatePrefix(key, options.file)}: ${message}`)
 
   const imageState = createPdfImageResolutionState(limits)
 
@@ -259,7 +253,6 @@ const renderTemplate = async <Props extends object>(
     mounted = await mountPdfComponent(
       component,
       props as Record<string, unknown>,
-      warn,
     )
     const fontStore = createPdfFontStore(options.fonts)
 
@@ -329,7 +322,6 @@ export const createPdfTemplate = <Props extends object>(
       throw templateError(ref, 'render props must be an object.')
     }
 
-    const warnings: string[] = []
     const start = performance.now()
     // The public render boundary owns the only deadline. It starts before
     // metadata evaluation so both timeoutMs and durationMs describe the same
@@ -342,17 +334,12 @@ export const createPdfTemplate = <Props extends object>(
       passes,
       pageCount,
     } = await renderTemplate(
-      key,
       component,
       props,
       definitionMetadata,
       options,
       definition.maxPasses,
       limits,
-      (message) => {
-        warnings.push(message)
-        console.warn(message)
-      },
     )
     const result = createPdfRenderResult(bytes, metadata, {
       durationMs: performance.now() - start,
@@ -363,7 +350,6 @@ export const createPdfTemplate = <Props extends object>(
         fontStyle: font.fontStyle,
         fontWeight: font.fontWeight,
       })),
-      warnings,
     })
 
     return result

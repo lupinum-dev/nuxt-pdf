@@ -29,13 +29,17 @@ async function verifyRenderResult() {
   })
 
   result.diagnostics.byteLength satisfies number
-  result.diagnostics.warnings satisfies readonly string[]
+  result.diagnostics.registeredFontFaces satisfies readonly {
+    readonly family: string
+    readonly fontStyle?: string
+    readonly fontWeight?: number
+  }[]
   result.metadata.title satisfies string | undefined
 
   // @ts-expect-error Completed results deliberately expose no fake stream API.
   await result.toStream()
   // @ts-expect-error Diagnostics are immutable facts about the completed render.
-  result.diagnostics.warnings.push('late mutation')
+  result.diagnostics.byteLength = 0
   // @ts-expect-error Resolved render metadata is immutable.
   result.metadata.title = 'late mutation'
 }

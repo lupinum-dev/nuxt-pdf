@@ -263,7 +263,7 @@ const result = await pdf.invoice.render({ invoice })
 
 await result.toUint8Array()
 await result.toBuffer()
-result.diagnostics // duration, bytes, pages, passes, registered faces, warnings
+result.diagnostics // duration, bytes, pages, passes, registered faces
 await result.response({
   disposition: 'inline',
   filename: 'invoice.pdf',
@@ -272,8 +272,8 @@ await result.response({
 
 `response()` always sets `content-type`, the exact `content-length`, and a
 sanitized `content-disposition`. With no template filename or response override,
-it safely downloads as `document.pdf`. Diagnostics contain measurements and
-warnings only — never document content, props, or resource URLs.
+it safely downloads as `document.pdf`. Diagnostics contain measurements
+only — never document content, props, or resource URLs.
 
 ## Local images and fonts
 

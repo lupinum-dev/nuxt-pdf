@@ -95,7 +95,6 @@ export const createPdfRenderResult = (
     passes: diagnostics.passes,
     registeredFontFaces: Object.freeze(diagnostics.registeredFontFaces.map(face =>
       Object.freeze({ ...face }))),
-    warnings: Object.freeze([...diagnostics.warnings]),
   })
   const completedMetadata: Readonly<ResolvedPdfMetadata> = Object.freeze({
     filename: metadata.filename,

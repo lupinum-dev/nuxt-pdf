@@ -97,16 +97,12 @@ const ELEMENT_CHILDREN: Record<PdfElementType, ReadonlySet<PdfElementType>> = {
   [PDF_PRIMITIVES.Stop]: NO_CHILDREN,
 }
 
-export type PdfRendererWarning = (message: string) => void
-
 export const createPdfRoot = (): PdfRoot => ({
   type: 'ROOT',
   document: null,
 })
 
-export const createPdfNodeOps = (
-  _warn?: PdfRendererWarning,
-): RendererOptions<PdfHostNode, PdfHostElement> => {
+export const createPdfNodeOps = (): RendererOptions<PdfHostNode, PdfHostElement> => {
   const childOrder = new WeakMap<PdfHostElement, PdfHostNode[]>()
   const parents = new WeakMap<PdfHostNode, PdfHostElement>()
 
