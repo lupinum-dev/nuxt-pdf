@@ -186,16 +186,6 @@ const normalizePropName = (key: string): string =>
     ? key
     : key.replace(KEBAB_SEGMENT, (_, letter: string) => letter.toUpperCase())
 
-export const compactPdfProps = (props: object): Record<string, unknown> => {
-  const result: Record<string, unknown> = {}
-
-  for (const [key, value] of Object.entries(props)) {
-    if (value !== undefined) result[normalizePropName(key)] = value
-  }
-
-  return result
-}
-
 /**
  * Fixture-proven subset of the engine's SVG presentation attributes. On SVG
  * nodes these are camelCase props. `transform` is a prop here (unlike
@@ -302,12 +292,14 @@ export type PdfTspanProps = {
 }
 
 /**
- * Compact SVG props, coercing kebab-case attribute names (`stroke-width`,
- * `stop-color`) to the exact camelCase keys the engine's `resolveSvg` reads.
- * Without this, static kebab attributes from Vue templates would silently
- * no-op. Pure input coercion, not a second source of truth.
+ * Compact props for PDF and SVG primitives, coercing kebab-case attribute
+ * names (`stroke-width`, `stop-color`, `min-presence-ahead`) to the exact
+ * camelCase keys the engine reads. Without this, static kebab attributes from
+ * Vue templates would silently no-op. Pure input coercion, not a second
+ * source of truth. `data-`/`aria-` names stay kebab so `patchPdfProp` keeps
+ * rejecting them as DOM-only.
  */
-export const compactSvgProps = (props: object): Record<string, unknown> => {
+export const compactProps = (props: object): Record<string, unknown> => {
   const result: Record<string, unknown> = {}
 
   for (const [key, value] of Object.entries(props)) {

@@ -250,7 +250,7 @@ engine code is involved beyond the pinned `@react-pdf/layout` and
   node's style and props, Nuxt PDF does not expose generic style on `PdfG`,
   shapes, or `PdfTspan`, so that merge is not public precedence behavior. The
   thin components coerce kebab-case template attributes to camelCase
-  (`compactSvgProps`); `data-`/`aria-` names stay untouched so `patchPdfProp`
+  (`compactProps`); `data-`/`aria-` names stay untouched so `patchPdfProp`
   rejects them.
 - **The numeric surface is parsed and validated before layout.** Geometry is a
   finite number/numeric string, plus percentages only for `PdfSvgLength` props;
