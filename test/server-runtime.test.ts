@@ -495,6 +495,20 @@ describe('PDF runtime registry', () => {
       code: 'PDF_TEMPLATE_NOT_FOUND',
       templateKey: 'missing',
     })
+
+    for (const key of ['__proto__', 'constructor', 'toString']) {
+      expect(registry.getPdfTemplate(key)).toBeUndefined()
+      await expect(registry.renderPdf(key, {})).rejects.toMatchObject({
+        code: 'PDF_TEMPLATE_NOT_FOUND',
+        templateKey: key,
+      })
+    }
+
+    expect(() => createPdfRegistry({
+      alias: registry.pdf.greeting,
+    })).toThrow(
+      'PDF registry entry "alias" must use the same key as createPdfTemplate ("greeting").',
+    )
   })
 
   const templateComponent = (render: () => ReturnType<typeof h>) => {

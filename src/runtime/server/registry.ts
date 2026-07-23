@@ -436,7 +436,7 @@ export const createPdfRegistry = <
   const pdfTemplateKeys = Object.freeze(Object.keys(pdf))
 
   const getTemplate = (key: string): Entries[keyof Entries] | undefined =>
-    pdf[key as keyof Entries]
+    Object.hasOwn(pdf, key) ? pdf[key as keyof Entries] : undefined
 
   return Object.freeze({
     pdf,
