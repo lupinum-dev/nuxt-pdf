@@ -137,7 +137,7 @@ export const renderDocumentMultiPass = async (
         source.document.props,
         layout,
         options.compress ?? true,
-        options.limits?.deadline,
+        options.limits,
       )
       return { bytes, layout, passes: pass, pages: produced }
     }

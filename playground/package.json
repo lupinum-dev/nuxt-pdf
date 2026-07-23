@@ -10,5 +10,11 @@
   "dependencies": {
     "@lupinum/nuxt-pdf": "workspace:*",
     "nuxt": "^4.4.8"
+  },
+  "devDependencies": {
+    "@expo-google-fonts/inter": "^0.4.2",
+    "@expo-google-fonts/lora": "^0.4.2",
+    "@types/qrcode": "1.5.6",
+    "qrcode": "1.5.4"
   }
 }

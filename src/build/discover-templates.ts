@@ -17,8 +17,7 @@ export type PdfTemplateCandidate = {
 }
 
 export type PdfTemplate = {
-  canonicalKey: string
-  propertyKey: string
+  key: string
   filePath: string
   relativePath: string
   layerIndex: number
@@ -59,7 +58,7 @@ const normalizeRelativePath = (value: string): string => {
   return normalized
 }
 
-export const canonicalKeyFromRelativePath = (
+export const templateKeyFromRelativePath = (
   relativePath: string,
 ): string | null => {
   const normalized = normalizeRelativePath(relativePath)
@@ -71,29 +70,12 @@ export const canonicalKeyFromRelativePath = (
 
   if (!normalized.endsWith('.vue')) return null
 
-  const canonicalKey = normalized.slice(0, -'.vue'.length)
-  if (canonicalKey === '') {
+  const key = normalized.slice(0, -'.vue'.length)
+  if (key === '') {
     throw new TypeError(`Invalid PDF template path: "${relativePath}".`)
   }
 
-  return canonicalKey
-}
-
-export const propertyKeyFromCanonicalKey = (canonicalKey: string): string => {
-  const words = canonicalKey.split(/[^a-z0-9]+/i).filter(Boolean)
-
-  if (words.length === 0) {
-    throw new TypeError(
-      `PDF template key "${canonicalKey}" cannot become a property name.`,
-    )
-  }
-
-  const [first, ...rest] = words
-  const camelKey = `${first![0]!.toLowerCase()}${first!.slice(1)}${rest
-    .map(word => `${word[0]!.toUpperCase()}${word.slice(1)}`)
-    .join('')}`
-
-  return /^\d/.test(camelKey) ? `_${camelKey}` : camelKey
+  return key
 }
 
 const candidateOrder = (
@@ -106,7 +88,7 @@ const candidateOrder = (
 export const normalizePdfTemplateCandidates = (
   candidates: readonly PdfTemplateCandidate[],
 ): PdfTemplate[] => {
-  const templatesByCanonicalKey = new Map<string, PdfTemplate>()
+  const templatesByKey = new Map<string, PdfTemplate>()
   const keysWithinLayers = new Map<string, PdfTemplate>()
 
   for (const candidate of [...candidates].sort(candidateOrder)) {
@@ -115,8 +97,8 @@ export const normalizePdfTemplateCandidates = (
     }
 
     const relativePath = normalizeRelativePath(candidate.relativePath)
-    const canonicalKey = canonicalKeyFromRelativePath(relativePath)
-    if (canonicalKey == null) continue
+    const key = templateKeyFromRelativePath(relativePath)
+    if (key == null) continue
 
     if (
       !isAbsolute(candidate.filePath)
@@ -128,49 +110,33 @@ export const normalizePdfTemplateCandidates = (
     }
 
     const template: PdfTemplate = {
-      canonicalKey,
-      propertyKey: propertyKeyFromCanonicalKey(canonicalKey),
+      key,
       filePath: candidate.filePath,
       relativePath,
       layerIndex: candidate.layerIndex,
       layerName: candidate.layerName ?? `layer-${candidate.layerIndex}`,
     }
-    const layerKey = `${candidate.layerIndex}\0${canonicalKey}`
+    const layerKey = `${candidate.layerIndex}\0${key}`
     const duplicate = keysWithinLayers.get(layerKey)
 
     if (duplicate) {
       throw new TypeError(
-        `PDF template collision for "${canonicalKey}" in ${template.layerName}: "${duplicate.filePath}" and "${template.filePath}".`,
+        `PDF template collision for "${key}" in ${template.layerName}: "${duplicate.filePath}" and "${template.filePath}".`,
       )
     }
 
     keysWithinLayers.set(layerKey, template)
 
     // Layers are supplied from highest to lowest precedence. A matching
-    // canonical key in a later layer is deliberately overridden.
-    if (!templatesByCanonicalKey.has(canonicalKey)) {
-      templatesByCanonicalKey.set(canonicalKey, template)
+    // key in a later layer is deliberately overridden.
+    if (!templatesByKey.has(key)) {
+      templatesByKey.set(key, template)
     }
   }
 
-  const templates = [...templatesByCanonicalKey.values()].sort((left, right) =>
-    compareText(left.canonicalKey, right.canonicalKey),
+  return [...templatesByKey.values()].sort((left, right) =>
+    compareText(left.key, right.key),
   )
-  const templatesByPropertyKey = new Map<string, PdfTemplate>()
-
-  for (const template of templates) {
-    const duplicate = templatesByPropertyKey.get(template.propertyKey)
-
-    if (duplicate && duplicate.canonicalKey !== template.canonicalKey) {
-      throw new TypeError(
-        `PDF template property collision for "${template.propertyKey}": "${duplicate.canonicalKey}" (${duplicate.filePath}) and "${template.canonicalKey}" (${template.filePath}).`,
-      )
-    }
-
-    templatesByPropertyKey.set(template.propertyKey, template)
-  }
-
-  return templates
 }
 
 type FindFilesOptions = {

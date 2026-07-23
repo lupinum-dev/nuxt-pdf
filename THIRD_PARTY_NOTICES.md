@@ -57,3 +57,19 @@ Christian Robertson, and as licensed under the Apache License 2.0:
 <https://www.apache.org/licenses/LICENSE-2.0>.
 
 These fixture binaries are not included in the published Nuxt PDF package.
+
+## Source Code Pro test dependency
+
+The development-only `source-code-pro` npm package supplies OTF and variable
+font fixtures for executable compatibility tests. Source Code Pro is Copyright
+2010–2023 Adobe and distributed under the SIL Open Font License 1.1. It is not
+included in the published Nuxt PDF package; its license is included in the npm
+dependency at `source-code-pro/LICENSE.md`.
+
+## Noto international typography subsets
+
+The test-only international typography fixture contains small FontTools subsets
+of Noto Sans SC Variable, Noto Sans Arabic Variable, and Noto Emoji Variable.
+They retain only the characters used by the executable calibration document,
+are distributed under the SIL Open Font License 1.1 included beside the files,
+and are not included in the published Nuxt PDF package.

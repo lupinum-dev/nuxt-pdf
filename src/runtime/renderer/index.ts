@@ -10,7 +10,11 @@ export type {
   PdfElementNode,
   PdfNode,
   PdfRoot,
+  PdfLength,
+  PdfLengthOrPercentage,
+  PdfPercentage,
   PdfStyle,
+  PdfStyleEntry,
   PdfStyleValue,
   PdfTextInstance,
 } from './types'

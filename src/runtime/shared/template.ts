@@ -23,9 +23,9 @@ export interface PdfDefinition<Props extends object = Record<string, unknown>> {
 }
 
 export interface ResolvedPdfMetadata {
-  title?: string
-  filename?: string
-  language?: string
+  readonly title?: string
+  readonly filename?: string
+  readonly language?: string
 }
 
 export type PdfComponent<Props extends object = Record<string, unknown>>
@@ -41,41 +41,31 @@ export interface PdfResponseInit extends Omit<ResponseInit, 'headers'> {
   headers?: HeadersInit
 }
 
+/** Safe, content-free measurements from one completed PDF render. */
+export interface PdfRenderDiagnostics {
+  readonly durationMs: number
+  readonly byteLength: number
+  readonly pageCount: number
+  readonly passes: number
+  readonly registeredFontFaces: readonly PdfRegisteredFontFace[]
+}
+
+export interface PdfRegisteredFontFace {
+  readonly family: string
+  readonly fontStyle?: string
+  readonly fontWeight?: number
+}
+
 export interface PdfRenderResult {
+  readonly metadata: Readonly<ResolvedPdfMetadata>
+  readonly diagnostics: PdfRenderDiagnostics
   toUint8Array(): Promise<Uint8Array>
   toBuffer(): Promise<Buffer>
-  toStream(): Promise<NodeJS.ReadableStream>
   response(init?: PdfResponseInit): Promise<Response>
-}
-
-/**
- * Measured facts about one dev-preview render. Dev-only and never part of the
- * public render contract; declared here (engine-free) so the dev preview route
- * can reference it without dragging the server engine into type resolution.
- */
-export interface PdfPreviewDiagnostics {
-  durationMs: number
-  byteLength: number
-  pageCount: number
-  passes: number
-  warnings: readonly string[]
-}
-
-/** The bytes plus diagnostics the dev preview needs. Dev-only; never public API. */
-export interface PdfPreviewRender {
-  bytes: Uint8Array
-  title?: string
-  filename?: string
-  diagnostics: PdfPreviewDiagnostics
 }
 
 export interface PdfTemplate<Props extends object = Record<string, unknown>> {
   readonly key: string
-  readonly definition: Readonly<PdfDefinition<Props>>
-  readonly sampleData: Props | undefined
-  readonly scenarios: Readonly<Record<string, Props>>
-  readonly scenarioNames: readonly string[]
-  getPreviewProps(scenario?: string): Props | undefined
   resolveMetadata(props: Props): ResolvedPdfMetadata
   render(props: Props): Promise<PdfRenderResult>
 }

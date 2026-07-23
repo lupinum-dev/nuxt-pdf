@@ -1,6 +1,6 @@
-import { copyFile, mkdir, mkdtemp, rm } from 'node:fs/promises'
+import { copyFile, mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineComponent, h } from 'vue'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -20,8 +20,10 @@ import {
   comparePdfSnapshot,
   expectPdf,
   parsePdf,
+  renderPdfSfc,
   renderPdfTemplate,
 } from '../src/test/index'
+import { sampleInvoice } from '../playground/shared/invoice'
 
 const fontSource = fileURLToPath(new URL('./fixtures/assets/Roboto-Regular.ttf', import.meta.url))
 
@@ -80,6 +82,17 @@ describe('@lupinum/nuxt-pdf/test public surface', () => {
     )
 
     expect(bytes.length).toBeGreaterThan(0)
+    expect(result.diagnostics).toMatchObject({
+      byteLength: bytes.byteLength,
+      pageCount: 2,
+      passes: 1,
+      registeredFontFaces: [{
+        family: 'Roboto',
+        fontStyle: undefined,
+        fontWeight: undefined,
+      }],
+    })
+    expect(Object.isFrozen(result.diagnostics)).toBe(true)
 
     // The fluent assertions pass against a genuinely rendered document.
     expectPdf(parsed)
@@ -94,6 +107,31 @@ describe('@lupinum/nuxt-pdf/test public surface', () => {
     const fromResult = await parsePdf(result)
     expect(fromResult.pageCount).toBe(2)
     expect(fromResult.links.map(link => link.destination)).toContain('terms')
+    expect(fromResult.pages[0]?.width).toBeCloseTo(595.28, 1)
+    expect(fromResult.pages[0]?.height).toBeCloseTo(841.89, 1)
+    expect(fromResult.pages[0]?.textRuns).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        fontSize: 20,
+        text: 'Invoice for Acme Corp',
+        x: expect.any(Number),
+        y: expect.any(Number),
+      }),
+    ]))
+  }, 30_000)
+
+  it('compiles a real nested PDF SFC graph with local resources', async () => {
+    const rendered = await renderPdfSfc(
+      resolve('playground/pdfs/invoice.vue'),
+      { invoice: sampleInvoice },
+      {
+        fonts: [{ family: 'Fieldnote Sans', src: 'Roboto-Regular.ttf' }],
+      },
+    )
+
+    expectPdf(rendered.parsed)
+      .toContainText(sampleInvoice.number)
+      .toContainText(sampleInvoice.customer.name)
+    expect(rendered.result.diagnostics.pageCount).toBeGreaterThan(0)
   }, 30_000)
 
   it('throws PdfAssertionError with actionable messages on failure', async () => {
@@ -135,8 +173,20 @@ describe('@lupinum/nuxt-pdf/test public surface', () => {
         { customer: 'A Completely Different Customer Name Entirely' },
         { fonts },
       )
-      await expect(comparePdfSnapshot(other, baselineDir))
-        .rejects.toThrow(/does not match its reviewed baseline/)
+      const artifactDir = join(baselineDir, 'failure-artifacts')
+      await expect(comparePdfSnapshot(other, baselineDir, { artifactDir }))
+        .rejects.toThrow(/Expected, actual, diff, and metrics artifacts/)
+      expect(await readdir(artifactDir)).toEqual(expect.arrayContaining([
+        'metrics.json',
+        'page-1-actual.png',
+        'page-1-diff.png',
+        'page-1-expected.png',
+      ]))
+      const metrics = JSON.parse(await readFile(join(artifactDir, 'metrics.json'), 'utf8'))
+      expect(metrics.pages[0]).toMatchObject({
+        matches: false,
+        page: 1,
+      })
     }
     finally {
       await rm(baselineDir, { force: true, recursive: true })

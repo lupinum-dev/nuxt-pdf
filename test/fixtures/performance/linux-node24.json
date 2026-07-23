@@ -1,0 +1,15 @@
+{
+  "metrics": {
+    "coldRenderMs": 99,
+    "heapTrendBytes": 95800000,
+    "hundredOutputBytes": 54471,
+    "hundredPagesMs": 49,
+    "multiPassOutputBytes": 3309,
+    "multiPassReportMs": 51,
+    "peakRssBytes": 457000000,
+    "warmInvoiceMs": 20,
+    "warmOutputBytes": 2115
+  },
+  "packageTarballBytes": 95839,
+  "packageUnpackedBytes": 329532
+}

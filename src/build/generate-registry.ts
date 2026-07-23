@@ -3,7 +3,11 @@ import type { RemoteAssetPolicy } from '../runtime/server/assets/remote'
 import type { PdfRenderLimits } from '../runtime/server/engine/limits'
 import type { PdfTemplate } from './discover-templates'
 
-export type PdfRegistryGenerationOptions = {
+export type PdfRegistryTypeGenerationOptions = {
+  runtimeImport: string
+}
+
+export type PdfRegistryGenerationOptions = PdfRegistryTypeGenerationOptions & {
   assets?: readonly {
     data: Uint8Array
     format: 'jpg' | 'png'
@@ -17,7 +21,7 @@ export type PdfRegistryGenerationOptions = {
   }[]
   remote?: RemoteAssetPolicy
   limits?: PdfRenderLimits
-  runtimeImport: string
+  development: boolean
 }
 
 const compareText = (left: string, right: string): number => {
@@ -76,34 +80,24 @@ const orderedTemplates = (
   templates: readonly PdfTemplate[],
 ): PdfTemplate[] => {
   const result = [...templates].sort((left, right) =>
-    compareText(left.canonicalKey, right.canonicalKey),
+    compareText(left.key, right.key),
   )
-  const canonicalKeys = new Map<string, PdfTemplate>()
-  const propertyKeys = new Map<string, PdfTemplate>()
+  const keys = new Map<string, PdfTemplate>()
 
   for (const template of result) {
-    const canonicalDuplicate = canonicalKeys.get(template.canonicalKey)
-    if (canonicalDuplicate) {
+    const duplicate = keys.get(template.key)
+    if (duplicate) {
       throw new TypeError(
-        `Cannot generate duplicate PDF template key "${template.canonicalKey}" from "${canonicalDuplicate.filePath}" and "${template.filePath}".`,
+        `Cannot generate duplicate PDF template key "${template.key}" from "${duplicate.filePath}" and "${template.filePath}".`,
       )
     }
-
-    const propertyDuplicate = propertyKeys.get(template.propertyKey)
-    if (propertyDuplicate) {
-      throw new TypeError(
-        `Cannot generate duplicate PDF property "${template.propertyKey}" for "${propertyDuplicate.canonicalKey}" and "${template.canonicalKey}".`,
-      )
-    }
-
-    canonicalKeys.set(template.canonicalKey, template)
-    propertyKeys.set(template.propertyKey, template)
+    keys.set(template.key, template)
   }
 
   return result
 }
 
-const validateOptions = (options: PdfRegistryGenerationOptions) => {
+const validateOptions = (options: PdfRegistryTypeGenerationOptions) => {
   if (options.runtimeImport.trim() === '') {
     throw new TypeError('runtimeImport is required to generate the PDF registry.')
   }
@@ -115,8 +109,11 @@ export const generatePdfRuntimeRegistry = (
 ): string => {
   validateOptions(options)
   const ordered = orderedTemplates(templates)
+  const runtimeImports = options.development
+    ? 'createPdfPreviewEntry, createPdfRegistry, createPdfTemplate'
+    : 'createPdfRegistry, createPdfTemplate'
   const lines = [
-    `import { createPdfRegistry, createPdfTemplate } from ${quote(options.runtimeImport)}`,
+    `import { ${runtimeImports} } from ${quote(options.runtimeImport)}`,
   ]
 
   if ((options.assets?.length ?? 0) > 0) {
@@ -133,17 +130,32 @@ export const generatePdfRuntimeRegistry = (
   lines.push(...runtimeOptions, '', 'const registry = createPdfRegistry({')
 
   ordered.forEach((template, index) => {
-    const runtimeSpread = runtimeOptions.length > 0
-      ? ', ...__pdfRuntimeOptions'
-      : ''
-    const templateOptions = `{ file: ${quote(`pdfs/${template.relativePath}`)}${runtimeSpread} }`
+    const file = quote(`pdfs/${template.relativePath}`)
+    const runtimeArgument = options.development
+      ? runtimeOptions.length > 0
+        ? `, { ...__pdfRuntimeOptions, file: ${file} }`
+        : `, { file: ${file} }`
+      : runtimeOptions.length > 0
+        ? ', __pdfRuntimeOptions'
+        : ''
     lines.push(
-      `  ${quote(template.propertyKey)}: createPdfTemplate(${quote(template.canonicalKey)}, __pdfTemplate${index}, ${templateOptions}),`,
+      `  ${quote(template.key)}: createPdfTemplate(${quote(template.key)}, __pdfTemplate${index}${runtimeArgument}),`,
     )
   })
 
+  lines.push('})')
+
+  if (options.development) {
+    lines.push('', 'export const pdfPreview = Object.freeze({')
+    ordered.forEach((template, index) => {
+      lines.push(
+        `  ${quote(template.key)}: createPdfPreviewEntry(registry.pdf[${quote(template.key)}], __pdfTemplate${index}, { file: ${quote(`pdfs/${template.relativePath}`)} }),`,
+      )
+    })
+    lines.push('})')
+  }
+
   lines.push(
-    '})',
     '',
     'export const pdf = registry.pdf',
     'export const renderPdf = registry.renderPdf',
@@ -158,7 +170,7 @@ export const generatePdfRuntimeRegistry = (
 
 export const generatePdfRegistryTypes = (
   templates: readonly PdfTemplate[],
-  options: PdfRegistryGenerationOptions,
+  options: PdfRegistryTypeGenerationOptions,
 ): string => {
   validateOptions(options)
   const ordered = orderedTemplates(templates)
@@ -178,7 +190,7 @@ export const generatePdfRegistryTypes = (
 
   ordered.forEach((template, index) => {
     lines.push(
-      `  readonly ${quote(template.propertyKey)}: PdfTemplate<PdfProps${index}>`,
+      `  readonly ${quote(template.key)}: PdfTemplate<PdfProps${index}>`,
     )
   })
 
@@ -193,7 +205,7 @@ export const generatePdfRegistryTypes = (
   else {
     ordered.forEach((template, index) => {
       lines.push(
-        `export declare function renderPdf(name: ${quote(template.canonicalKey)}, props: PdfProps${index}): Promise<PdfRenderResult>`,
+        `export declare function renderPdf(name: ${quote(template.key)}, props: PdfProps${index}): Promise<PdfRenderResult>`,
       )
     })
 
@@ -205,14 +217,14 @@ export const generatePdfRegistryTypes = (
 
     ordered.forEach((template, index) => {
       lines.push(
-        `export declare function getPdfTemplate(name: ${quote(template.canonicalKey)}): PdfTemplate<PdfProps${index}>`,
+        `export declare function getPdfTemplate(name: ${quote(template.key)}): PdfTemplate<PdfProps${index}>`,
       )
     })
   }
 
   lines.push(
     '',
-    `export declare const pdfTemplateKeys: readonly [${ordered.map(template => quote(template.canonicalKey)).join(', ')}]`,
+    `export declare const pdfTemplateKeys: readonly [${ordered.map(template => quote(template.key)).join(', ')}]`,
     'export type PdfTemplateKey = typeof pdfTemplateKeys[number]',
     `export { NuxtPdfError, PDF_ERROR_CODES } from ${quote(options.runtimeImport)}`,
     `export type { PdfErrorCode } from ${quote(options.runtimeImport)}`,

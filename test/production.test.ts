@@ -32,11 +32,13 @@ describe('Nuxt PDF production boundary', () => {
     const pdfResponse = await nuxtFetch('/api/invoice')
     const previewResponse = await nuxtFetch('/_pdf')
     const previewBody = await previewResponse.text()
-    const pdf = await parsePdf(
-      new Uint8Array(await pdfResponse.arrayBuffer()),
-    )
+    const pdfBytes = new Uint8Array(await pdfResponse.arrayBuffer())
+    const pdf = await parsePdf(pdfBytes)
 
     expect(pdfResponse.status).toBe(200)
+    expect(pdfResponse.headers.get('content-length')).toBe(
+      String(pdfBytes.byteLength),
+    )
     expect(pdf.pages[0]?.text).toContain('Invoice INV-001')
     expect(previewBody).toContain('<div>basic</div>')
     expect(previewBody).not.toContain('<h1>PDF templates</h1>')
@@ -66,5 +68,34 @@ describe('Nuxt PDF production boundary', () => {
     expect(bundle).not.toMatch(
       /@react-pdf|fontkit|pdfkit|yoga-layout|nuxt-pdf:sfc/,
     )
+  })
+
+  it('keeps preview fixtures and APIs out of the Nitro server artifact', async () => {
+    const outputDirectory = nuxt.ctx.nuxt?.options.nitro.output?.dir
+    expect(outputDirectory).toBeTruthy()
+    const serverDirectory = join(outputDirectory!, 'server')
+    const files = await readdir(serverDirectory, { recursive: true })
+    const text = await Promise.all(
+      files
+        .filter(file => /\.(?:[cm]?js|css|html|json|map|txt)$/.test(file))
+        .map(file => readFile(join(serverDirectory, file), 'utf8')),
+    )
+    const artifact = text.join('\n')
+
+    expect(artifact).not.toContain(
+      'NUXT_PDF_PREVIEW_SAMPLE_CANARY_20260721_A1F49C',
+    )
+    expect(artifact).not.toContain(
+      'NUXT_PDF_PREVIEW_SCENARIO_CANARY_20260721_B7E20D',
+    )
+
+    for (const previewOnlyToken of [
+      'getPreviewProps',
+      'pdfPreview',
+      'renderForPreview',
+      'scenarioNames',
+    ]) {
+      expect(artifact).not.toContain(previewOnlyToken)
+    }
   })
 })

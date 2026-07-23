@@ -3,10 +3,25 @@
 // difference the corpus test observes belongs to the renderer boundary rather
 // than to divergent test inputs.
 
+import type { PdfPageDimension } from '../../../src/runtime/components'
+
 /** External link targets exercised as PDF Link annotation URIs. */
 export const linkTargets = {
   external: 'https://example.com/docs?tab=annotations',
   mailto: 'mailto:reports@example.com',
+} as const
+
+/** Fixed geometry keeps the hitSlop annotation expansion independently testable. */
+export const linkStyle = {
+  width: 120,
+  height: 20,
+} as const
+
+export const linkHitSlop = {
+  top: 3,
+  right: 5,
+  bottom: 7,
+  left: 11,
 } as const
 
 /** Sticky-note (Text annotation) contents. */
@@ -37,8 +52,8 @@ export const documentMeta = {
 export type PageSetupSize
   = | 'A4'
     | 'LETTER'
-    | [number, number]
-    | { width: number | string, height: number | string }
+    | [PdfPageDimension, PdfPageDimension]
+    | { width: PdfPageDimension, height: PdfPageDimension }
 
 export interface PageSetupCase {
   /** Stable id, also drawn on the page for a text sanity check. */

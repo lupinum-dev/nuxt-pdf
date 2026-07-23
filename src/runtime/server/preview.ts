@@ -1,28 +1,22 @@
+import { randomBytes } from 'node:crypto'
 import {
   defineEventHandler,
   getQuery,
   getRequestURL,
 } from 'h3'
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore -- Nuxt generates this server-only virtual module.
-import { pdf } from '#pdf'
+// @ts-ignore -- Nuxt generates this development-only virtual module.
+import { pdfPreview } from '#pdf'
 import { NuxtPdfError } from '../shared/errors'
-import type { PdfPreviewRender, PdfTemplate } from '../shared/template'
+import type {
+  PdfRenderDiagnostics,
+  PdfRenderResult,
+} from '../shared/template'
+import type { PdfPreviewEntry } from './registry'
 
 const PREVIEW_ROUTE = '/_pdf'
 
-type PreviewTemplate = Pick<
-  PdfTemplate<object>,
-  | 'getPreviewProps'
-  | 'key'
-  | 'render'
-  | 'scenarioNames'
-> & {
-  // Both extra members exist on the object `createPdfTemplate` returns but are
-  // intentionally absent from the public `PdfTemplate` type: they are dev-only.
-  readonly file?: string
-  renderForPreview(props: object): Promise<PdfPreviewRender>
-}
+type PreviewTemplate = PdfPreviewEntry<object>
 
 export type PdfPreviewRegistry = Readonly<Record<string, PreviewTemplate>>
 
@@ -32,26 +26,102 @@ export interface PdfPreviewRequest {
   scenario?: string
   /** Token of a parked viewer render the raw route should serve verbatim. */
   render?: string
+  /** Serve a raw response as a download instead of inline. */
+  download?: boolean
+  /** Nuxt/Vite client path used by the development-only auto-refresh hook. */
+  hmrClientPath?: string
 }
 
 // A viewer render is briefly parked here so the embedded iframe serves the
 // EXACT bytes the diagnostics panel describes — without it, a non-deterministic
 // template would show one render while the stats describe another. Dev-only,
 // bounded FIFO; a miss (evicted or direct raw link) falls back to a fresh render.
-const parkedRenders = new Map<string, Uint8Array>()
-const PARKED_RENDER_LIMIT = 8
-let parkedSequence = 0
+interface ParkedRender {
+  expiresAt: number
+  key: string
+  result: PdfRenderResult
+  scenario?: string
+}
 
-const parkRender = (bytes: Uint8Array): string => {
-  parkedSequence += 1
-  const token = String(parkedSequence)
-  parkedRenders.set(token, bytes)
+const parkedRenders = new Map<string, ParkedRender>()
+const lastSuccessfulRenders = new WeakMap<PreviewTemplate, Map<string, PdfRenderResult>>()
+const PARKED_RENDER_LIMIT = 8
+const PARKED_RENDER_TTL_MS = 30_000
+const DEFAULT_HMR_CLIENT_PATH = '/_nuxt/@vite/client'
+
+const scenarioCacheKey = (scenario?: string): string => scenario ?? '\0'
+
+const rememberSuccessfulRender = (
+  template: PreviewTemplate,
+  result: PdfRenderResult,
+  scenario?: string,
+): void => {
+  let renders = lastSuccessfulRenders.get(template)
+  if (!renders) {
+    renders = new Map()
+    lastSuccessfulRenders.set(template, renders)
+  }
+  renders.set(scenarioCacheKey(scenario), result)
+}
+
+const previousSuccessfulRender = (
+  template: PreviewTemplate,
+  scenario?: string,
+): PdfRenderResult | undefined =>
+  lastSuccessfulRenders.get(template)?.get(scenarioCacheKey(scenario))
+
+const pruneExpiredRenders = (now: number): void => {
+  for (const [token, render] of parkedRenders) {
+    if (render.expiresAt <= now) parkedRenders.delete(token)
+  }
+}
+
+const createRenderToken = (): string => {
+  let token: string
+  do token = randomBytes(32).toString('base64url')
+  while (parkedRenders.has(token))
+  return token
+}
+
+const parkRender = (
+  result: PdfRenderResult,
+  key: string,
+  scenario?: string,
+): string => {
+  const now = Date.now()
+  pruneExpiredRenders(now)
+
+  const token = createRenderToken()
+  parkedRenders.set(token, {
+    expiresAt: now + PARKED_RENDER_TTL_MS,
+    key,
+    result,
+    scenario,
+  })
   while (parkedRenders.size > PARKED_RENDER_LIMIT) {
     const oldest = parkedRenders.keys().next().value
     if (oldest === undefined) break
     parkedRenders.delete(oldest)
   }
   return token
+}
+
+const takeParkedRender = (
+  token: string,
+  key: string,
+  scenario?: string,
+): PdfRenderResult | undefined => {
+  const render = parkedRenders.get(token)
+  if (!render) return undefined
+
+  if (render.expiresAt <= Date.now()) {
+    parkedRenders.delete(token)
+    return undefined
+  }
+  if (render.key !== key || render.scenario !== scenario) return undefined
+
+  parkedRenders.delete(token)
+  return render.result
 }
 
 const escapeHtml = (value: string): string => value
@@ -96,16 +166,17 @@ const htmlResponse = (
       .stat { border: 1px solid #343a35; border-radius: 10px; padding: 12px 14px; }
       .stat .label { color: #8b948b; font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; }
       .stat .value { font-size: 1.35rem; font-variant-numeric: tabular-nums; margin-top: 4px; }
-      .warnings { border: 1px solid #6b5a1f; background: #1d1a10; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; }
-      .warnings .label { color: #e6c651; font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 8px; }
-      .warnings ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-      .warnings li { color: #e9ddb3; font-size: 0.85rem; line-height: 1.5; }
+      .font-faces { border: 1px solid #343a35; background: #151815; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; }
+      .font-faces .label { color: #8b948b; font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 8px; }
+      .font-faces ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+      .font-faces li { color: #d7ddd7; font-size: 0.85rem; line-height: 1.5; }
       .error { border: 1px solid #6b2f2b; background: #1d1210; border-left: 3px solid #ef786f; border-radius: 10px; padding: 18px 20px; }
       .error h2 { margin: 0 0 12px; font-size: 1.1rem; color: #f3d7d3; }
       .error dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0 0 12px; }
       .error dt { color: #c69a95; font-size: 0.8rem; }
       .error dd { margin: 0; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.85rem; word-break: break-all; }
       .error .message { color: #f0d9d6; line-height: 1.6; white-space: pre-wrap; }
+      .stale { border: 1px solid #755d25; background: #211b0e; color: #f1d88c; border-radius: 10px; padding: 12px 16px; margin: 16px 0; }
     </style>
   </head>
   <body><main>${content}</main></body>
@@ -125,7 +196,7 @@ const templateByKey = (
   registry: PdfPreviewRegistry,
   key: string,
 ): PreviewTemplate | undefined =>
-  Object.values(registry).find(template => template.key === key)
+  Object.values(registry).find(entry => entry.template.key === key)
 
 const scenarioCount = (template: PreviewTemplate): string =>
   template.scenarioNames.length > 0
@@ -137,7 +208,9 @@ const indexPage = (
   rootPath: string,
 ): Response => {
   const templates = Object.values(registry)
-    .sort((left, right) => left.key.localeCompare(right.key))
+    .sort((left, right) =>
+      left.template.key.localeCompare(right.template.key),
+    )
 
   if (templates.length === 0) {
     return htmlResponse(
@@ -147,13 +220,13 @@ const indexPage = (
   }
 
   const cards = templates.map((template) => {
-    const base = `${rootPath}/${encodeTemplatePath(template.key)}`
+    const base = `${rootPath}/${encodeTemplatePath(template.template.key)}`
     const file = template.file
       ? `<span class="file">${escapeHtml(template.file)}</span>`
       : ''
 
     return `<article class="card">`
-      + `<strong>${escapeHtml(template.key)}</strong>`
+      + `<strong>${escapeHtml(template.template.key)}</strong>`
       + file
       + `<span class="meta">${scenarioCount(template)}</span>`
       + `<span class="links">`
@@ -184,10 +257,12 @@ const rawUrl = (
   key: string,
   scenario?: string,
   renderToken?: string,
+  download = false,
 ): string => {
   const params = new URLSearchParams()
   if (scenario !== undefined) params.set('scenario', scenario)
   if (renderToken !== undefined) params.set('render', renderToken)
+  if (download) params.set('download', '1')
   const query = params.size > 0 ? `?${params.toString()}` : ''
   return `${rootPath}/${encodeTemplatePath(key)}.pdf${query}`
 }
@@ -197,7 +272,7 @@ const scenarioNav = (
   rootPath: string,
   active?: string,
 ): string => {
-  const base = `${rootPath}/${encodeTemplatePath(template.key)}`
+  const base = `${rootPath}/${encodeTemplatePath(template.template.key)}`
   const tab = (label: string, href: string, isActive: boolean): string =>
     `<a href="${escapeHtml(href)}"${isActive ? ' class="active" aria-current="page"' : ''}>${escapeHtml(label)}</a>`
 
@@ -219,8 +294,7 @@ const formatBytes = (bytes: number): string =>
     ? `${(bytes / (1024 * 1024)).toFixed(2)} MB`
     : `${(bytes / 1024).toFixed(1)} KB`
 
-const diagnosticsPanel = (render: PdfPreviewRender): string => {
-  const { diagnostics } = render
+const diagnosticsPanel = (diagnostics: PdfRenderDiagnostics): string => {
   const stat = (label: string, value: string): string =>
     `<div class="stat"><div class="label">${label}</div><div class="value">${escapeHtml(value)}</div></div>`
 
@@ -229,15 +303,19 @@ const diagnosticsPanel = (render: PdfPreviewRender): string => {
     stat('Size', formatBytes(diagnostics.byteLength)),
     stat('Pages', String(diagnostics.pageCount)),
     stat('Layout passes', String(diagnostics.passes)),
+    stat('Font faces', String(diagnostics.registeredFontFaces.length)),
   ].join('')
 
-  const warnings = diagnostics.warnings.length > 0
-    ? `<div class="warnings"><div class="label">${diagnostics.warnings.length} warning${diagnostics.warnings.length === 1 ? '' : 's'}</div><ul>${
-      diagnostics.warnings.map(message => `<li>${escapeHtml(message)}</li>`).join('')
+  const fonts = diagnostics.registeredFontFaces.length > 0
+    ? `<div class="font-faces"><div class="label">Registered font faces</div><ul>${
+      diagnostics.registeredFontFaces.map((face) => {
+        const attributes = [face.fontWeight, face.fontStyle].filter(value => value !== undefined)
+        return `<li>${escapeHtml(face.family)}${attributes.length > 0 ? ` — ${escapeHtml(attributes.join(' '))}` : ''}</li>`
+      }).join('')
     }</ul></div>`
     : ''
 
-  return `<div class="diagnostics">${stats}</div>${warnings}`
+  return `<div class="diagnostics">${stats}</div>${fonts}`
 }
 
 const errorDetails = (
@@ -252,12 +330,22 @@ const errorDetails = (
   const file = error instanceof NuxtPdfError && error.templateFile
     ? error.templateFile
     : fallbackFile
-  const message = error instanceof Error
-    ? error.message
+  const message = error instanceof NuxtPdfError
+    ? {
+        PDF_ASSET_BLOCKED: 'A PDF resource was blocked by the configured policy.',
+        PDF_ASSET_INVALID: 'A PDF resource failed validation.',
+        PDF_LAYOUT_ERROR: 'PDF layout failed. Check the server output for details.',
+        PDF_LIMIT_EXCEEDED: 'The PDF exceeded a configured render limit.',
+        PDF_RENDER_ERROR: 'PDF serialization failed. Check the server output for details.',
+        PDF_TEMPLATE_INVALID: 'The PDF template definition is invalid.',
+        PDF_TEMPLATE_NOT_FOUND: 'The PDF template is not registered.',
+        PDF_TREE_INVALID: 'The rendered PDF component tree is invalid.',
+      }[error.code]
     : `Failed to render PDF template "${fallbackKey}".`
 
-  const fileRow = file
-    ? `<dt>File</dt><dd>${escapeHtml(file)}</dd>`
+  const safeFile = file && !/^(?:[A-Z]:\\|\/)/u.test(file) ? file : undefined
+  const fileRow = safeFile
+    ? `<dt>File</dt><dd>${escapeHtml(safeFile)}</dd>`
     : ''
 
   return `<div class="error">`
@@ -273,8 +361,10 @@ const viewerPage = async (
   props: object,
   rootPath: string,
   scenario?: string,
+  hmrClientPath = DEFAULT_HMR_CLIENT_PATH,
 ): Promise<Response> => {
-  const base = `${rootPath}/${encodeTemplatePath(template.key)}`
+  const handle = template.template
+  const base = `${rootPath}/${encodeTemplatePath(handle.key)}`
   const scenarioQuery = scenario === undefined
     ? ''
     : `?scenario=${encodeURIComponent(scenario)}`
@@ -283,27 +373,36 @@ const viewerPage = async (
 
   const actions = `<span class="actions">`
     + `<a href="${escapeHtml(refreshHref)}">Refresh</a>`
-    + `<a href="${escapeHtml(rawUrl(rootPath, template.key, scenario))}">Raw PDF</a>`
+    + `<a href="${escapeHtml(rawUrl(rootPath, handle.key, scenario))}">Raw PDF</a>`
+    + `<a href="${escapeHtml(rawUrl(rootPath, handle.key, scenario, undefined, true))}">Download</a>`
     + `<a href="${escapeHtml(rootPath)}">All templates</a>`
     + `</span>`
 
   let body: string
   let title: string
   try {
-    const render = await template.renderForPreview(props)
-    title = render.title || template.key
-    const token = parkRender(render.bytes)
-    body = diagnosticsPanel(render)
-      + `<iframe title="${escapeHtml(title)}" src="${escapeHtml(rawUrl(rootPath, template.key, scenario, token))}"></iframe>`
+    const result = await handle.render(props)
+    rememberSuccessfulRender(template, result, scenario)
+    title = result.metadata.title || handle.key
+    const token = parkRender(result, handle.key, scenario)
+    body = diagnosticsPanel(result.diagnostics)
+      + `<iframe title="${escapeHtml(title)}" src="${escapeHtml(rawUrl(rootPath, handle.key, scenario, token))}"></iframe>`
   }
   catch (error) {
-    title = template.key
-    body = errorDetails(error, template.key, template.file)
+    title = handle.key
+    body = errorDetails(error, handle.key, template.file)
+    const stale = previousSuccessfulRender(template, scenario)
+    if (stale) {
+      const token = parkRender(stale, handle.key, scenario)
+      body += '<div class="stale" role="status">Render failed. Showing the previous successful PDF; it is stale.</div>'
+        + `<iframe title="${escapeHtml(title)} (stale)" src="${escapeHtml(rawUrl(rootPath, handle.key, scenario, token))}"></iframe>`
+    }
   }
 
   return htmlResponse(
     title,
-    `<header><h1>${escapeHtml(title)}</h1>${actions}</header>${nav}${body}`,
+    `<header><h1>${escapeHtml(title)}</h1>${actions}</header>${nav}${body}`
+    + `<script type="module">import { createHotContext } from ${JSON.stringify(hmrClientPath)};createHotContext('/_pdf').on('nuxt-pdf:update',()=>location.reload());</script>`,
   )
 }
 
@@ -366,16 +465,25 @@ export const renderPdfPreview = async (
     )
   }
 
-  if (!raw) return viewerPage(template, props, rootPath, request.scenario)
+  if (!raw) {
+    return viewerPage(
+      template,
+      props,
+      rootPath,
+      request.scenario,
+      request.hmrClientPath,
+    )
+  }
+
+  const disposition = request.download ? 'attachment' : 'inline'
 
   const parked = request.render === undefined
     ? undefined
-    : parkedRenders.get(request.render)
+    : takeParkedRender(request.render, key, request.scenario)
   if (parked) {
-    return new Response(parked as BodyInit, {
+    return parked.response({
+      disposition,
       headers: {
-        'content-type': 'application/pdf',
-        'content-disposition': 'inline',
         'cache-control': 'no-store',
         'x-content-type-options': 'nosniff',
       },
@@ -383,9 +491,9 @@ export const renderPdfPreview = async (
   }
 
   try {
-    const result = await template.render(props)
+    const result = await template.template.render(props)
     return result.response({
-      disposition: 'inline',
+      disposition,
       headers: {
         'cache-control': 'no-store',
         'x-content-type-options': 'nosniff',
@@ -395,12 +503,14 @@ export const renderPdfPreview = async (
   catch (error) {
     // The registry has already stamped the message with the template name and
     // file; surface the error code alongside it so the failing stage is visible.
-    const message = error instanceof NuxtPdfError
-      ? `${error.code}: ${error.message}`
-      : error instanceof Error
-        ? error.message
-        : `Failed to render PDF template "${key}".`
-    return errorPage('PDF render failed', message, rootPath, 500)
+    return errorPage(
+      'PDF render failed',
+      error instanceof NuxtPdfError
+        ? `${error.code}: The PDF could not be rendered. Check the server output for attributed details.`
+        : `Failed to render PDF template "${key}". Check the server output for details.`,
+      rootPath,
+      500,
+    )
   }
 }
 
@@ -420,9 +530,10 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const route = requestRoute(url.pathname)
 
-  return renderPdfPreview(pdf as unknown as PdfPreviewRegistry, {
+  return renderPdfPreview(pdfPreview as unknown as PdfPreviewRegistry, {
     ...route,
     scenario: typeof query.scenario === 'string' ? query.scenario : undefined,
     render: typeof query.render === 'string' ? query.render : undefined,
+    download: query.download === '1',
   })
 })

@@ -4,6 +4,45 @@ All notable changes to `@lupinum/nuxt-pdf` are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- One canonical `pdf.limits` budget covering tree nodes/depth/text, pages,
+  image count/source bytes/decoded pixels, remote request count/concurrency,
+  the whole-render deadline, and completed output bytes.
+- Structural PNG/JPEG dimension validation before engine admission, aggregate
+  per-render image accounting, atomic output-cap failure, and fatal sibling
+  request cancellation.
+- Structural SFNT table-directory validation for local TTF/OTF files plus mixed
+  20-render concurrency, 100 sequential-render, and 100-page isolation suites.
+- Immutable resolved render metadata, development-only preview sidecars, stale
+  preview state after render failures, and automatic SFC preview refresh.
+- Normalized PDF text-run geometry and complete raster failure artifacts with
+  expected, actual, diff, and JSON metrics for every changed page.
+- One-tarball npm/pnpm consumer verification, pinned CI/release workflows,
+  CycloneDX SBOM and checksum generation, and registry post-publish smoke tests.
+- Safe registered-font-face diagnostics and an international typography
+  calibration fixture that classifies CJK, bidi text, combining marks, variable
+  fonts, emoji, fallback, and hyphenation from semantic and raster evidence.
+
+### Breaking changes
+
+- Template keys now use one slash-separated vocabulary everywhere. A nested
+  template such as `pdfs/reports/monthly.vue` is registered as
+  `pdf['reports/monthly']`; camel-cased aliases such as `pdf.reportsMonthly`
+  are removed.
+- The inert `diagnostics.warnings` field and preview warning plumbing are
+  removed. Render failures remain typed errors; diagnostics report only
+  measured facts about a completed render.
+- `pdf.remote` now permits images only and contains only `allow` plus
+  `timeoutMs`. Move former `maxImageBytes` configuration to
+  `pdf.limits.maxImageBytes`; remote fonts must become local `pdfs/fonts`
+  inputs.
+- Allowlist entries must be exact `https://host/path/` prefixes. Wildcard hosts
+  and prefixes without a trailing slash are rejected. Redirects are capped at
+  three hops.
+
 ## 0.2.0
 
 The contract widens from 0.1.0's core layout primitives to vector graphics, a
@@ -45,7 +84,7 @@ conformance fixture. Everything is additive: no 0.1.0 public API changed.
   template-attributed errors: every failure from a template's `render()` carries
   `templateKey`/`templateFile` and a message prefixed with the source file.
 - **Development preview workbench** at `/_pdf`: scenario tabs, a per-render
-  diagnostics strip (duration, size, page count, layout passes, warnings), and a
+  diagnostics strip (duration, size, page count, and layout passes), and a
   readable error panel. Server-rendered, absent from production builds.
 - **Documentation site** under `docs/` and a `playground/pdfs/report.vue`
   demonstrating the TOC, bookmarks, and page numbers end to end.

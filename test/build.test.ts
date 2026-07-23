@@ -3,18 +3,18 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
-  canonicalKeyFromRelativePath,
   discoverPdfComponentFiles,
   discoverPdfImageFiles,
   discoverPdfTemplates,
   normalizePdfTemplateCandidates,
-  propertyKeyFromCanonicalKey,
+  templateKeyFromRelativePath,
   type PdfTemplate,
 } from '../src/build/discover-templates'
 import {
   generatePdfRegistryTypes,
   generatePdfRuntimeRegistry,
 } from '../src/build/generate-registry'
+import { DEFAULT_PDF_RENDER_LIMITS } from '../src/runtime/server/engine/limits'
 
 const temporaryDirectories: string[] = []
 
@@ -35,14 +35,12 @@ const createLayer = async (
 }
 
 const template = (
-  canonicalKey: string,
-  propertyKey: string,
+  key: string,
   filePath: string,
 ): PdfTemplate => ({
-  canonicalKey,
-  propertyKey,
+  key,
   filePath,
-  relativePath: `${canonicalKey}.vue`,
+  relativePath: `${key}.vue`,
   layerIndex: 0,
   layerName: 'project',
 })
@@ -54,20 +52,16 @@ afterEach(async () => {
 })
 
 describe('PDF template discovery', () => {
-  it('normalizes canonical and camel property keys', () => {
-    expect(canonicalKeyFromRelativePath('reports\\monthly.vue')).toBe(
+  it('normalizes slash template keys from relative paths', () => {
+    expect(templateKeyFromRelativePath('reports\\monthly.vue')).toBe(
       'reports/monthly',
     )
-    expect(canonicalKeyFromRelativePath('./invoice.vue')).toBe('invoice')
-    expect(canonicalKeyFromRelativePath('components/LineItem.vue')).toBeNull()
-    expect(canonicalKeyFromRelativePath('assets/logo.vue')).toBeNull()
-    expect(canonicalKeyFromRelativePath('fonts/specimen.vue')).toBeNull()
-    expect(canonicalKeyFromRelativePath('invoice.ts')).toBeNull()
-    expect(propertyKeyFromCanonicalKey('reports/monthly-summary')).toBe(
-      'reportsMonthlySummary',
-    )
-    expect(propertyKeyFromCanonicalKey('2026/summary')).toBe('_2026Summary')
-    expect(() => canonicalKeyFromRelativePath('../outside.vue')).toThrow(
+    expect(templateKeyFromRelativePath('./invoice.vue')).toBe('invoice')
+    expect(templateKeyFromRelativePath('components/LineItem.vue')).toBeNull()
+    expect(templateKeyFromRelativePath('assets/logo.vue')).toBeNull()
+    expect(templateKeyFromRelativePath('fonts/specimen.vue')).toBeNull()
+    expect(templateKeyFromRelativePath('invoice.ts')).toBeNull()
+    expect(() => templateKeyFromRelativePath('../outside.vue')).toThrow(
       'must stay inside pdfs/',
     )
   })
@@ -93,23 +87,19 @@ describe('PDF template discovery', () => {
     ])
 
     expect(discovered.map(item => ({
-      canonicalKey: item.canonicalKey,
-      propertyKey: item.propertyKey,
+      key: item.key,
       layerName: item.layerName,
     }))).toEqual([
       {
-        canonicalKey: 'certificate',
-        propertyKey: 'certificate',
+        key: 'certificate',
         layerName: 'base',
       },
       {
-        canonicalKey: 'invoice',
-        propertyKey: 'invoice',
+        key: 'invoice',
         layerName: 'project',
       },
       {
-        canonicalKey: 'reports/monthly',
-        propertyKey: 'reportsMonthly',
+        key: 'reports/monthly',
         layerName: 'project',
       },
     ])
@@ -131,7 +121,7 @@ describe('PDF template discovery', () => {
     }])
   })
 
-  it('fails on canonical and property collisions', () => {
+  it('fails on key collisions within a layer', () => {
     expect(() => normalizePdfTemplateCandidates([
       {
         filePath: '/project/pdfs/reports/monthly.vue',
@@ -144,19 +134,6 @@ describe('PDF template discovery', () => {
         layerIndex: 0,
       },
     ])).toThrow('PDF template collision for "reports/monthly"')
-
-    expect(() => normalizePdfTemplateCandidates([
-      {
-        filePath: '/project/pdfs/reports/monthly.vue',
-        relativePath: 'reports/monthly.vue',
-        layerIndex: 0,
-      },
-      {
-        filePath: '/project/pdfs/reports-monthly.vue',
-        relativePath: 'reports-monthly.vue',
-        layerIndex: 0,
-      },
-    ])).toThrow('PDF template property collision for "reportsMonthly"')
   })
 
   it('makes normalization independent of candidate input order', () => {
@@ -191,41 +168,83 @@ describe('PDF registry generation', () => {
   const templates = [
     template(
       'reports/monthly',
-      'reportsMonthly',
       '/project/pdfs/reports/monthly.vue',
     ),
-    template('invoice', 'invoice', '/project/pdfs/invoice.vue'),
+    template('invoice', '/project/pdfs/invoice.vue'),
   ]
   const options = {
+    development: false,
     runtimeImport: '#pdf-runtime',
   }
 
-  it('generates deterministic runtime registry source through the runtime factories', () => {
+  it('generates an exact production registry with only public template handles', () => {
     const source = generatePdfRuntimeRegistry(templates, options)
 
     expect(source).toBe(
       generatePdfRuntimeRegistry([...templates].reverse(), options),
     )
+    expect(source).toBe(`import { createPdfRegistry, createPdfTemplate } from "#pdf-runtime"
+import __pdfTemplate0 from "/project/pdfs/invoice.vue"
+import __pdfTemplate1 from "/project/pdfs/reports/monthly.vue"
+
+const registry = createPdfRegistry({
+  "invoice": createPdfTemplate("invoice", __pdfTemplate0),
+  "reports/monthly": createPdfTemplate("reports/monthly", __pdfTemplate1),
+})
+
+export const pdf = registry.pdf
+export const renderPdf = registry.renderPdf
+export const getPdfTemplate = registry.getPdfTemplate
+export const pdfTemplateKeys = registry.pdfTemplateKeys
+export { NuxtPdfError, PDF_ERROR_CODES } from "#pdf-runtime"
+`)
+    expect(source).not.toContain('createPdfPreviewEntry')
+    expect(source).not.toContain('pdfPreview')
+    expect(source).not.toContain('file:')
+  })
+
+  it('adds the preview sidecar only to development registries', () => {
+    const source = generatePdfRuntimeRegistry(templates, {
+      ...options,
+      development: true,
+    })
+
+    expect(source).toBe(`import { createPdfPreviewEntry, createPdfRegistry, createPdfTemplate } from "#pdf-runtime"
+import __pdfTemplate0 from "/project/pdfs/invoice.vue"
+import __pdfTemplate1 from "/project/pdfs/reports/monthly.vue"
+
+const registry = createPdfRegistry({
+  "invoice": createPdfTemplate("invoice", __pdfTemplate0, { file: "pdfs/invoice.vue" }),
+  "reports/monthly": createPdfTemplate("reports/monthly", __pdfTemplate1, { file: "pdfs/reports/monthly.vue" }),
+})
+
+export const pdfPreview = Object.freeze({
+  "invoice": createPdfPreviewEntry(registry.pdf["invoice"], __pdfTemplate0, { file: "pdfs/invoice.vue" }),
+  "reports/monthly": createPdfPreviewEntry(registry.pdf["reports/monthly"], __pdfTemplate1, { file: "pdfs/reports/monthly.vue" }),
+})
+
+export const pdf = registry.pdf
+export const renderPdf = registry.renderPdf
+export const getPdfTemplate = registry.getPdfTemplate
+export const pdfTemplateKeys = registry.pdfTemplateKeys
+export { NuxtPdfError, PDF_ERROR_CODES } from "#pdf-runtime"
+`)
+    expect(source).toContain('{ file: "pdfs/invoice.vue" }')
+  })
+
+  it('keeps development source attribution when runtime options are present', () => {
+    const source = generatePdfRuntimeRegistry(templates, {
+      ...options,
+      development: true,
+      limits: {
+        ...DEFAULT_PDF_RENDER_LIMITS,
+        maxPages: 20,
+        timeoutMs: 1_000,
+      },
+    })
+
     expect(source).toContain(
-      'import { createPdfRegistry, createPdfTemplate } from "#pdf-runtime"',
-    )
-    expect(source.indexOf('/project/pdfs/invoice.vue')).toBeLessThan(
-      source.indexOf('/project/pdfs/reports/monthly.vue'),
-    )
-    expect(source).toContain(
-      '"invoice": createPdfTemplate("invoice", __pdfTemplate0, { file: "pdfs/invoice.vue" })',
-    )
-    expect(source).toContain(
-      '"reportsMonthly": createPdfTemplate("reports/monthly", __pdfTemplate1, { file: "pdfs/reports/monthly.vue" })',
-    )
-    expect(source).toContain('export const pdf = registry.pdf')
-    expect(source).toContain('export { NuxtPdfError, PDF_ERROR_CODES }')
-    expect(source).toContain('export const renderPdf = registry.renderPdf')
-    expect(source).toContain(
-      'export const getPdfTemplate = registry.getPdfTemplate',
-    )
-    expect(source).toContain(
-      'export const pdfTemplateKeys = registry.pdfTemplateKeys',
+      'createPdfTemplate("invoice", __pdfTemplate0, { ...__pdfRuntimeOptions, file: "pdfs/invoice.vue" })',
     )
   })
 
@@ -240,6 +259,7 @@ describe('PDF registry generation', () => {
         family: 'Invoice Sans',
         src: 'data:font/ttf;base64,AAEAAA==',
       }],
+      development: false,
       runtimeImport: '#pdf-runtime',
     })
 
@@ -248,20 +268,21 @@ describe('PDF registry generation', () => {
     expect(source).toContain('"brand/logo.png"')
     expect(source).toContain('"Invoice Sans"')
     expect(source).toContain(
-      '"invoice": createPdfTemplate("invoice", __pdfTemplate0, { file: "pdfs/invoice.vue", ...__pdfRuntimeOptions })',
+      '"invoice": createPdfTemplate("invoice", __pdfTemplate0, __pdfRuntimeOptions)',
     )
+    expect(source).not.toContain('file:')
     expect(source).not.toContain('/project/pdfs/assets')
     expect(source).not.toContain('/project/pdfs/fonts')
   })
 
-  it('generates typed property access and an explicit dynamic escape hatch', () => {
+  it('generates typed key access and an explicit dynamic escape hatch', () => {
     const source = generatePdfRegistryTypes(templates, options)
 
     expect(source).toContain(
       'import type { PdfRenderResult, PdfTemplate } from "#pdf-runtime"',
     )
     expect(source).toContain(
-      'readonly "reportsMonthly": PdfTemplate<PdfProps1>',
+      'readonly "reports/monthly": PdfTemplate<PdfProps1>',
     )
     expect(source).toContain(
       'renderPdf(name: "reports/monthly", props: PdfProps1)',
@@ -282,8 +303,8 @@ describe('PDF registry generation', () => {
 
   it('rejects ambiguous registry input', () => {
     expect(() => generatePdfRuntimeRegistry([
-      template('invoice', 'invoice', '/project/pdfs/invoice.vue'),
-      template('invoice', 'invoiceCopy', '/other/pdfs/invoice.vue'),
+      template('invoice', '/project/pdfs/invoice.vue'),
+      template('invoice', '/other/pdfs/invoice.vue'),
     ], options)).toThrow('Cannot generate duplicate PDF template key "invoice"')
 
     expect(() => generatePdfRegistryTypes([], {

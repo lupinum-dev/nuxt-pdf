@@ -5,8 +5,9 @@ application. Nuxt PDF uses Vue for authoring and the framework-neutral React
 PDF layout, font, and serialization packages for rendering; React itself is
 not a production dependency.
 
-`0.2.0` is an external alpha: still one Nuxt module, one document tree, and one
-Node server renderer, with a contract that has widened from 0.1.0's core layout
+The current release is an external alpha: still one Nuxt module, one document
+tree, and one Node server renderer, with a contract that has widened from
+0.1.0's core layout
 primitives to SVG drawing, a multi-pass table of contents, internal links,
 bookmarks, opt-in remote resources, shipped testing utilities, and enforced
 render limits — each backed by an executable fixture. See
@@ -19,8 +20,8 @@ the compatibility claim.
 - Nuxt `^4.4.8`
 - Vue `^3.5.0`
 
-Nuxt 3, Node 20, browser rendering, and edge rendering are not claimed by
-`0.2.0`.
+Nuxt 3, Node 20, browser rendering, and edge rendering are not claimed by the
+current alpha.
 
 ## Ten-minute quickstart
 
@@ -134,16 +135,17 @@ preview and the raw PDF. Each viewer page:
   PDF, with the active one highlighted (an unknown `?scenario=` still 404s with
   the available names);
 - renders a diagnostics strip for that render — duration, output size, page
-  count, and layout passes — plus every warning the render emitted (in
-  development these are collected for the panel; production still logs them with
-  `console.warn`);
-- replaces the document with a readable error panel — code, template, file, and
-  message, no stack dump — when a render fails; and
-- has a `Refresh` link that re-renders. Nuxt already restarts on template
-  changes, so there is no websocket or HMR layer.
+  count, layout passes, and registered font faces;
+- shows a content-free error summary when a render fails while retaining the
+  previous successful PDF with an explicit stale marker;
+- provides separate refresh, inline raw-PDF, and download actions; and
+- automatically reloads after a PDF SFC changes while preserving the active
+  scenario in the current URL.
 
-The whole preview is server-rendered HTML with no client build step and is
-absent from production builds.
+The preview is server-rendered HTML with a tiny Vite development-event listener
+and is absent from production builds. It calls the template's public
+`render(props)` once and embeds that exact completed result; there is no
+preview-specific render path.
 
 ## Authoring model
 
@@ -162,11 +164,12 @@ The alpha exposes seven thin primitives:
 - `PdfNote`
 
 Composition is normal Vue: use typed props, interpolation, `v-if`, keyed
-`v-for`, local components, and slots. Styles are React PDF style objects, not
-browser CSS. Invalid primitive nesting and DOM-only attributes fail early with
-targeted diagnostics.
+`v-for`, local components, and slots. Styles use Nuxt PDF's framework-owned,
+typed `PdfStyle` contract, not browser CSS or the upstream React PDF type
+surface. Invalid nesting, DOM-only attributes, unknown props, and props used on
+the wrong primitive fail early with `PDF_TREE_INVALID`.
 
-`definePdf` accepts static metadata plus preview data:
+`definePdf` accepts render metadata plus development-only preview data:
 
 ```ts
 definePdf<Props>({
@@ -181,7 +184,12 @@ definePdf<Props>({
 ```
 
 A scenario is available at `/_pdf/report?scenario=long`. Unknown scenarios
-return a 404 with the available names.
+return a 404 with the available names. `sampleData` and `scenarios` live in an
+internal development sidecar; the production SFC transform structurally omits
+their expressions, and the public template handle never exposes them. Like
+Vue's hoisted compiler macros, `definePdf()` metadata can use inline values or
+imports, but not variables declared locally in `<script setup>`. Keep imported
+preview-fixture modules side-effect-free so production bundlers can remove them.
 
 ## Table of contents, links, and bookmarks
 
@@ -226,6 +234,15 @@ await pdf.invoice.render({ invoice })
 await renderPdf('invoice', { invoice })
 ```
 
+Each public template is exactly `{ key, resolveMetadata(props), render(props) }`.
+The registry is server-only: do not import `#pdf` from client code. In
+production, neither the engine nor template SFCs enter the client bundle, and
+preview data is absent from the Nitro server artifact too.
+
+The completed result carries the exact frozen `metadata` resolved for that
+render alongside its frozen `diagnostics`; preview and application code consume
+the same facts without evaluating metadata a second time.
+
 Runtime strings require the explicit unknown-props escape hatch:
 
 ```ts
@@ -236,22 +253,25 @@ That marker does not validate the props; it only makes the loss of static
 typing visible at the call site. Unknown template names still fail with
 `PDF_TEMPLATE_NOT_FOUND`.
 
-One render result can be converted without rendering the document again:
+One completed render result owns immutable bytes and can be converted without
+rendering the document again:
 
 ```ts
 const result = await pdf.invoice.render({ invoice })
 
 await result.toUint8Array()
 await result.toBuffer()
-await result.toStream()
+result.diagnostics // duration, bytes, pages, passes, registered faces
 await result.response({
   disposition: 'inline',
   filename: 'invoice.pdf',
 })
 ```
 
-`response()` always sets `content-type: application/pdf` and sanitizes the
-download filename before writing `content-disposition`.
+`response()` always sets `content-type`, the exact `content-length`, and a
+sanitized `content-disposition`. With no template filename or response override,
+it safely downloads as `document.pdf`. Diagnostics contain measurements
+only — never document content, props, or resource URLs.
 
 ## Local images and fonts
 
@@ -292,7 +312,7 @@ embedded into the server build. Absolute paths, traversal, symlink escapes,
 and runtime filesystem fallbacks are rejected. Remote URLs fail closed unless
 you opt in with an explicit `pdf.remote.allow` allowlist (see below).
 
-## Remote images and fonts (opt-in)
+## Remote images (opt-in)
 
 Remote fetching is off by default. Configure an `https`-only allowlist to let
 the module — never the engine — fetch and embed allowlisted resources:
@@ -308,12 +328,12 @@ export default defineNuxtConfig({
 })
 ```
 
-Each entry is an `https://` URL prefix naming an explicit host (or a single
-leading `*.` subdomain wildcard) plus a path-segment prefix. The allowlist is
-re-checked on every redirect hop, byte
-caps and signature validation match local assets, and fetches are credential-less
-`GET`s with a per-hop timeout. Remote fonts embed at build time; remote images
-resolve at render time with per-render deduplication. See
+Each entry is an exact `https://host/path/` prefix. Wildcards, credentials,
+fragments, and prefixes without a trailing slash are rejected. The allowlist is
+re-checked on every redirect hop; byte, pixel, fan-out, concurrency, and output
+caps come from `pdf.limits`; and fetches are credential-less `GET`s bounded by
+the render deadline. Remote images are deduplicated only within one render.
+Fonts must be local build inputs. See
 [CONFORMANCE.md](./CONFORMANCE.md) for the full tested boundary.
 
 ## Testing your PDFs
@@ -354,6 +374,10 @@ describe('invoice.vue', () => {
 `parsePdf` also accepts a `PdfRenderResult` straight from the server registry —
 `await parsePdf(await pdf.invoice.render(props))` — so route tests read naturally.
 
+`renderPdfSfc('./pdfs/invoice.vue', props, { fonts })` compiles the real template
+and nested child SFCs, discovers local images, and admits local fonts through the
+same validated path as a Nuxt production build.
+
 For pixel-level regressions, `comparePdfSnapshot` follows a reviewed-baseline
 policy: it writes per-page PNG baselines into a directory when
 `UPDATE_PDF_BASELINES=1` (or `{ update: true }`) is set, and otherwise compares
@@ -365,6 +389,10 @@ import { comparePdfSnapshot, renderPdfTemplate } from '@lupinum/nuxt-pdf/test'
 const { bytes } = await renderPdfTemplate(Invoice, { customer: 'Acme Corp' })
 await comparePdfSnapshot(bytes, './test/baselines/invoice')
 ```
+
+Failures produce expected, actual, and diff PNGs for every changed page plus
+machine-readable metrics under `reports/pdf-snapshots`. `parsePdf` also exposes
+normalized page dimensions and text-run geometry for tolerant layout checks.
 
 ## Alpha boundary
 

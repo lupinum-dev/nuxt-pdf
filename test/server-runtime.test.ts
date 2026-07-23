@@ -1,5 +1,4 @@
 import { Buffer } from 'node:buffer'
-import type { Readable } from 'node:stream'
 import { defineComponent, h } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import {
@@ -7,17 +6,19 @@ import {
   PdfLink,
   PdfPage,
   PdfText,
-  PdfView,
 } from '../src/runtime/components'
 import {
+  createPdfPreviewEntry,
   createPdfRegistry,
   createPdfTemplate,
-  type PdfPreviewRender,
+  type PdfRenderDiagnostics,
 } from '../src/runtime/server/registry'
 import { usePdfPageNumbers } from '../src/runtime/composables/use-pdf-page-numbers'
+import { DEFAULT_PDF_RENDER_LIMITS } from '../src/runtime/server/engine/limits'
 import { renderPdfPreview } from '../src/runtime/server/preview'
 import { NuxtPdfError } from '../src/runtime/shared/errors'
 import {
+  createContentDisposition,
   createPdfRenderResult,
   sanitizePdfFilename,
 } from '../src/runtime/server/result'
@@ -26,8 +27,9 @@ import {
   type PdfDefinition,
   type PdfTemplate,
 } from '../src/runtime/shared/template'
+import { installPdfCanvasGlobals } from './utils/pdf'
 
-vi.mock('#pdf', () => ({ pdf: {} }))
+vi.mock('#pdf', () => ({ pdfPreview: {} }))
 
 type FixtureProps = {
   name: string
@@ -71,111 +73,242 @@ const createFixture = () => {
   return { component, definition, sampleData, scenarios }
 }
 
-const collectStream = async (stream: NodeJS.ReadableStream) => {
-  const chunks: Buffer[] = []
-  for await (const chunk of stream as Readable) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
-  }
-  return Buffer.concat(chunks)
-}
+type DiagnosticsInput = Omit<PdfRenderDiagnostics, 'byteLength'>
 
-const previewRender = (
-  overrides: Partial<PdfPreviewRender['diagnostics']> = {},
-): PdfPreviewRender => ({
-  bytes: new TextEncoder().encode('%PDF-preview'),
-  title: 'Preview invoice',
-  filename: 'invoice.pdf',
-  diagnostics: {
-    durationMs: 12,
-    byteLength: 12,
-    pageCount: 1,
-    passes: 1,
-    warnings: [],
-    ...overrides,
-  },
+const renderDiagnostics = (
+  overrides: Partial<DiagnosticsInput> = {},
+): DiagnosticsInput => ({
+  durationMs: 12,
+  pageCount: 1,
+  passes: 1,
+  registeredFontFaces: [],
+  ...overrides,
 })
+
+const previewResult = (
+  options: {
+    bytes?: Uint8Array
+    diagnostics?: Partial<DiagnosticsInput>
+  } = {},
+): ReturnType<typeof createPdfRenderResult> =>
+  createPdfRenderResult(
+    options.bytes ?? new TextEncoder().encode('%PDF-preview'),
+    { filename: 'invoice.pdf', title: 'Preview invoice' },
+    renderDiagnostics(options.diagnostics),
+  )
 
 const createPreviewTemplate = (
   options: {
+    key?: string
     sampleData?: object
     scenarios?: Readonly<Record<string, object>>
-    renderForPreview?: (props: object) => Promise<PdfPreviewRender>
+    render?: (props: object) => Promise<ReturnType<typeof createPdfRenderResult>>
   } = {},
 ) => {
+  const key = options.key ?? 'invoice'
   const sampleData = options.sampleData
   const scenarios = options.scenarios ?? {}
-  const render = vi.fn(async () => createPdfRenderResult(
+  const render = vi.fn(async (_props: object) => createPdfRenderResult(
     new TextEncoder().encode('%PDF-preview'),
-    'invoice.pdf',
+    { filename: 'invoice.pdf', title: 'Preview invoice' },
+    renderDiagnostics(),
   ))
-  const renderForPreview = vi.fn(
-    options.renderForPreview ?? (async () => previewRender()),
-  )
-  const template = {
-    key: 'invoice',
-    file: 'pdfs/invoice.vue',
-    definition: { sampleData, scenarios },
-    sampleData,
-    scenarios,
-    scenarioNames: Object.keys(scenarios).sort(),
-    getPreviewProps(scenario?: string) {
-      return scenario === undefined ? sampleData : scenarios[scenario]
-    },
-    resolveMetadata() {
-      return { title: 'Preview invoice', filename: 'invoice.pdf' }
-    },
-    render,
-    renderForPreview,
-  } satisfies PdfTemplate<object> & {
-    file: string
-    renderForPreview: (props: object) => Promise<PdfPreviewRender>
-  }
+  if (options.render) render.mockImplementation(options.render)
 
-  return { render, renderForPreview, template }
+  const resolveMetadata = vi.fn(() => ({
+    title: 'Preview invoice',
+    filename: 'invoice.pdf',
+  }))
+  const handle = Object.freeze({
+    key,
+    resolveMetadata,
+    render,
+  }) satisfies PdfTemplate<object>
+
+  const component = defineComponent(() => () => h(PdfDocument))
+  Object.defineProperty(component, PDF_DEFINITION_PROPERTY, {
+    value: { sampleData, scenarios } satisfies PdfDefinition<object>,
+  })
+  const template = createPdfPreviewEntry(handle, component, {
+    file: `pdfs/${key}.vue`,
+  })
+
+  return { handle, render, resolveMetadata, template }
+}
+
+const getPreviewRenderToken = async (response: Response): Promise<string> => {
+  const token = /[?&](?:amp;)?render=([^"&]+)/.exec(await response.text())?.[1]
+  expect(token).toBeDefined()
+  return token!
+}
+
+const readPdfMetadata = async (
+  bytes: Uint8Array,
+): Promise<{ language?: string, title?: string }> => {
+  installPdfCanvasGlobals()
+  const pdfJs = await import('pdfjs-dist/legacy/build/pdf.mjs')
+  const task = pdfJs.getDocument({
+    data: Uint8Array.from(bytes),
+    isEvalSupported: false,
+    stopAtErrors: true,
+    useWorkerFetch: false,
+    verbosity: 0,
+  })
+  try {
+    const document = await task.promise
+    const { info } = await document.getMetadata()
+    const record = info as Record<string, unknown>
+    return {
+      language: typeof record.Language === 'string' ? record.Language : undefined,
+      title: typeof record.Title === 'string' ? record.Title : undefined,
+    }
+  }
+  finally {
+    await task.destroy()
+  }
 }
 
 describe('PDF render result', () => {
-  it('shares one byte execution across every conversion', async () => {
-    let executions = 0
-    const source = Promise.resolve().then(() => {
-      executions += 1
-      return new TextEncoder().encode('%PDF-result')
-    })
-    const result = createPdfRenderResult(source, 'result.pdf')
+  it('keeps completed bytes and diagnostics immutable across conversions', async () => {
+    const source = new TextEncoder().encode('%PDF-result')
+    const expected = Buffer.from(source)
+    const faces: Array<{ family: string, fontWeight?: number }> = [
+      { family: 'Roboto', fontWeight: 400 },
+    ]
+    const measurements = {
+      ...renderDiagnostics({ registeredFontFaces: faces }),
+      content: 'must not escape',
+      props: { secret: true },
+      url: 'https://private.example/asset.png',
+    }
+    const metadata = {
+      filename: 'result.pdf',
+      language: 'en-GB',
+      title: 'Immutable result',
+    }
+    const result = createPdfRenderResult(source, metadata, measurements)
+
+    source.fill(0)
+    metadata.title = 'Late mutation'
+    faces.push({ family: 'Late', fontWeight: 700 })
 
     const bytes = await result.toUint8Array()
+    bytes.fill(1)
     const buffer = await result.toBuffer()
-    const stream = await collectStream(await result.toStream())
     const response = await result.response()
 
-    expect(executions).toBe(1)
-    expect(Buffer.from(bytes)).toEqual(buffer)
-    expect(stream).toEqual(buffer)
-    expect(Buffer.from(await response.arrayBuffer())).toEqual(buffer)
+    expect(buffer).toEqual(expected)
+    expect(Buffer.from(await response.arrayBuffer())).toEqual(expected)
+    expect(await result.toUint8Array()).toEqual(new Uint8Array(expected))
+    expect(result).not.toHaveProperty('toStream')
+    expect(Object.isFrozen(result)).toBe(true)
+    expect(Object.isFrozen(result.metadata)).toBe(true)
+    expect(Object.isFrozen(result.diagnostics)).toBe(true)
+    expect(Object.isFrozen(result.diagnostics.registeredFontFaces)).toBe(true)
+    expect(result.diagnostics).toEqual({
+      byteLength: expected.byteLength,
+      durationMs: 12,
+      pageCount: 1,
+      passes: 1,
+      registeredFontFaces: [{ family: 'Roboto', fontWeight: 400 }],
+    })
+    expect(result.metadata).toEqual({
+      filename: 'result.pdf',
+      language: 'en-GB',
+      title: 'Immutable result',
+    })
     expect(response.headers.get('content-type')).toBe('application/pdf')
+    expect(response.headers.get('content-length')).toBe(String(expected.byteLength))
     expect(response.headers.get('content-disposition')).toContain(
       'filename="result.pdf"',
     )
   })
 
-  it('prevents filename header injection and forces the PDF content type', async () => {
+  it('isolates concurrent conversions from one completed result', async () => {
+    const expected = new TextEncoder().encode('%PDF-concurrent-result')
+    const result = createPdfRenderResult(
+      expected,
+      { filename: 'concurrent.pdf' },
+      renderDiagnostics(),
+    )
+
+    const [first, second, buffer, response] = await Promise.all([
+      result.toUint8Array(),
+      result.toUint8Array(),
+      result.toBuffer(),
+      result.response(),
+    ])
+    first.fill(1)
+    second.fill(2)
+    buffer.fill(3)
+
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(expected)
+    expect(await result.toUint8Array()).toEqual(expected)
+  })
+
+  it('always emits bounded safe PDF response headers', async () => {
     expect(sanitizePdfFilename('../report')).toBe('_report.pdf')
 
-    const result = createPdfRenderResult(new Uint8Array([1, 2, 3]))
+    const result = createPdfRenderResult(
+      new Uint8Array([1, 2, 3]),
+      {},
+      renderDiagnostics(),
+    )
+    const defaultResponse = await result.response()
     const response = await result.response({
       filename: '../invoice\r\nX-Evil: yes/δοκιμή',
       headers: {
+        'content-length': '999999',
         'content-disposition': 'attachment; filename="unsafe"',
         'content-type': 'text/plain',
       },
     })
     const disposition = response.headers.get('content-disposition') || ''
 
+    expect(defaultResponse.headers.get('content-disposition')).toContain(
+      'filename="document.pdf"',
+    )
     expect(response.headers.get('content-type')).toBe('application/pdf')
+    expect(response.headers.get('content-length')).toBe('3')
     expect(response.headers.get('x-evil')).toBeNull()
     expect(disposition).toMatch(/^attachment; filename=/)
     expect(disposition).toContain(`filename*=UTF-8''`)
     expect(disposition).not.toMatch(/[\r\n]/)
+
+    const inline = await result.response({ disposition: 'inline', filename: '' })
+    expect(inline.headers.get('content-disposition')).toContain(
+      'inline; filename="document.pdf"',
+    )
+  })
+
+  it('keeps arbitrary Unicode filenames well-formed and header-bounded', () => {
+    let state = 0x6D2B79F5
+    const random = (): number => {
+      state ^= state << 13
+      state ^= state >>> 17
+      state ^= state << 5
+      return state >>> 0
+    }
+
+    for (let sample = 0; sample < 500; sample += 1) {
+      const length = random() % 320
+      let input = ''
+      for (let index = 0; index < length; index += 1) {
+        input += String.fromCharCode(random() & 0xFFFF)
+      }
+
+      const filename = sanitizePdfFilename(input)
+      const disposition = createContentDisposition('attachment', input)
+      const encoded = disposition.split(`filename*=UTF-8''`)[1]!
+
+      expect(filename).toBe(filename.toWellFormed())
+      expect(filename).toMatch(/\.pdf$/)
+      expect(() => decodeURIComponent(encoded)).not.toThrow()
+      expect(decodeURIComponent(encoded)).toBe(filename)
+      expect(encoded.length).toBeLessThanOrEqual(600)
+      expect(disposition.length).toBeLessThan(1024)
+      expect(disposition).not.toMatch(/[\r\n]/)
+    }
   })
 })
 
@@ -186,23 +319,35 @@ describe('PDF runtime registry', () => {
       'reports/greeting',
       fixture.component,
     )
-    const registry = createPdfRegistry({ reportsGreeting: template })
+    const registry = createPdfRegistry({ 'reports/greeting': template })
+    const preview = createPdfPreviewEntry(template, fixture.component, {
+      file: 'pdfs/reports/greeting.vue',
+    })
 
-    expect(template.definition).toBe(fixture.definition)
-    expect(template.sampleData).toBe(fixture.sampleData)
-    expect(template.scenarios).toBe(fixture.scenarios)
-    expect(template.scenarioNames).toEqual(['compact', 'long'])
-    expect(template.getPreviewProps('long')).toBe(fixture.scenarios.long)
-    expect(template.getPreviewProps('missing')).toBeUndefined()
+    expect(Object.keys(template).sort()).toEqual([
+      'key',
+      'render',
+      'resolveMetadata',
+    ])
+    expect(preview.template).toBe(template)
+    expect(preview.file).toBe('pdfs/reports/greeting.vue')
+    expect(preview.scenarioNames).toEqual(['compact', 'long'])
+    expect(preview.getPreviewProps()).toBe(fixture.sampleData)
+    expect(preview.getPreviewProps('long')).toBe(fixture.scenarios.long)
+    expect(preview.getPreviewProps('missing')).toBeUndefined()
     expect(template.resolveMetadata({ name: 'Ada' })).toEqual({
       title: 'Greeting for Ada',
       filename: 'greeting-Ada.pdf',
       language: 'en-GB',
     })
+    expect(() => template.resolveMetadata(null as never)).toThrow(
+      'metadata props must be an object',
+    )
 
-    expect(registry.pdf).toEqual({ reportsGreeting: template })
+    expect(registry.pdf).toEqual({ 'reports/greeting': template })
     expect(registry.pdfTemplateKeys).toEqual(['reports/greeting'])
     expect(registry.getPdfTemplate('reports/greeting')).toBe(template)
+    expect(registry.pdf['reports/greeting']).toBe(template)
 
     const result = await registry.renderPdf(
       'reports/greeting',
@@ -213,9 +358,121 @@ describe('PDF runtime registry', () => {
 
     expect(Buffer.from(bytes.subarray(0, 5)).toString('ascii')).toBe('%PDF-')
     expect(bytes.byteLength).toBeGreaterThan(500)
+    expect(result.diagnostics).toMatchObject({
+      byteLength: bytes.byteLength,
+      pageCount: 1,
+      passes: 1,
+    })
+    expect(result.diagnostics.durationMs).toBeGreaterThanOrEqual(0)
+    expect(Object.keys(result.diagnostics).sort()).toEqual([
+      'byteLength',
+      'durationMs',
+      'pageCount',
+      'passes',
+      'registeredFontFaces',
+    ])
+    expect(JSON.stringify(result.diagnostics)).not.toContain('Ada')
+    expect(Object.isFrozen(result.diagnostics)).toBe(true)
+    expect(response.headers.get('content-length')).toBe(String(bytes.byteLength))
     expect(response.headers.get('content-disposition')).toContain(
       'filename="greeting-Ada.pdf"',
     )
+  })
+
+  it('writes definePdf title and language over conflicting PdfDocument metadata', async () => {
+    const component = defineComponent(() => () =>
+      h(PdfDocument, {
+        language: 'de-AT',
+        title: 'Document fallback',
+      }, {
+        default: () => h(PdfPage, null, {
+          default: () => h(PdfText, null, () => 'Metadata conflict'),
+        }),
+      }),
+    )
+    Object.defineProperty(component, PDF_DEFINITION_PROPERTY, {
+      value: {
+        language: 'en-GB',
+        title: 'Definition wins',
+      } satisfies PdfDefinition<object>,
+    })
+
+    const result = await createPdfTemplate('metadata-conflict', component).render({})
+    const metadata = await readPdfMetadata(await result.toUint8Array())
+
+    expect(metadata).toEqual({
+      language: 'en-GB',
+      title: 'Definition wins',
+    })
+    expect(result.metadata).toEqual({
+      filename: undefined,
+      language: 'en-GB',
+      title: 'Definition wins',
+    })
+  })
+
+  it('preserves PdfDocument metadata when definePdf leaves it absent', async () => {
+    const component = defineComponent(() => () =>
+      h(PdfDocument, {
+        language: 'de-AT',
+        title: 'Document fallback',
+      }, {
+        default: () => h(PdfPage, null, {
+          default: () => h(PdfText, null, () => 'Metadata fallback'),
+        }),
+      }),
+    )
+    Object.defineProperty(component, PDF_DEFINITION_PROPERTY, {
+      value: { filename: 'fallback.pdf' } satisfies PdfDefinition<object>,
+    })
+
+    const result = await createPdfTemplate('metadata-fallback', component).render({})
+    const metadata = await readPdfMetadata(await result.toUint8Array())
+
+    expect(metadata).toEqual({
+      language: 'de-AT',
+      title: 'Document fallback',
+    })
+    expect(result.metadata).toEqual({
+      filename: 'fallback.pdf',
+      language: 'de-AT',
+      title: 'Document fallback',
+    })
+  })
+
+  it('includes metadata evaluation in the render deadline and duration', async () => {
+    const component = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, null, {
+          default: () => h(PdfText, null, () => 'Timed metadata'),
+        }),
+      }),
+    )
+    Object.defineProperty(component, PDF_DEFINITION_PROPERTY, {
+      value: {
+        title: () => {
+          const start = performance.now()
+          while (performance.now() - start < 120) {
+            // Synchronous metadata is part of the public render operation.
+          }
+          return 'Timed metadata'
+        },
+      } satisfies PdfDefinition<object>,
+    })
+
+    const timedOut = createPdfTemplate('metadata-timeout', component, {
+      limits: {
+        ...DEFAULT_PDF_RENDER_LIMITS,
+        timeoutMs: 50,
+      },
+    })
+    await expect(timedOut.render({})).rejects.toMatchObject({
+      code: 'PDF_LIMIT_EXCEEDED',
+      templateKey: 'metadata-timeout',
+    })
+
+    const measured = await createPdfTemplate('metadata-duration', component).render({})
+    expect(measured.diagnostics.durationMs).toBeGreaterThanOrEqual(120)
   })
 
   it('fails usefully for missing metadata and unknown canonical keys', async () => {
@@ -238,6 +495,20 @@ describe('PDF runtime registry', () => {
       code: 'PDF_TEMPLATE_NOT_FOUND',
       templateKey: 'missing',
     })
+
+    for (const key of ['__proto__', 'constructor', 'toString']) {
+      expect(registry.getPdfTemplate(key)).toBeUndefined()
+      await expect(registry.renderPdf(key, {})).rejects.toMatchObject({
+        code: 'PDF_TEMPLATE_NOT_FOUND',
+        templateKey: key,
+      })
+    }
+
+    expect(() => createPdfRegistry({
+      alias: registry.pdf.greeting,
+    })).toThrow(
+      'PDF registry entry "alias" must use the same key as createPdfTemplate ("greeting").',
+    )
   })
 
   const templateComponent = (render: () => ReturnType<typeof h>) => {
@@ -342,36 +613,13 @@ describe('PDF runtime registry', () => {
       'boom in render',
     )
   })
-
-  it('prefixes render warnings with the template name and file', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const component = templateComponent(() =>
-      h(PdfDocument, null, {
-        default: () => h(PdfPage, { size: 'A4' }, {
-          default: () => h(PdfView, null, {
-            default: () => h(PdfPage, { key: 'nested' }),
-          }),
-        }),
-      }),
-    )
-    const template = createPdfTemplate('invoice', component, {
-      file: 'pdfs/invoice.vue',
-    })
-
-    await template.render({})
-
-    expect(warn).toHaveBeenCalledWith(
-      'PDF template "invoice" (pdfs/invoice.vue): Invalid PDF nesting: <PdfView> cannot contain <PdfPage>. The <PdfPage> child was ignored.',
-    )
-
-    warn.mockRestore()
-  })
 })
 
 describe('development PDF preview', () => {
   it('renders a standalone index and native viewer page', async () => {
-    const { template } = createPreviewTemplate({
-      sampleData: { id: 'sample' },
+    const sampleData = { id: 'sample' }
+    const { render, resolveMetadata, template } = createPreviewTemplate({
+      sampleData,
       scenarios: { long: { id: 'long' } },
     })
     const registry = { invoice: template }
@@ -382,7 +630,10 @@ describe('development PDF preview', () => {
     expect(index.status).toBe(200)
     expect(await index.text()).toContain('href="/_pdf/invoice"')
     expect(page.status).toBe(200)
-    expect(await page.text()).toMatch(/src="\/_pdf\/invoice\.pdf\?render=\d+"/)
+    expect(await page.text()).toMatch(/src="\/_pdf\/invoice\.pdf\?render=[^"&]+"/)
+    expect(resolveMetadata).not.toHaveBeenCalled()
+    expect(render).toHaveBeenCalledOnce()
+    expect(render).toHaveBeenCalledWith(sampleData)
   })
 
   it('renders raw scenario bytes through the template render path', async () => {
@@ -450,24 +701,81 @@ describe('development PDF preview', () => {
     expect(long).toMatch(/class="active" aria-current="page">long</)
 
     // The iframe source swaps with the scenario.
-    expect(def).toMatch(/src="\/_pdf\/invoice\.pdf\?render=\d+"/)
-    expect(long).toMatch(/src="\/_pdf\/invoice\.pdf\?scenario=long&(amp;)?render=\d+"/)
+    expect(def).toMatch(/src="\/_pdf\/invoice\.pdf\?render=[^"&]+"/)
+    expect(long).toMatch(/src="\/_pdf\/invoice\.pdf\?scenario=long&(amp;)?render=[^"&]+"/)
+    expect(long).toContain('createHotContext(\'/_pdf\').on(\'nuxt-pdf:update\'')
+    expect(long).toContain('location.reload()')
+  })
+
+  it('offers distinct inline and download actions', async () => {
+    const { template } = createPreviewTemplate({ sampleData: { id: 'sample' } })
+    const registry = { invoice: template }
+    const page = await (await renderPdfPreview(registry, { path: 'invoice' })).text()
+    const download = await renderPdfPreview(registry, {
+      path: 'invoice.pdf',
+      download: true,
+    })
+
+    expect(page).toContain('>Raw PDF<')
+    expect(page).toContain('invoice.pdf?download=1')
+    expect(download.headers.get('content-disposition')).toMatch(/^attachment;/)
+  })
+
+  it('shows safe registered font-face facts without paths or font bytes', async () => {
+    const { template } = createPreviewTemplate({
+      sampleData: { id: 'sample' },
+      render: async () => previewResult({
+        diagnostics: {
+          registeredFontFaces: [{
+            family: 'Invoice <Sans>',
+            fontStyle: 'italic',
+            fontWeight: 600,
+          }],
+        },
+      }),
+    })
+    const page = await (await renderPdfPreview({ invoice: template }, { path: 'invoice' })).text()
+
+    expect(page).toContain('Registered font faces')
+    expect(page).toContain('Invoice &lt;Sans&gt; — 600 italic')
+    expect(page).not.toContain('data:font')
+    expect(page).not.toContain('/pdfs/fonts/')
+  })
+
+  it('uses opaque, non-sequential parked-render tokens', async () => {
+    const { template } = createPreviewTemplate({ sampleData: { id: 'sample' } })
+    const registry = { invoice: template }
+
+    const first = await getPreviewRenderToken(
+      await renderPdfPreview(registry, { path: 'invoice' }),
+    )
+    const second = await getPreviewRenderToken(
+      await renderPdfPreview(registry, { path: 'invoice' }),
+    )
+
+    for (const token of [first, second]) {
+      expect(token).toMatch(/^[\w-]+$/)
+      expect(token.length).toBeGreaterThanOrEqual(32)
+      expect(token).not.toMatch(/^\d+$/)
+    }
+    expect(second).not.toBe(first)
   })
 
   it('serves the exact diagnosed bytes to the iframe via the parked render', async () => {
     const diagnosedBytes = new TextEncoder().encode('%PDF-diagnosed-render')
+    let renderCount = 0
     const { render, template } = createPreviewTemplate({
       sampleData: { id: 'sample' },
-      renderForPreview: async () => ({
-        ...previewRender(),
-        bytes: diagnosedBytes,
+      render: async () => previewResult({
+        bytes: renderCount++ === 0
+          ? diagnosedBytes
+          : new TextEncoder().encode('%PDF-preview'),
       }),
     })
     const registry = { invoice: template }
 
     const viewer = await renderPdfPreview(registry, { path: 'invoice' })
-    const token = /render=(\d+)/.exec(await viewer.text())?.[1]
-    expect(token).toBeDefined()
+    const token = await getPreviewRenderToken(viewer)
 
     // The tokened raw route serves the very bytes the diagnostics describe —
     // no second render happens for the embedded viewer.
@@ -477,30 +785,123 @@ describe('development PDF preview', () => {
     })
     expect(raw.headers.get('content-type')).toBe('application/pdf')
     expect(new Uint8Array(await raw.arrayBuffer())).toEqual(diagnosedBytes)
-    expect(render).not.toHaveBeenCalled()
+    expect(render).toHaveBeenCalledOnce()
 
-    // A missing/evicted token falls back to a fresh render.
+    // Successful retrieval consumes the token, so replay falls back to a fresh
+    // render instead of serving the parked bytes again.
+    const replay = await renderPdfPreview(registry, {
+      path: 'invoice.pdf',
+      render: token,
+    })
+    expect(Buffer.from(await replay.arrayBuffer()).toString()).toBe('%PDF-preview')
+    expect(render).toHaveBeenCalledTimes(2)
+
+    // A missing/evicted token follows the same fresh-render path.
     const fallback = await renderPdfPreview(registry, {
       path: 'invoice.pdf',
       render: '999999',
     })
     expect(fallback.status).toBe(200)
-    expect(render).toHaveBeenCalledTimes(1)
+    expect(render).toHaveBeenCalledTimes(3)
   })
 
-  it('reports render diagnostics including passes and collected warnings', async () => {
+  it('binds parked renders to their template and scenario', async () => {
+    const diagnosedBytes = new TextEncoder().encode('%PDF-bound-render')
+    const scenarios = { long: { id: 'long' } }
+    let invoiceRenderCount = 0
+    const invoice = createPreviewTemplate({
+      sampleData: { id: 'sample' },
+      scenarios,
+      render: async () => previewResult({
+        bytes: invoiceRenderCount++ === 0
+          ? diagnosedBytes
+          : new TextEncoder().encode('%PDF-preview'),
+      }),
+    })
+    const other = createPreviewTemplate({
+      key: 'other',
+      sampleData: { id: 'sample' },
+      scenarios,
+    })
+    const registry = { invoice: invoice.template, other: other.template }
+
+    const token = await getPreviewRenderToken(await renderPdfPreview(registry, {
+      path: 'invoice',
+      scenario: 'long',
+    }))
+
+    const wrongTemplate = await renderPdfPreview(registry, {
+      path: 'other.pdf',
+      scenario: 'long',
+      render: token,
+    })
+    expect(new Uint8Array(await wrongTemplate.arrayBuffer())).not.toEqual(diagnosedBytes)
+    expect(other.render).toHaveBeenCalledOnce()
+
+    const wrongScenario = await renderPdfPreview(registry, {
+      path: 'invoice.pdf',
+      render: token,
+    })
+    expect(new Uint8Array(await wrongScenario.arrayBuffer())).not.toEqual(diagnosedBytes)
+    expect(invoice.render).toHaveBeenCalledTimes(2)
+
+    // Rejected lookups do not consume another template/scenario's token.
+    const correct = await renderPdfPreview(registry, {
+      path: 'invoice.pdf',
+      scenario: 'long',
+      render: token,
+    })
+    expect(new Uint8Array(await correct.arrayBuffer())).toEqual(diagnosedBytes)
+    expect(invoice.render).toHaveBeenCalledTimes(2)
+  })
+
+  it('expires parked renders before serving them', async () => {
+    vi.useFakeTimers()
+    try {
+      const diagnosedBytes = new TextEncoder().encode('%PDF-expiring-render')
+      let renderCount = 0
+      const { render, template } = createPreviewTemplate({
+        sampleData: { id: 'sample' },
+        render: async () => previewResult({
+          bytes: renderCount++ === 0
+            ? diagnosedBytes
+            : new TextEncoder().encode('%PDF-preview'),
+        }),
+      })
+      const registry = { invoice: template }
+      const token = await getPreviewRenderToken(
+        await renderPdfPreview(registry, { path: 'invoice' }),
+      )
+
+      vi.advanceTimersByTime(60_000)
+
+      const expired = await renderPdfPreview(registry, {
+        path: 'invoice.pdf',
+        render: token,
+      })
+      expect(new Uint8Array(await expired.arrayBuffer())).not.toEqual(diagnosedBytes)
+      expect(render).toHaveBeenCalledTimes(2)
+    }
+    finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('keeps definePdf metadata authoritative through every multi-pass update', async () => {
     const component = defineComponent({
       setup() {
         const pages = usePdfPageNumbers()
-        return () => h(PdfDocument, null, {
+        return () => h(PdfDocument, {
+          language: 'de-AT',
+          title: 'Document fallback',
+        }, {
           default: () => [
             h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
-              default: () => [
-                h(PdfLink, { src: '#sec', style: { color: 'black' } }, () =>
-                  `Section ..... ${pages.sec ?? ''}`),
-                // Invalid nesting: forces exactly one warning at mount time.
-                h(PdfView, null, { default: () => h(PdfPage, { key: 'bad' }) }),
-              ],
+              default: () => h(
+                PdfLink,
+                { src: '#sec', style: { color: 'black' } },
+                () => `Section ..... ${pages.sec ?? ''}`,
+              ),
             }),
             h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
               default: () => h(PdfText, { id: 'sec' }, () => 'Section body'),
@@ -510,34 +911,40 @@ describe('development PDF preview', () => {
       },
     })
     Object.defineProperty(component, PDF_DEFINITION_PROPERTY, {
-      value: { sampleData: {} } satisfies PdfDefinition<object>,
+      value: {
+        language: 'en-GB',
+        sampleData: {},
+        title: 'Definition survives feedback',
+      } satisfies PdfDefinition<object>,
     })
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const template = createPdfTemplate('report', component, {
       file: 'pdfs/report.vue',
     })
 
-    const render = await (template as unknown as {
-      renderForPreview(props: object): Promise<PdfPreviewRender>
-    }).renderForPreview({})
+    const result = await template.render({})
+    const diagnostics = result.diagnostics
+    const metadata = await readPdfMetadata(await result.toUint8Array())
 
     // usePdfPageNumbers() activates the multi-pass loop; it converges in two.
-    expect(render.diagnostics.passes).toBeGreaterThanOrEqual(2)
-    expect(render.diagnostics.pageCount).toBe(2)
-    expect(render.diagnostics.byteLength).toBeGreaterThan(0)
-    expect(render.diagnostics.durationMs).toBeGreaterThan(0)
-    // The warn callback is threaded into a collected array, not the console.
-    expect(render.diagnostics.warnings).toContainEqual(
-      'PDF template "report" (pdfs/report.vue): Invalid PDF nesting: <PdfView> cannot contain <PdfPage>. The <PdfPage> child was ignored.',
+    expect(diagnostics.passes).toBeGreaterThanOrEqual(2)
+    expect(diagnostics.pageCount).toBe(2)
+    expect(diagnostics.byteLength).toBeGreaterThan(0)
+    expect(diagnostics.durationMs).toBeGreaterThan(0)
+    expect(Object.isFrozen(diagnostics)).toBe(true)
+    expect(Object.isFrozen(diagnostics.registeredFontFaces)).toBe(true)
+    expect((await result.toUint8Array()).byteLength).toBe(
+      diagnostics.byteLength,
     )
-    expect(warn).not.toHaveBeenCalled()
-    warn.mockRestore()
+    expect(metadata).toEqual({
+      language: 'en-GB',
+      title: 'Definition survives feedback',
+    })
   })
 
   it('renders an error panel with code, template, and file when a render fails', async () => {
     const { template } = createPreviewTemplate({
       sampleData: { id: 'sample' },
-      renderForPreview: async () => {
+      render: async () => {
         throw new NuxtPdfError(
           'PDF_LAYOUT_ERROR',
           'PDF template "invoice" (pdfs/invoice.vue): PDF layout failed: Font family not registered: Roboto',
@@ -557,8 +964,59 @@ describe('development PDF preview', () => {
     expect(body).toContain('PDF_LAYOUT_ERROR')
     expect(body).toContain('invoice')
     expect(body).toContain('pdfs/invoice.vue')
-    expect(body).toContain('Font family not registered')
+    expect(body).toContain('Check the server output for details')
     // No iframe and no stack dump surface for a failed render.
     expect(body).not.toContain('<iframe')
+  })
+
+  it('marks the previous successful render stale after an error', async () => {
+    let shouldFail = false
+    const { template } = createPreviewTemplate({
+      sampleData: { id: 'sample' },
+      render: async () => {
+        if (shouldFail) {
+          throw new NuxtPdfError('PDF_LAYOUT_ERROR', 'PDF layout failed safely.')
+        }
+        return previewResult({ bytes: new TextEncoder().encode('%PDF-last-good') })
+      },
+    })
+    const registry = { invoice: template }
+
+    await renderPdfPreview(registry, { path: 'invoice' })
+    shouldFail = true
+    const failed = await renderPdfPreview(registry, { path: 'invoice' })
+    const body = await failed.text()
+    const token = await getPreviewRenderToken(new Response(body))
+    const stale = await renderPdfPreview(registry, {
+      path: 'invoice.pdf',
+      render: token,
+    })
+
+    expect(body).toContain('previous successful PDF')
+    expect(body).toContain('(stale)')
+    expect(Buffer.from(await stale.arrayBuffer()).toString()).toBe('%PDF-last-good')
+  })
+
+  it('redacts unsafe detail from preview errors', async () => {
+    const { template } = createPreviewTemplate({
+      sampleData: { id: 'sample' },
+      render: async () => {
+        throw new NuxtPdfError(
+          'PDF_RENDER_ERROR',
+          'Customer Ada failed at https://private.example/orders/ada?token=secret in /Users/ada/private.pdf',
+          { templateFile: '/Users/ada/private.vue', templateKey: 'invoice' },
+        )
+      },
+    })
+    const body = await (await renderPdfPreview(
+      { invoice: template },
+      { path: 'invoice' },
+    )).text()
+
+    expect(body).not.toContain('token=secret')
+    expect(body).not.toContain('/Users/ada')
+    expect(body).not.toContain('private.example/orders')
+    expect(body).not.toContain('Customer Ada')
+    expect(body).toContain('Check the server output for details')
   })
 })

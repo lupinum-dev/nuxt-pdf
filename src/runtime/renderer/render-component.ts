@@ -35,8 +35,8 @@ import {
 import {
   createPdfNodeOps,
   createPdfRoot,
-  type PdfRendererWarning,
 } from './node-ops'
+import { NuxtPdfError, PDF_ERROR_CODES } from '../shared/errors'
 import {
   PDF_PRIMITIVES,
   type PdfDocumentNode,
@@ -44,6 +44,7 @@ import {
   type PdfHostNode,
   type PdfRoot,
 } from './types'
+import { validatePdfDocumentTree } from './validate-tree'
 
 const PDF_COMPONENTS = {
   PdfCircle,
@@ -85,21 +86,22 @@ export type MountedPdfComponent = {
 
 const requireDocument = (root: PdfRoot): PdfDocumentNode => {
   if (root.document?.type !== PDF_PRIMITIVES.Document) {
-    throw new TypeError(
+    throw new NuxtPdfError(
+      PDF_ERROR_CODES.TreeInvalid,
       'A PDF component must render exactly one PdfDocument at its root.',
     )
   }
 
+  validatePdfDocumentTree(root.document)
   return root.document
 }
 
 export const mountPdfComponent = async (
   component: Component,
   initialProps: PdfComponentProps = {},
-  warn?: PdfRendererWarning,
 ): Promise<MountedPdfComponent> => {
   const renderer = createRenderer<PdfHostNode, PdfHostElement>(
-    createPdfNodeOps(warn),
+    createPdfNodeOps(),
   )
   const root = createPdfRoot()
   const currentProps = shallowRef(initialProps)
@@ -126,9 +128,20 @@ export const mountPdfComponent = async (
     },
   })
 
-  app.mount(root)
-  await nextTick()
-  requireDocument(root)
+  let mounted = false
+  try {
+    app.mount(root)
+    mounted = true
+    await nextTick()
+    requireDocument(root)
+  }
+  catch (error) {
+    // Tree-wide validation runs after Vue has mounted. Tear that application
+    // down before surfacing an invalid document so failed renders retain no
+    // reactive effects or component state.
+    if (mounted) app.unmount()
+    throw error
+  }
 
   return {
     get document() {

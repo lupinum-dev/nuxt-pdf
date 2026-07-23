@@ -1,0 +1,35 @@
+name: post-publish smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact published version to verify
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24.11.1
+          registry-url: https://registry.npmjs.org
+      - run: npm install --global pnpm@10.34.5
+      - run: pnpm install --frozen-lockfile
+      - name: Download the immutable registry artifact
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          mkdir -p registry-artifact
+          npm pack "@lupinum/nuxt-pdf@${VERSION}" --pack-destination registry-artifact
+      - name: Render through npm and pnpm consumers
+        env:
+          NUXT_PDF_TARBALL: ${{ github.workspace }}/registry-artifact/lupinum-nuxt-pdf-${{ inputs.version }}.tgz
+        run: node scripts/test-package-quickstart.mjs

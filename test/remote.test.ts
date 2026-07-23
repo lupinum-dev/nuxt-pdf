@@ -21,19 +21,17 @@ import {
   expect,
   it,
 } from 'vitest'
-import {
-  bundlePdfFonts,
-  DEFAULT_MAX_PDF_FONT_BYTES,
-} from '../src/build/fonts'
+import { bundlePdfFonts } from '../src/build/fonts'
 import {
   matchesAllowlist,
   normalizeRemoteAssetPolicy,
   type RemoteAssetPolicy,
 } from '../src/runtime/server/assets/remote'
+import { resolvePdfImageAssets } from '../src/runtime/server/assets/resolve-asset'
 import {
-  DEFAULT_MAX_PDF_IMAGE_BYTES,
-  resolvePdfImageAssets,
-} from '../src/runtime/server/assets/resolve-asset'
+  createRenderLimits,
+  DEFAULT_PDF_RENDER_LIMITS,
+} from '../src/runtime/server/engine/limits'
 import { renderDocument } from '../src/runtime/server/engine/render-document'
 import { createPdfFontStore } from '../src/runtime/server/fonts'
 import {
@@ -55,10 +53,6 @@ const SAMPLE_PNG = readFileSync(fileURLToPath(new URL(
   './fixtures/assets/sample.png',
   import.meta.url,
 )))
-const TTF = readFileSync(fileURLToPath(new URL(
-  './fixtures/assets/Roboto-Regular.ttf',
-  import.meta.url,
-)))
 const HTML = Buffer.from('<!doctype html><title>not an image</title>')
 
 let certDir: string
@@ -69,6 +63,8 @@ let origin: string
 // client aborted mid-stream instead of buffering the whole body.
 const streamStats = { sent: 0 }
 let requests: string[] = []
+let activeRequests = 0
+let peakActiveRequests = 0
 const openSockets = new Set<import('node:net').Socket>()
 
 const routes = (req: IncomingMessage, res: ServerResponse): void => {
@@ -90,13 +86,6 @@ const routes = (req: IncomingMessage, res: ServerResponse): void => {
         'content-length': String(SAMPLE_PNG.byteLength),
       })
       res.end(SAMPLE_PNG)
-      return
-    case '/ttf':
-      res.writeHead(200, {
-        'content-type': 'font/ttf',
-        'content-length': String(TTF.byteLength),
-      })
-      res.end(TTF)
       return
     case '/wrong-signature':
       // HTML bytes deceptively served with an image content-type.
@@ -146,6 +135,19 @@ const routes = (req: IncomingMessage, res: ServerResponse): void => {
     case '/redirect-external':
       res.writeHead(302, { location: 'https://blocked.example.com/evil.png' })
       res.end('go')
+      return
+    case '/redirect-loop':
+      res.writeHead(302, { location: '/redirect-loop' })
+      res.end('again')
+      return
+    case '/slow-png':
+      activeRequests += 1
+      peakActiveRequests = Math.max(peakActiveRequests, activeRequests)
+      setTimeout(() => {
+        activeRequests -= 1
+        res.writeHead(200, { 'content-type': 'image/png' })
+        res.end(PNG)
+      }, 50)
       return
     case '/hang':
       // Never respond; the client-side timeout must abort it.
@@ -199,19 +201,16 @@ afterAll(async () => {
 const policyFor = (
   overrides: Partial<{
     allow: string[]
-    maxImageBytes: number
-    maxFontBytes: number
     timeoutMs: number
   }> = {},
 ): RemoteAssetPolicy => normalizeRemoteAssetPolicy({
   allow: overrides.allow ?? [`${origin}/`],
-  maxImageBytes: overrides.maxImageBytes,
-  maxFontBytes: overrides.maxFontBytes,
   timeoutMs: overrides.timeoutMs ?? 2000,
-}, {
-  maxImageBytes: DEFAULT_MAX_PDF_IMAGE_BYTES,
-  maxFontBytes: DEFAULT_MAX_PDF_FONT_BYTES,
 })!
+
+const imageLimits = (
+  overrides: Partial<typeof DEFAULT_PDF_RENDER_LIMITS> = {},
+) => createRenderLimits({ ...DEFAULT_PDF_RENDER_LIMITS, ...overrides })
 
 const image = (props: Record<string, unknown>): PdfElementNode => ({
   type: PDF_PRIMITIVES.Image,
@@ -235,8 +234,8 @@ const documentWith = (...children: PdfElementNode[]): PdfDocumentNode => ({
   }],
 })
 
-const resolvedSource = (node: PdfElementNode): { data: Buffer, format: string } =>
-  (node.props.src ?? node.props.source) as { data: Buffer, format: string }
+const resolvedSource = (node: PdfElementNode): Buffer =>
+  (node.props.src ?? node.props.source) as Buffer
 
 const expectAssetError = async (
   promise: Promise<unknown>,
@@ -248,57 +247,54 @@ const expectAssetError = async (
 describe('remote allowlist matching', () => {
   it('admits only https, allowlisted host, port, and path prefix', () => {
     const policy = normalizeRemoteAssetPolicy({
-      allow: ['https://cdn.example.com/assets/', 'https://*.images.example.com/img/'],
-    }, { maxImageBytes: 1, maxFontBytes: 1 })!
+      allow: ['https://cdn.example.com/assets/'],
+    })!
 
     expect(matchesAllowlist('https://cdn.example.com/assets/logo.png?v=2', policy)).toBe(true)
-    expect(matchesAllowlist('https://a.images.example.com/img/a.png', policy)).toBe(true)
-    expect(matchesAllowlist('https://a.b.images.example.com/img/a.png', policy)).toBe(true)
 
-    // wrong scheme, host, subdomain apex, path, port, or embedded credentials
+    // wrong scheme, host, subdomain, path, port, credentials, or fragment
     expect(matchesAllowlist('http://cdn.example.com/assets/logo.png', policy)).toBe(false)
     expect(matchesAllowlist('https://cdn.example.com/other/logo.png', policy)).toBe(false)
     expect(matchesAllowlist('https://evilcdn.example.com/assets/logo.png', policy)).toBe(false)
-    expect(matchesAllowlist('https://images.example.com/img/a.png', policy)).toBe(false)
+    expect(matchesAllowlist('https://a.cdn.example.com/assets/a.png', policy)).toBe(false)
     expect(matchesAllowlist('https://cdn.example.com:8443/assets/logo.png', policy)).toBe(false)
     expect(matchesAllowlist('https://user:pw@cdn.example.com/assets/logo.png', policy)).toBe(false)
+    expect(matchesAllowlist('https://cdn.example.com/assets/logo.png#fragment', policy)).toBe(false)
     expect(matchesAllowlist('not a url', policy)).toBe(false)
   })
 
-  it('matches path prefixes only on segment boundaries', () => {
+  it('requires an explicit directory prefix', () => {
     const policy = normalizeRemoteAssetPolicy({
-      allow: ['https://cdn.example.com/avatars'],
-    }, { maxImageBytes: 1, maxFontBytes: 1 })!
+      allow: ['https://cdn.example.com/avatars/'],
+    })!
 
-    expect(matchesAllowlist('https://cdn.example.com/avatars', policy)).toBe(true)
     expect(matchesAllowlist('https://cdn.example.com/avatars/a.png', policy)).toBe(true)
     expect(matchesAllowlist('https://cdn.example.com/avatars-private/a.png', policy)).toBe(false)
     expect(matchesAllowlist('https://cdn.example.com/avatarsx', policy)).toBe(false)
   })
 
   it('rejects unsafe allowlist entries at setup', () => {
-    const defaults = { maxImageBytes: 1, maxFontBytes: 1 }
-    expect(normalizeRemoteAssetPolicy(undefined, defaults)).toBeUndefined()
-    expect(() => normalizeRemoteAssetPolicy({ allow: [] }, defaults))
+    expect(normalizeRemoteAssetPolicy(undefined)).toBeUndefined()
+    expect(() => normalizeRemoteAssetPolicy({ allow: [] }))
       .toThrow(/at least one/)
-    expect(() => normalizeRemoteAssetPolicy({ allow: ['http://cdn.example.com/'] }, defaults))
+    expect(() => normalizeRemoteAssetPolicy({ allow: ['http://cdn.example.com/'] }))
       .toThrow(/https/)
-    expect(() => normalizeRemoteAssetPolicy({ allow: ['https://*/'] }, defaults))
-      .toThrow(/explicit host/)
-    expect(() => normalizeRemoteAssetPolicy({ allow: ['https://*.com/'] }, defaults))
-      .toThrow(/registrable domain/)
-    expect(() => normalizeRemoteAssetPolicy({ allow: ['https://*.co.uk/'] }, defaults))
-      .toThrow(/public suffix/)
-    expect(() => normalizeRemoteAssetPolicy({ allow: ['https://*.github.io/'] }, defaults))
-      .toThrow(/public suffix/)
-    expect(() => normalizeRemoteAssetPolicy({ allow: ['https://user:pw@cdn.example.com/'] }, defaults))
+    expect(() => normalizeRemoteAssetPolicy({ allow: ['https://*.example.com/'] }))
+      .toThrow(/without wildcards/)
+    expect(() => normalizeRemoteAssetPolicy({ allow: ['https://user:pw@cdn.example.com/'] }))
       .toThrow(/credentials/)
-    expect(() => normalizeRemoteAssetPolicy({ allow: ['https://cdn.example.com/?x=1'] }, defaults))
+    expect(() => normalizeRemoteAssetPolicy({ allow: ['https://cdn.example.com/?x=1'] }))
       .toThrow(/query or fragment/)
-    expect(() => normalizeRemoteAssetPolicy(
-      { allow: ['https://cdn.example.com/'], maxImageBytes: 0 },
-      defaults,
-    )).toThrow(/positive safe integer/)
+    expect(() => normalizeRemoteAssetPolicy({ allow: ['https://cdn.example.com/assets'] }))
+      .toThrow(/path slash/)
+    expect(() => normalizeRemoteAssetPolicy({
+      allow: ['https://cdn.example.com/'],
+      timeoutMs: 0,
+    })).toThrow(/positive safe integer/)
+    expect(() => normalizeRemoteAssetPolicy({
+      allow: ['https://cdn.example.com/'],
+      maxImageBytes: 1,
+    } as never)).toThrow(/maxImageBytes is not supported/)
   })
 })
 
@@ -315,9 +311,8 @@ describe('remote images', () => {
 
     expect(resolved).toBe(document)
     const source = resolvedSource(node)
-    expect(source.format).toBe('png')
-    expect(Buffer.isBuffer(source.data)).toBe(true)
-    expect(source.data.equals(SAMPLE_PNG)).toBe(true)
+    expect(Buffer.isBuffer(source)).toBe(true)
+    expect(source.equals(SAMPLE_PNG)).toBe(true)
     expect(requests.filter(path => path === '/sample-png')).toHaveLength(1)
 
     const result = await renderDocument(document as unknown as DocumentNode, {
@@ -329,7 +324,7 @@ describe('remote images', () => {
   it('accepts the { uri } source form', async () => {
     const node = image({ source: { uri: `${origin}/png` } })
     await resolvePdfImageAssets(documentWith(node), { assets: {}, remote: policyFor() })
-    expect(resolvedSource(node).data.equals(PNG)).toBe(true)
+    expect(resolvedSource(node).equals(PNG)).toBe(true)
   })
 
   it('blocks a non-allowlisted host', async () => {
@@ -382,7 +377,8 @@ describe('remote images', () => {
     await expectAssetError(
       resolvePdfImageAssets(documentWith(image({ src: `${origin}/declared-oversized` })), {
         assets: {},
-        remote: policyFor({ maxImageBytes: 1024 }),
+        limits: imageLimits({ maxImageBytes: 1024 }),
+        remote: policyFor(),
       }),
       'PDF_LIMIT_EXCEEDED',
     )
@@ -394,7 +390,8 @@ describe('remote images', () => {
     await expectAssetError(
       resolvePdfImageAssets(documentWith(image({ src: `${origin}/streamed-oversized` })), {
         assets: {},
-        remote: policyFor({ maxImageBytes: 512 }),
+        limits: imageLimits({ maxImageBytes: 512 }),
+        remote: policyFor(),
       }),
       'PDF_LIMIT_EXCEEDED',
     )
@@ -416,7 +413,7 @@ describe('remote images', () => {
 
     const node = image({ src: `${origin}/redirect-internal` })
     await resolvePdfImageAssets(documentWith(node), { assets: {}, remote: policyFor() })
-    expect(resolvedSource(node).data.equals(PNG)).toBe(true)
+    expect(resolvedSource(node).equals(PNG)).toBe(true)
   })
 
   it('fails closed with no network when pdf.remote is unconfigured', async () => {
@@ -433,14 +430,33 @@ describe('remote images', () => {
     expect(requests).toHaveLength(0)
   })
 
-  it('fetches a repeated URL once per render', async () => {
+  it('shares a repeated URL buffer within one render but isolates renders', async () => {
     requests = []
-    const document = documentWith(
-      image({ src: `${origin}/png` }),
-      image({ src: `${origin}/png` }),
+    const firstImages = [
+      image({ src: `${origin}/sample-png` }),
+      image({ src: `${origin}/sample-png` }),
+    ]
+    const firstDocument = documentWith(...firstImages)
+    const secondImage = image({ src: `${origin}/sample-png` })
+
+    await resolvePdfImageAssets(
+      firstDocument,
+      { assets: {}, remote: policyFor() },
     )
-    await resolvePdfImageAssets(document, { assets: {}, remote: policyFor() })
-    expect(requests.filter(path => path === '/png')).toHaveLength(1)
+    expect(requests.filter(path => path === '/sample-png')).toHaveLength(1)
+
+    const first = resolvedSource(firstImages[0]!)
+    expect(resolvedSource(firstImages[1]!)).toBe(first)
+    const rendered = await renderDocument(firstDocument as unknown as DocumentNode)
+    expect(Buffer.from(rendered.bytes.subarray(0, 5)).toString('ascii')).toBe('%PDF-')
+
+    await resolvePdfImageAssets(
+      documentWith(secondImage),
+      { assets: {}, remote: policyFor() },
+    )
+
+    expect(requests.filter(path => path === '/sample-png')).toHaveLength(2)
+    expect(resolvedSource(secondImage)).not.toBe(first)
   })
 
   it('aborts a hanging endpoint within the timeout', async () => {
@@ -452,47 +468,64 @@ describe('remote images', () => {
       'PDF_ASSET_BLOCKED',
     )
   }, 5000)
+
+  it('enforces render-wide request and concurrency budgets', async () => {
+    await expectAssetError(
+      resolvePdfImageAssets(documentWith(
+        image({ src: `${origin}/redirect-internal` }),
+      ), {
+        assets: {},
+        limits: imageLimits({ maxRemoteRequests: 1 }),
+        remote: policyFor(),
+      }),
+      'PDF_LIMIT_EXCEEDED',
+    )
+
+    activeRequests = 0
+    peakActiveRequests = 0
+    await resolvePdfImageAssets(documentWith(
+      ...Array.from({ length: 6 }, (_, index) =>
+        image({ src: `${origin}/slow-png?case=${index}` })),
+    ), {
+      assets: {},
+      limits: imageLimits({ maxRemoteConcurrency: 2 }),
+      remote: policyFor(),
+    })
+    expect(peakActiveRequests).toBe(2)
+  })
+
+  it('uses a fixed three-redirect maximum', async () => {
+    await expectAssetError(
+      resolvePdfImageAssets(
+        documentWith(image({ src: `${origin}/redirect-loop` })),
+        { assets: {}, remote: policyFor() },
+      ),
+      'PDF_ASSET_BLOCKED',
+    )
+    expect(requests.filter(path => path === '/redirect-loop').length).toBeGreaterThanOrEqual(4)
+  })
+
+  it('aborts sibling requests after the first fatal resource failure', async () => {
+    const start = performance.now()
+    await expectAssetError(
+      resolvePdfImageAssets(documentWith(
+        image({ src: `${origin}/hang` }),
+        image({ src: `${origin}/wrong-signature` }),
+      ), {
+        assets: {},
+        remote: policyFor({ timeoutMs: 4000 }),
+      }),
+      'PDF_ASSET_INVALID',
+    )
+    expect(performance.now() - start).toBeLessThan(1500)
+  })
 })
 
 describe('remote fonts', () => {
-  it('embeds an allowlisted font as a validated data URL', async () => {
-    const [font] = await bundlePdfFonts(
-      [{ family: 'Remote Roboto', src: `${origin}/ttf` }],
-      { fontRoots: [], remote: policyFor() },
-    )
-    expect(font?.family).toBe('Remote Roboto')
-    expect(font?.src.startsWith('data:font/ttf;base64,')).toBe(true)
-    expect(Buffer.from(font!.src.split(',')[1]!, 'base64').equals(TTF)).toBe(true)
-  })
-
-  it('rejects a non-allowlisted host', async () => {
-    await expect(bundlePdfFonts(
-      [{ family: 'Blocked', src: 'https://blocked.example.com/font.ttf' }],
-      { fontRoots: [], remote: policyFor() },
-    )).rejects.toThrow(/not permitted by pdf\.remote\.allow/)
-  })
-
-  it('rejects a remote font when pdf.remote is unconfigured', async () => {
+  it('rejects remote fonts regardless of the image policy', async () => {
     await expect(bundlePdfFonts(
       [{ family: 'Blocked', src: `${origin}/ttf` }],
       { fontRoots: [] },
-    )).rejects.toThrow(/remote fonts are disabled/)
-  })
-
-  it('enforces the font byte cap', async () => {
-    await expectAssetError(
-      bundlePdfFonts(
-        [{ family: 'Big', src: `${origin}/ttf` }],
-        { fontRoots: [], remote: policyFor({ maxFontBytes: 1024 }) },
-      ),
-      'PDF_LIMIT_EXCEEDED',
-    )
-  })
-
-  it('rejects bytes without a TTF or OTF signature', async () => {
-    await expect(bundlePdfFonts(
-      [{ family: 'NotAFont', src: `${origin}/not-a-font` }],
-      { fontRoots: [], remote: policyFor() },
-    )).rejects.toThrow(/unsupported TTF or OTF signature/)
+    )).rejects.toThrow(/remote fonts are unsupported/)
   })
 })

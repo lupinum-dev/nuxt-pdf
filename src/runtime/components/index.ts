@@ -1,25 +1,29 @@
-export { PdfCircle } from './PdfCircle'
-export { PdfClipPath } from './PdfClipPath'
-export { PdfDefs } from './PdfDefs'
-export { PdfDocument } from './PdfDocument'
-export { PdfEllipse } from './PdfEllipse'
-export { PdfG } from './PdfG'
-export { PdfImage } from './PdfImage'
-export { PdfLine } from './PdfLine'
-export { PdfLinearGradient } from './PdfLinearGradient'
-export { PdfLink } from './PdfLink'
-export { PdfNote } from './PdfNote'
-export { PdfPage } from './PdfPage'
-export { PdfPath } from './PdfPath'
-export { PdfPolygon } from './PdfPolygon'
-export { PdfPolyline } from './PdfPolyline'
-export { PdfRadialGradient } from './PdfRadialGradient'
-export { PdfRect } from './PdfRect'
-export { PdfStop } from './PdfStop'
-export { PdfSvg } from './PdfSvg'
-export { PdfText } from './PdfText'
-export { PdfTspan } from './PdfTspan'
-export { PdfView } from './PdfView'
+export {
+  PdfDocument,
+  PdfImage,
+  PdfLink,
+  PdfNote,
+  PdfPage,
+  PdfText,
+  PdfView,
+} from './document'
+export {
+  PdfCircle,
+  PdfClipPath,
+  PdfDefs,
+  PdfEllipse,
+  PdfG,
+  PdfLine,
+  PdfLinearGradient,
+  PdfPath,
+  PdfPolygon,
+  PdfPolyline,
+  PdfRadialGradient,
+  PdfRect,
+  PdfStop,
+  PdfSvg,
+  PdfTspan,
+} from './svg'
 export type {
   PdfBaseProps,
   PdfBookmark,
@@ -35,7 +39,11 @@ export type {
   PdfLineProps,
   PdfLinkProps,
   PdfNoteProps,
+  PdfPageDimension,
   PdfPageProps,
+  PdfPageSize,
+  PdfPageSizeName,
+  PdfPageUnit,
   PdfPathProps,
   PdfPolygonProps,
   PdfPolylineProps,
@@ -43,6 +51,10 @@ export type {
   PdfRectProps,
   PdfStopProps,
   PdfSvgPresentationProps,
+  PdfSvgLength,
+  PdfSvgNumber,
+  PdfSvgTransform,
+  PdfSvgTransformOperation,
   PdfSvgProps,
   PdfTextProps,
   PdfTspanProps,

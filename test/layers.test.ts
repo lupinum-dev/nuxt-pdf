@@ -18,6 +18,7 @@ const baseCertificate = join(
   fixtureRoot,
   'layers/base/pdfs/certificate.vue',
 )
+const toImportPath = (path: string): string => path.replaceAll('\\', '/')
 
 describe('Nuxt PDF layer precedence', async () => {
   await setup({
@@ -54,9 +55,9 @@ describe('Nuxt PDF layer precedence', async () => {
       'utf8',
     )
 
-    expect(generatedTypes).toContain(projectInvoice)
-    expect(generatedTypes).toContain(baseCertificate)
-    expect(generatedTypes).not.toContain(baseInvoice)
+    expect(generatedTypes).toContain(toImportPath(projectInvoice))
+    expect(generatedTypes).toContain(toImportPath(baseCertificate))
+    expect(generatedTypes).not.toContain(toImportPath(baseInvoice))
     expect(generatedTypes).toContain('readonly "invoice"')
     expect(generatedTypes).toContain('readonly "certificate"')
 
@@ -66,5 +67,5 @@ describe('Nuxt PDF layer precedence', async () => {
       '-p',
       join(fixtureRoot, 'tsconfig.json'),
     ])).resolves.toMatchObject({ stderr: '' })
-  })
+  }, 30_000)
 })

@@ -8,12 +8,12 @@ import {
   PDF_DEFINITION_PROPERTY,
   type PdfComponent,
   type PdfDefinition,
-  type PdfPreviewRender,
   type PdfRenderResult,
   type PdfTemplate,
   type ResolvedPdfMetadata,
 } from '../shared/template'
 import {
+  createPdfImageResolutionState,
   resolvePdfImageAssets,
   type PdfImageAssetMap,
 } from './assets/resolve-asset'
@@ -22,8 +22,10 @@ import { countPages, renderDocument } from './engine/render-document'
 import { renderDocumentMultiPass } from './engine/layout-passes'
 import {
   createRenderLimits,
-  resolvePdfRenderLimits,
+  enforceTreeLimits,
+  type RenderLimits,
   type PdfRenderLimits,
+  resolvePdfRenderLimits,
 } from './engine/limits'
 import {
   createPdfFontStore,
@@ -31,9 +33,9 @@ import {
 } from './fonts'
 import { createPdfRenderResult } from './result'
 
-export type { PdfPreviewDiagnostics, PdfPreviewRender } from '../shared/template'
+export type { PdfRenderDiagnostics } from '../shared/template'
 
-const EMPTY_SCENARIOS = Object.freeze({})
+const EMPTY_SCENARIOS: Readonly<Record<string, never>> = Object.freeze({})
 const EMPTY_ASSETS = Object.freeze({})
 
 export interface PdfTemplateRuntimeOptions {
@@ -203,43 +205,55 @@ const applyDocumentMetadata = (
 
 interface TemplateRenderOutput {
   bytes: Uint8Array
+  metadata: ResolvedPdfMetadata
   /** Layout passes actually run: 1 for the single-pass path, ≥ 2 for multi-pass. */
   passes: number
   pageCount: number
 }
 
+const completedMetadata = (
+  document: Awaited<ReturnType<typeof mountPdfComponent>>['document'],
+  definition: ResolvedPdfMetadata,
+): ResolvedPdfMetadata => ({
+  filename: definition.filename,
+  language: typeof document.props.language === 'string'
+    ? document.props.language
+    : undefined,
+  title: typeof document.props.title === 'string'
+    ? document.props.title
+    : undefined,
+})
+
 const renderTemplate = async <Props extends object>(
-  key: string,
   component: Component,
   props: Props,
   metadata: ResolvedPdfMetadata,
   options: PdfTemplateRuntimeOptions,
   maxPasses: number | undefined,
-  // The warning sink. Production passes `console.warn` (unchanged behavior); the
-  // dev preview passes a collector so it can display the same prefixed messages.
-  warnSink: (message: string) => void,
+  limits: RenderLimits,
 ): Promise<TemplateRenderOutput> => {
   let mounted: Awaited<ReturnType<typeof mountPdfComponent>> | undefined
-  const warn = (message: string): void =>
-    warnSink(`${templatePrefix(key, options.file)}: ${message}`)
 
-  // Built once here so the deadline clock covers the WHOLE render — mount, asset
-  // resolution, every layout pass, and serialization — under one shared budget.
-  const limits = createRenderLimits(resolvePdfRenderLimits(options.limits))
+  const imageState = createPdfImageResolutionState(limits)
+
+  const admitDocument = async (
+    document: Awaited<ReturnType<typeof mountPdfComponent>>['document'],
+  ): Promise<void> => {
+    enforceTreeLimits(document, limits)
+    applyDocumentMetadata(document, metadata)
+    await resolvePdfImageAssets(document, {
+      assets: options.assets ?? EMPTY_ASSETS,
+      limits,
+      remote: options.remote,
+      state: imageState,
+    })
+  }
 
   try {
     mounted = await mountPdfComponent(
       component,
       props as Record<string, unknown>,
-      warn,
     )
-    applyDocumentMetadata(mounted.document, metadata)
-    await resolvePdfImageAssets(mounted.document, {
-      assets: options.assets ?? EMPTY_ASSETS,
-      remote: options.remote,
-    })
-
-    const document = mounted.document as unknown as Parameters<typeof renderDocument>[0]
     const fontStore = createPdfFontStore(options.fonts)
 
     // Gate: only a template that reads `usePdfPageNumbers()` consumes resolved
@@ -256,19 +270,31 @@ const renderTemplate = async <Props extends object>(
           },
           feed: async (pages) => {
             await live.feedPageNumbers(pages)
+            // Page-number feedback can change the authored tree. Re-admit that
+            // exact tree before every layout pass so conditional content cannot
+            // bypass node, image, path, or remote-resource policy.
+            await admitDocument(live.document)
           },
         },
         { fontStore, maxPasses, limits },
       )
       return {
         bytes: result.bytes,
+        metadata: completedMetadata(live.document, metadata),
         passes: result.passes,
         pageCount: countPages(result.layout),
       }
     }
 
+    await admitDocument(mounted.document)
+    const document = mounted.document as unknown as Parameters<typeof renderDocument>[0]
     const result = await renderDocument(document, { fontStore, limits })
-    return { bytes: result.bytes, passes: 1, pageCount: countPages(result.layout) }
+    return {
+      bytes: result.bytes,
+      metadata: completedMetadata(mounted.document, metadata),
+      passes: 1,
+      pageCount: countPages(result.layout),
+    }
   }
   finally {
     mounted?.unmount()
@@ -291,91 +317,55 @@ export const createPdfTemplate = <Props extends object>(
     (component as PdfComponent<Props>)[PDF_DEFINITION_PROPERTY],
   )
 
+  const renderWithDiagnostics = async (props: Props): Promise<PdfRenderResult> => {
+    if (!isObject(props)) {
+      throw templateError(ref, 'render props must be an object.')
+    }
+
+    const start = performance.now()
+    // The public render boundary owns the only deadline. It starts before
+    // metadata evaluation so both timeoutMs and durationMs describe the same
+    // completed operation.
+    const limits = createRenderLimits(resolvePdfRenderLimits(options.limits))
+    const definitionMetadata = resolveMetadata(ref, definition, props)
+    const {
+      bytes,
+      metadata,
+      passes,
+      pageCount,
+    } = await renderTemplate(
+      component,
+      props,
+      definitionMetadata,
+      options,
+      definition.maxPasses,
+      limits,
+    )
+    const result = createPdfRenderResult(bytes, metadata, {
+      durationMs: performance.now() - start,
+      pageCount,
+      passes,
+      registeredFontFaces: (options.fonts ?? []).map(font => ({
+        family: font.family,
+        fontStyle: font.fontStyle,
+        fontWeight: font.fontWeight,
+      })),
+    })
+
+    return result
+  }
+
   return Object.freeze({
     key,
-    // The source file, exposed for the dev preview's template attribution. Not
-    // part of the public `PdfTemplate` type; consumed only by the dev preview.
-    file: options.file,
-    definition,
-    get sampleData() {
-      return definition.sampleData
-    },
-    get scenarios() {
-      return definition.scenarios ?? EMPTY_SCENARIOS
-    },
-    get scenarioNames() {
-      return Object.keys(definition.scenarios ?? EMPTY_SCENARIOS).sort()
-    },
-    getPreviewProps(scenario?: string) {
-      if (scenario === undefined) return definition.sampleData
-      const scenarios = definition.scenarios
-      if (!scenarios || !Object.prototype.hasOwnProperty.call(scenarios, scenario)) {
-        return undefined
-      }
-      return scenarios[scenario]
-    },
     resolveMetadata(props: Props) {
+      if (!isObject(props)) {
+        throw templateError(ref, 'metadata props must be an object.')
+      }
       return resolveMetadata(ref, definition, props)
     },
     async render(props: Props): Promise<PdfRenderResult> {
       try {
-        if (!isObject(props)) {
-          throw templateError(ref, 'render props must be an object.')
-        }
-
-        const metadata = resolveMetadata(ref, definition, props)
-        const { bytes } = await renderTemplate(
-          key,
-          component,
-          props,
-          metadata,
-          options,
-          definition.maxPasses,
-          console.warn,
-        )
-
-        return createPdfRenderResult(bytes, metadata.filename)
-      }
-      catch (error) {
-        throw enrichTemplateError(error, key, options.file)
-      }
-    },
-    // Dev-preview render entry. Runs the SAME pipeline as `render()` but collects
-    // the warnings (instead of `console.warn`), times the render, and returns the
-    // page count and layout-pass count so the preview can show diagnostics. The
-    // public `PdfRenderResult` type is untouched; this is a separate internal
-    // entry, registered only on the dev preview route.
-    async renderForPreview(props: Props): Promise<PdfPreviewRender> {
-      try {
-        if (!isObject(props)) {
-          throw templateError(ref, 'render props must be an object.')
-        }
-
-        const metadata = resolveMetadata(ref, definition, props)
-        const warnings: string[] = []
-        const start = performance.now()
-        const { bytes, passes, pageCount } = await renderTemplate(
-          key,
-          component,
-          props,
-          metadata,
-          options,
-          definition.maxPasses,
-          message => warnings.push(message),
-        )
-
-        return {
-          bytes,
-          title: metadata.title,
-          filename: metadata.filename,
-          diagnostics: {
-            durationMs: performance.now() - start,
-            byteLength: bytes.byteLength,
-            pageCount,
-            passes,
-            warnings,
-          },
-        }
+        return await renderWithDiagnostics(props)
       }
       catch (error) {
         throw enrichTemplateError(error, key, options.file)
@@ -384,30 +374,69 @@ export const createPdfTemplate = <Props extends object>(
   })
 }
 
+/**
+ * Internal development-only information for the preview UI. It wraps the
+ * production handle instead of extending it, so preview fixtures and source
+ * paths cannot accidentally become part of the public template contract.
+ */
+export interface PdfPreviewEntry<
+  Props extends object = Record<string, unknown>,
+> {
+  readonly template: PdfTemplate<Props>
+  readonly file?: string
+  readonly scenarioNames: readonly string[]
+  getPreviewProps(scenario?: string): Props | undefined
+}
+
+export type PdfPreviewEntryOptions = Pick<PdfTemplateRuntimeOptions, 'file'>
+
+export const createPdfPreviewEntry = <Props extends object>(
+  template: PdfTemplate<Props>,
+  component: Component,
+  options: PdfPreviewEntryOptions = {},
+): PdfPreviewEntry<Props> => {
+  const ref: TemplateRef = { key: template.key, file: options.file }
+  const definition = validateDefinition(
+    ref,
+    (component as PdfComponent<Props>)[PDF_DEFINITION_PROPERTY],
+  )
+  const scenarios: Readonly<Record<string, Props>>
+    = definition.scenarios ?? EMPTY_SCENARIOS
+  const scenarioNames = Object.freeze(Object.keys(scenarios).sort())
+
+  return Object.freeze({
+    template,
+    file: options.file,
+    scenarioNames,
+    getPreviewProps(scenario?: string) {
+      if (scenario === undefined) return definition.sampleData
+      if (!Object.prototype.hasOwnProperty.call(scenarios, scenario)) {
+        return undefined
+      }
+      return scenarios[scenario]
+    },
+  })
+}
+
 export const createPdfRegistry = <
   const Entries extends Record<string, PdfTemplateIdentity>,
 >(entries: Entries): PdfRegistry<Entries> => {
-  const canonicalKeys = new Set<string>()
-
-  for (const [property, template] of Object.entries(entries)) {
+  for (const [key, template] of Object.entries(entries)) {
     if (!template?.key) {
-      throw new TypeError(`PDF registry entry "${property}" is invalid.`)
+      throw new TypeError(`PDF registry entry "${key}" is invalid.`)
     }
-    if (canonicalKeys.has(template.key)) {
-      throw new TypeError(`Duplicate PDF template key "${template.key}".`)
+    if (template.key !== key) {
+      throw new TypeError(
+        `PDF registry entry "${key}" must use the same key as createPdfTemplate ("${template.key}").`,
+      )
     }
-    canonicalKeys.add(template.key)
   }
 
   const pdf = Object.freeze(entries)
-  const pdfTemplateKeys = Object.freeze(
-    Object.values(pdf).map(template => template.key),
-  )
+  const pdfTemplateKeys = Object.freeze(Object.keys(pdf))
 
-  const getTemplate = (key: string): Entries[keyof Entries] | undefined => {
-    const template = Object.values(pdf).find(entry => entry.key === key)
-    return template as Entries[keyof Entries] | undefined
-  }
+  const getTemplate = (key: string): Entries[keyof Entries] | undefined =>
+    Object.hasOwn(pdf, key) ? pdf[key as keyof Entries] : undefined
 
   return Object.freeze({
     pdf,

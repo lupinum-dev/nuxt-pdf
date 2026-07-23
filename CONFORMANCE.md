@@ -37,8 +37,8 @@ The paired React/Vue fixture verifies:
   page-by-page raster comparison for this fixture.
 
 Renderer tests separately cover insertion, removal, keyed movement, prop and
-text updates, primitive resolution, rejection of invalid roots, and exclusion
-of orphan text from the document tree.
+text updates, primitive resolution, rejection of invalid roots, and fail-closed
+rejection of non-whitespace orphan text without echoing its content.
 
 Dynamic text (page-number footers) renders at correct page-bottom geometry even
 when a `lineHeight` reaches it — inherited from `PdfPage` or nested `PdfView`
@@ -65,23 +65,38 @@ the same layout and render engine and verifies:
 - a `PdfDefs` `PdfClipPath` referenced by `clipPath="url(#id)"`;
 - SVG text: a `PdfSvg` `PdfText` with `x`/`y` and two `PdfTspan` children,
   proving tspan joining and x-chaining, with its content preserved as extracted
-  page text; and
+  page text; direct SVG `fill` is raster-proven independently rather than
+  relying on page-flow `style.color`; and
 - equivalent extracted page text plus a thresholded page raster comparison
   against React output and a reviewed committed baseline.
 
 Renderer tests separately cover the SVG nesting rules: which primitives each
 container accepts, `PdfSvg` as a valid child of `PdfPage` and `PdfView`, the
 rejection of `PdfSvg` directly inside `PdfText`, leaf shapes staying childless,
-and coercion of kebab-case SVG attributes (`stroke-width`) to the camelCase
-prop names (`strokeWidth`) the engine reads.
+closed per-primitive prop allowlists, required props (with numeric zero treated
+as present), numeric/range/viewBox/transform validation, page-flow versus SVG
+text props, `PdfTspan`'s `x`/`y`/`fill`-only boundary, and coercion of kebab-case
+SVG attributes (`stroke-width`) to the camelCase prop names (`strokeWidth`) the
+engine reads.
 
-SVG props are camelCase and, on SVG nodes, override `style`; `transform` is a
-prop on SVG primitives (unlike `PdfView`, where it is a style key). A `url(#id)`
-reference resolves only against a `PdfDefs` child in the same `PdfSvg` subtree;
-a dangling reference yields no fill, which differs from browser SVG. Not claimed
-within SVG: `Marker` (`markerStart`/`markerMid`/`markerEnd`), non-default
-`gradientUnits` and `preserveAspectRatio` beyond the tested defaults, and SVG
-image files as an image source.
+SVG presentation uses direct camelCase props; `PdfG` and shapes do not expose a
+generic style prop. `PdfSvg.style` is page-flow sizing/positioning, SVG
+`PdfText.style` is for text metrics, and direct `fill` controls SVG text paint.
+`transform` is a direct prop on groups/shapes (unlike `PdfView`, where it is a
+style key) and is limited to one to three unitless translate/rotate operations.
+A `url(#id)` resolves only against the single `PdfDefs` in the same `PdfSvg`;
+definition ids are safe, unique within that SVG, reusable in other SVGs, and
+separate from destination ids. Missing, malformed, or incompatible fill/clip
+references fail with `PDF_TREE_INVALID`.
+
+Vue-only raster regressions additionally prove the intentional zero-value
+repair at the serialization boundary: `fillOpacity: 0` is transparent,
+`strokeWidth: 0` paints no PDF hairline, linear `x2: 0` stays zero, and radial
+`cx`/`cy`/`fx`/`fy`/`r` zeroes stay zero after layout resolves definitions.
+`strokeOpacity` paint is independently raster-proven. Not exposed within SVG:
+`Marker` (`markerStart`/`markerMid`/`markerEnd`), alternate gradient coordinate
+systems/transforms/inheritance, and `preserveAspectRatio` modes. SVG image files
+are not supported as an image source.
 
 ### Behavioural conformance corpus
 
@@ -122,6 +137,24 @@ reviewed baselines.
 - `maxLines` with `textOverflow: 'ellipsis'` clamps to the line count and appends
   the ellipsis (U+2026).
 
+**International typography** (`test/international-text.test.ts`):
+
+- Latin Extended, Greek, and Cyrillic render and extract exactly with an
+  explicitly registered covering font;
+- representative Chinese/Japanese text renders, extracts, and matches a
+  reviewed raster with a test-only Noto subset (experimental broader CJK claim);
+- representative Arabic shapes visually, reports an RTL text run, and exposes
+  the expected bidi extraction reorder (experimental);
+- combining marks render correctly but extraction can detach mark association
+  (experimental);
+- a variable Source Code TTF renders and extracts at its default instance
+  (experimental; no axis-selection API); and
+- face emoji fail faithful serialization and are explicitly unsupported.
+
+`PdfRenderDiagnostics.registeredFontFaces` reports only configured family,
+weight, and style. Missing-glyph detection and family fallback chains are not
+claimed.
+
 **Images** (`test/corpus/images.test.ts`):
 
 - JPEG file paths, base64 `data:` URLs, and `{ data, format }` buffer sources all
@@ -133,6 +166,12 @@ reviewed baselines.
 - an image in a `fixed` header repeats once per page.
 
 **Styles and layout** (`test/corpus/styles.test.ts`):
+
+`PdfStyle` is a framework-owned contract, not a re-export of the wider upstream
+stylesheet types. Real TypeScript and Vue SFC negative fixtures reject unknown
+keys, unsupported units/values, and invalid style-array entries; runtime props
+remain independently closed because Vue fallthrough attrs can escape static
+checking.
 
 - flexbox — `row`/`column` direction, `flexGrow`, `flexBasis`+`flexShrink`,
   `justifyContent: space-between`, `alignItems: center`, and `gap`;
@@ -173,19 +212,45 @@ The 0.2.0 tests verify:
   nested keys, collisions, and project-over-layer precedence;
 - generated typed `#pdf` access, including negative type fixtures for missing
   props, extra props, invalid props, and invalid template keys;
-- one render execution shared by byte, buffer, stream, and `Response`
-  conversions;
+- framework-owned `PdfStyle` and exact primitive prop types checked through a
+  real Vue SFC, plus closed per-primitive runtime allowlists that reject
+  unknown, DOM/event, removed, and wrong-host props without echoing values;
+- exactly one `src`/`source` for `PdfImage`, exactly one `href`/`src` for
+  `PdfLink`, and context-specific page-flow/SVG `PdfText` invariants;
+- one completed render held behind immutable byte, buffer, and `Response`
+  conversions, with exact frozen resolved metadata and one frozen, content-free
+  diagnostics object shared by the public result and development preview; the
+  preview calls the exact public `render(props)` path once and parks that
+  completed result rather than re-evaluating metadata or using a second preview
+  renderer;
+- a closed public `PdfTemplate` handle containing exactly `key`,
+  `resolveMetadata(props)`, and `render(props)` — never the compile-time
+  definition, sample data, scenarios, source path, or a preview render method;
+- `definePdf` title/language precedence over `PdfDocument` fallback props,
+  including reapplication after every page-number feed in a multi-pass render;
+  completed `result.metadata` reports the title/language actually written into
+  the PDF after that precedence, plus the resolved download filename (the
+  filename is response metadata, not a PDF Info field);
 - template attribution on failure: every error surfaced from a template's
-  `render()` is a `NuxtPdfError` carrying `templateKey` and `templateFile` and a
-  message prefixed with the template name and source file (`pdfs/…`), and
-  invalid-nesting warnings emitted during that render are prefixed with the same
-  template context. Font-resolution failures surface as a single
+  `render()` is a `NuxtPdfError` carrying `templateKey`; development renders
+  also carry `templateFile` and a message prefixed with the source file
+  (`pdfs/…`), while production deliberately omits that preview-only path. Invalid
+  nesting fails with `PDF_TREE_INVALID`; it never returns a partial document or
+  downgrades the failure to a warning. Font-resolution failures surface as a single
   `PDF_LAYOUT_ERROR` (font resolution is a layout sub-stage) whose message
   preserves React PDF's exact "Font family not registered" text rather than a
   separate font-error code;
-- safe PDF response headers and filename sanitization;
-- development preview index, viewer, raw PDF, and named scenarios;
+- safe PDF response headers: bounded Unicode-safe filename sanitization, a
+  default `document.pdf` attachment name, exact `content-length`, and forced PDF
+  content type;
+- development preview index, viewer, raw PDF, and named scenarios, backed by a
+  separate internal development sidecar;
 - a production Nitro route rendering through the generated registry;
+- structural removal of `sampleData` and `scenarios` during production SFC
+  compilation, with unique fixture canaries and preview-only API tokens rejected
+  by a recursive scan of the emitted Nitro server artifact; metadata follows
+  module-scope macro rules, so imports are supported while setup-local bindings
+  fail compilation before they can leak or throw at runtime;
 - absence of development preview behavior in production; and
 - absence of React PDF engine code from the Nuxt client bundle and React
   renderer runtimes from production dependencies.
@@ -212,12 +277,15 @@ and exposes it through one composable and existing props. The tested boundary:
   that could be mistaken for first-pass state.
 - **Convergence.** The loop is a fixed point: it re-lays-out the same mounted
   tree, feeding each pass's `id → page` map back through the composable, until the
-  map it produces equals the map it was laid out with. An ordinary document
-  converges in two passes. A document whose layout depends on the numbers it
-  prints (a TOC entry whose height changes with its page number) never converges
-  and, after `maxPasses` (a validated positive integer on `definePdf`, default 5),
-  raises a `PDF_LIMIT_EXCEEDED` `NuxtPdfError` attributed to the template key and
-  file through the same boundary as every other render failure.
+  map it produces equals the map it was laid out with. After every feed the live
+  tree is re-admitted — tree limits, metadata reapplication, and image/resource
+  policy run again against that exact tree — so conditional content introduced by
+  page numbers cannot bypass admission. An ordinary document converges in two
+  passes. A document whose layout depends on the numbers it prints (a TOC entry
+  whose height changes with its page number) never converges and, after
+  `maxPasses` (a validated positive integer on `definePdf`, default 5), raises a
+  `PDF_LIMIT_EXCEEDED` `NuxtPdfError` attributed to the template key and file
+  through the same boundary as every other render failure.
 - **Named destinations resolve to a section's first page.** A node's `id` becomes
   a named destination; a `PdfLink` `src="#id"` jumps to it. When the id sits on a
   node that spans a page boundary, both the printed number and the jump target
@@ -230,7 +298,10 @@ and exposes it through one composable and existing props. The tested boundary:
   node object) keeps its destination, anchored at its first page.
 - **Internal links** are verified paired against React PDF on non-splitting
   targets (where first- and last-page resolution agree): matching `Link`
-  annotations and matching named-destination pages.
+  annotations and matching named-destination pages. An internal `#id` that does
+  not match any destination in the mounted document fails closed with
+  `PDF_TREE_INVALID` before layout. A `PdfDocument` without at least one
+  `PdfPage` likewise fails closed.
 - **Bookmarks (outline).** The upstream `bookmark` prop (a string or
   `{ title, expanded, … }`) on `PdfPage`/`PdfView`/`PdfText`/`PdfImage` builds a
   nested PDF outline. Verified paired against React PDF via pdfjs `getOutline`
@@ -250,8 +321,8 @@ The module validates and embeds configured resources during the Nuxt build.
 The tested boundary includes:
 
 - PNG and JPEG extension/signature validation and source byte limits;
-- TTF and OTF signature validation, registration validation, and source byte
-  limits;
+- TTF and OTF signature/extension/SFNT table-directory validation,
+  registration validation, source byte limits, and source-removal rendering;
 - explicit local `pdfs/assets` and `pdfs/fonts` roots;
 - rejection of absolute paths, traversal, missing assets, ambiguous sources,
   unsupported URLs, and symlink escapes; and
@@ -261,74 +332,68 @@ The tested boundary includes:
 This is a fail-closed local-resource boundary, not a general remote-fetching
 or filesystem sandbox claim.
 
-### Opt-in remote resources
+### Opt-in remote images
 
 Remote fetching is off by default: with `pdf.remote` absent the module performs
-zero network I/O and every URL image or font source fails closed, exactly as
-when the feature is absent. When an operator configures `pdf.remote.allow`, the module — never React
-PDF's engine — fetches allowlisted resources and converts them to the same
-embedded form as local assets before layout or the font store sees a URL. The
-tested boundary guarantees:
+zero network I/O and every URL image source fails closed. Remote fonts are
+unconditionally rejected. When an operator configures `pdf.remote.allow`, the
+module — never React PDF's engine — fetches allowlisted images and converts them
+to bytes before layout. The tested boundary guarantees:
 
-- `https://` only; `http://`, embedded credentials, and non-matching hosts,
-  ports, or path prefixes are blocked. An allowlist entry is an explicit host
-  (or a single leading `*.` subdomain wildcard on a registrable domain) plus a
-  pathname prefix; prefixes match only on path-segment boundaries, and the query
-  string is ignored for matching but preserved for the fetch. Wildcards on the
-  most common public suffixes (`*.co.uk`, `*.github.io`, …) are rejected at
-  setup; the list is deliberately non-exhaustive and the allowlist remains the
-  operator's trust decision. Error messages redact query strings (for image and
-  font URLs alike) but keep path segments — a URL scheme that signs in the path
-  still surfaces those segments in messages, so prefer query-signed URLs for
-  tokenized sources.
+- Allowlist entries are exact `https://host/path/` prefixes. `http://`, wildcard
+  hosts, embedded credentials, fragments, missing trailing slashes, and
+  non-matching hosts, ports, or paths are blocked. Runtime errors expose only
+  scheme/host and redact the path, query, and fragment.
 - Redirects are followed manually and the allowlist is re-checked on every hop
-  (bounded to five), so an allowlisted host cannot redirect out of the allowlist.
-- Byte caps reuse the local image (10MB) and font (5MB) limits and are enforced
-  from `Content-Length` and while streaming a body with no `Content-Length`; the
-  stream is aborted the moment the cap is exceeded.
+  (bounded to three), so an allowlisted host cannot redirect out of the allowlist.
+- `pdf.limits` is the only source for per-image and aggregate byte/pixel caps,
+  request count, concurrency, output size, and the whole-render deadline. Source
+  byte caps are enforced from `Content-Length` and while streaming; fatal
+  failures abort sibling requests.
 - The byte signature is authoritative: a deceptive `Content-Type` cannot make
-  non-image or non-font bytes validate (PNG/JPEG for images, TTF/OTF for fonts;
-  SVG and font collections stay rejected).
+  non-image bytes validate. PNG/JPEG structure and dimensions are inspected
+  before decode or engine admission; SVG stays rejected.
 - Fetches are `GET` only, send no request headers, and carry no credentials; a
   per-hop timeout (default 10s) covers the body read.
 - Remote images resolve at render time with per-render deduplication (a repeated
-  URL is fetched once, with no cross-render cache); remote fonts resolve at build
-  time and embed as the same `data:font/...` URL as local fonts, keeping the
-  render path zero-network.
+  URL is fetched once, with no cross-render cache).
 
 These are intentional Nuxt-PDF-only guarantees. React PDF has no allowlist,
 timeout, byte cap, or per-hop redirect policy, so the blocked, oversized,
 redirect, timeout, and unconfigured behaviors have no React oracle; once the
 policy admits bytes they take the same embedded-bytes path the local-image
 conformance fixture already rasters against React. Not claimed: authenticated
-fetches, request headers or bodies, cookies/credentials, private-IP or DNS
-rebinding protection beyond the allowlist, and any cross-render caching.
+fetches, request headers or bodies, cookies/credentials, remote fonts,
+private-IP or DNS rebinding exceptions, and any cross-render caching.
 
 ### Render limits
 
-Every render is bounded by two operator-overridable limits under `pdf.limits`,
+Every render is bounded by the operator-overridable `pdf.limits` fields below,
 enforced identically on the single-pass and multi-pass paths through one shared
-pipeline (`test/limits.test.ts`):
+pipeline (`test/limits.test.ts`). Defaults apply when a field is omitted; every
+field is a positive safe integer validated at module setup.
 
-- **`maxPages`** (default `2000`) — the laid-out page count is checked once,
-  right after layout and before serialization, at the single shared layout seam
-  both paths pass through (`layoutPdfTree`), including every intermediate
-  multi-pass iteration. Exceeding it fails closed with a `PDF_LIMIT_EXCEEDED`
-  `NuxtPdfError` naming the page count, the cap, and the `pdf.limits.maxPages`
-  config key, attributed to the template through the same boundary as every
-  other render failure.
-- **`timeoutMs`** (default `30000`) — the whole render (mount, asset resolution,
-  every layout pass, and serialization) is bounded by one deadline started before
-  mount. On expiry it fails with a `PDF_LIMIT_EXCEEDED` error naming the elapsed
-  budget. Upstream layout is not abortable mid-step, so the deadline is polled
-  between engine stages and passes, not mid-step; worst-case overshoot is one
-  engine stage. This is a checked budget, not hard cancellation (see "not
-  claimed").
+| Field | Default | When checked |
+| --- | --- | --- |
+| `timeoutMs` | `30_000` | Whole public render deadline, started before metadata evaluation |
+| `maxPages` | `2_000` | After each layout, before serialization |
+| `maxNodes` | `50_000` | Post-mount tree walk (and after every multi-pass feed) |
+| `maxTreeDepth` | `128` | Post-mount tree walk (and after every multi-pass feed) |
+| `maxTextCharacters` | `2_000_000` | Post-mount tree walk (and after every multi-pass feed) |
+| `maxImages` | `256` | Post-mount tree walk (and after every multi-pass feed) |
+| `maxImageBytes` | `10_485_760` | Per unique image before engine admission |
+| `maxTotalImageBytes` | `33_554_432` | Aggregate unique images for the render |
+| `maxImagePixels` | `25_000_000` | Per unique image before engine admission |
+| `maxTotalImagePixels` | `100_000_000` | Aggregate unique images for the render |
+| `maxRemoteRequests` | `32` | Remote fetch accounting, including redirect hops |
+| `maxRemoteConcurrency` | `4` | Simultaneous remote HTTP requests |
+| `maxOutputBytes` | `67_108_864` | Completed PDF byte buffer before result handoff |
 
-Both defaults are generous enough that no legitimate document reaches them, and
-both are validated as positive integers at module setup (a non-positive,
-non-integer, or non-numeric value fails the build). With no `pdf.limits`
-configured the same defaults still apply, so every render is bounded.
+Exceeding a limit fails closed with `PDF_LIMIT_EXCEEDED`. Tree/node/text/image-count
+checks are **post-mount rejection**: Vue has already mounted the tree, so they do
+not create hard memory isolation before mount. Image byte/pixel and remote
+accounting share one render-wide state across multi-pass feeds. `timeoutMs` is a
+checked deadline polled between engine stages, not mid-step hard cancellation.
 
 ### Serverless build
 
@@ -355,6 +420,8 @@ the same shipped code — there is one parser, not two. Claimed:
 - `renderPdfTemplate`, which renders a Vue PDF component through the real
   registry pipeline (assets, fonts, single- or multi-pass layout) without Nuxt,
   with or without `definePdf` metadata;
+- `renderPdfSfc`, which uses the production SFC compiler and resource admission
+  path for a real nested `pdfs/*.vue` graph;
 - `rasterizePdf` and `comparePdfSnapshot`, the reviewed per-page PNG baseline
   flow with an `UPDATE_PDF_BASELINES` update mode; and
 - `pdfjs-dist` and `@napi-rs/canvas` as optional peer dependencies, loaded
@@ -379,34 +446,37 @@ failure messages, in `test/test-utils-public.test.ts`.
 - Authenticated remote fetches, request headers/bodies, credentialed requests,
   proxies, or private-IP/DNS-rebinding protection. Opt-in allowlisted remote
   images and fonts are claimed above under "Opt-in remote resources".
-- SVG image files (as an image source), SVG `Marker`, and non-default
-  `gradientUnits`/`preserveAspectRatio`. SVG drawing primitives are otherwise
-  claimed above.
-- A layout effect for `wordSpacing`. It is accepted and inherited as a style but
-  never consumed by the `@react-pdf/layout` + textkit pipeline this module drives
-  (only pdfkit's own text layout reads it, which the render step bypasses), so it
-  changes neither wrapping nor glyph advances. `letterSpacing` is honored.
+- SVG image files (as an image source), SVG `Marker`, alternate gradient
+  coordinate systems/transforms/inheritance, and `preserveAspectRatio` modes.
+  Radial-gradient inner radius (`fr`) is also absent because the pinned renderer
+  hardcodes it to zero. SVG drawing primitives are otherwise claimed above.
+- `wordSpacing` authoring. The pinned `@react-pdf/layout` + textkit pipeline does
+  not apply it to wrapping or glyph advances, so Nuxt PDF leaves the no-op
+  property out of `PdfStyle`. Use the verified `letterSpacing` property instead.
 - Browser CSS, HTML printing, a PDF stylesheet compiler, or paged-media CSS.
 - A first-class table layout engine, charts, forms, signing, editing, or PDF
   merging. A table of contents is authored from ordinary components; there is no
   TOC component or automatic heading collection.
 - Bookmark destination geometry (`top`/`left`/`zoom`/`fit`) and outline click
-  actions beyond title text and parent/child nesting; the outline is verified by
-  its title hierarchy via pdfjs `getOutline`.
+  actions are not exposed. Bookmark titles, expanded state, and parent/child
+  nesting are verified; the title hierarchy is inspected via pdfjs
+  `getOutline`.
 - Multi-pass resolution of anything other than destination page numbers, and
   convergence for documents whose geometry depends on the numbers they print
   (these fail closed with `PDF_LIMIT_EXCEEDED`, they are not made to converge).
 - Tagged PDF, PDF/UA, archival, or other accessibility/compliance profiles.
-- PDF encryption. `ownerPassword`, `userPassword`, and `permissions` are typed
-  passthroughs to the engine with no conformance fixture behind them.
+- PDF encryption. Password and permission props are not exposed without a
+  conformance fixture proving their behaviour.
 - Deterministic PDF bytes across operating systems or PDF viewers.
 - Hard render cancellation. The `pdf.limits.timeoutMs` budget is polled between
   engine stages and passes — upstream layout is not abortable mid-step — so a
   single engine stage can overshoot it; it is a checked deadline, not mid-step
-  cancellation. Time-budget and page-count limits themselves are claimed above
+  cancellation. The thirteen `pdf.limits` fields themselves are claimed above
   under "Render limits".
-- Worker isolation, concurrency guarantees, output byte limits, or
-  decoded-pixel limits.
+- Pre-mount memory isolation. `maxNodes`, `maxTreeDepth`, `maxTextCharacters`,
+  and `maxImages` reject after Vue has mounted the tree; they are not a sandbox
+  that prevents allocation during mount.
+- Worker isolation or cross-render concurrency guarantees.
 - Visual equivalence beyond the paired fixture, pinned inputs, and tested
   raster environment.
 

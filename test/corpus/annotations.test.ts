@@ -7,6 +7,7 @@ import { mountPdfComponent } from '../../src/runtime/renderer'
 import { renderDocument } from '../../src/runtime/server/engine/render-document'
 import {
   documentMeta,
+  linkHitSlop,
   linkTargets,
   noteContent,
   pageSetupCases,
@@ -170,6 +171,27 @@ describe('corpus: annotations, metadata, and page setup', () => {
       url: linkTargets.mailto,
       unsafeUrl: linkTargets.mailto,
     }))
+
+    const hitSlopLink = vueLinks.find(link => link.unsafeUrl === linkTargets.external)
+    const plainLink = vueLinks.find(link => link.unsafeUrl === linkTargets.mailto)
+    expect(hitSlopLink?.rect).toHaveLength(4)
+    expect(plainLink?.rect).toHaveLength(4)
+
+    const rectSize = (rect: number[]) => ({
+      width: rect[2]! - rect[0]!,
+      height: rect[3]! - rect[1]!,
+    })
+    const hitSlopSize = rectSize(hitSlopLink!.rect!)
+    const plainSize = rectSize(plainLink!.rect!)
+
+    expect(hitSlopSize.width - plainSize.width).toBeCloseTo(
+      linkHitSlop.left + linkHitSlop.right,
+      3,
+    )
+    expect(hitSlopSize.height - plainSize.height).toBeCloseTo(
+      linkHitSlop.top + linkHitSlop.bottom,
+      3,
+    )
   })
 
   it('renders PdfNote content as a Text annotation identically to React', async () => {

@@ -6,6 +6,8 @@
     "docs",
     "node_modules",
     "playground",
+    ".tmp",
+    "tmp",
     "test/fixtures",
   ]
 }

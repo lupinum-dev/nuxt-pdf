@@ -29,7 +29,7 @@ export interface PdfPageNumbersContext {
 }
 
 export const PDF_PAGE_NUMBERS_KEY: InjectionKey<PdfPageNumbersContext>
-  = Symbol('nuxt-pdf:page-numbers')
+  = Symbol.for('@lupinum/nuxt-pdf:page-numbers')
 
 /**
  * Access the resolved page number of every destination `id` in the current PDF.

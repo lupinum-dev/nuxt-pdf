@@ -8,6 +8,8 @@ import {
 } from '../../../src/runtime/components'
 import {
   documentMeta,
+  linkHitSlop,
+  linkStyle,
   linkTargets,
   noteContent,
   pageSetupCases,
@@ -22,8 +24,15 @@ export const VueAnnotationsDocument = defineComponent({
     }, {
       default: () => h(PdfPage, { size: 'A4' }, {
         default: () => [
-          h(PdfLink, { src: linkTargets.external }, { default: () => 'External documentation' }),
-          h(PdfLink, { src: linkTargets.mailto }, { default: () => 'Email the report owner' }),
+          h(PdfLink, {
+            src: linkTargets.external,
+            hitSlop: linkHitSlop,
+            style: linkStyle,
+          }, { default: () => 'External documentation' }),
+          h(PdfLink, {
+            src: linkTargets.mailto,
+            style: linkStyle,
+          }, { default: () => 'Email the report owner' }),
           h(PdfNote, null, { default: () => noteContent }),
         ],
       }),

@@ -2,6 +2,7 @@ import { defineComponent, h, type Component } from 'vue'
 import { createPdfTemplate } from '../runtime/server/registry'
 import type { PdfImageAssetMap } from '../runtime/server/assets/resolve-asset'
 import type { RemoteAssetPolicy } from '../runtime/server/assets/remote'
+import type { PdfRenderLimits } from '../runtime/server/engine/limits'
 import type { BundledPdfFontDescriptor } from '../runtime/server/fonts'
 import {
   PDF_DEFINITION_PROPERTY,
@@ -17,6 +18,8 @@ export interface RenderPdfTemplateOptions {
   fonts?: readonly BundledPdfFontDescriptor[]
   /** Remote-asset allowlist policy; omitted means remote fetching is disabled. */
   remote?: RemoteAssetPolicy
+  /** Fully resolved per-render budgets; omitted uses the production defaults. */
+  limits?: PdfRenderLimits
   /** Template key used in error attribution (defaults to the component name). */
   key?: string
   /** Source file used in error attribution. */
@@ -28,7 +31,7 @@ export interface RenderedPdfTemplate {
   bytes: Uint8Array
   /** The parsed document, ready for `expectPdf`. */
   parsed: ParsedPdf
-  /** The underlying render result (buffer/stream/`Response` accessors). */
+  /** The underlying completed result (diagnostics, bytes, buffer, and response). */
   result: PdfRenderResult
 }
 
@@ -74,6 +77,7 @@ export async function renderPdfTemplate<Props extends object>(
       assets: options.assets,
       fonts: options.fonts,
       remote: options.remote,
+      limits: options.limits,
       file: options.file,
     },
   )

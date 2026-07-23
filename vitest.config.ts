@@ -5,9 +5,12 @@ export default defineConfig({
     exclude: [
       ...configDefaults.exclude,
       'test/production.test.ts',
+      'test/performance.test.ts',
       'test/serverless-build.test.ts',
+      'test/toc-raster.test.ts',
     ],
     fileParallelism: false,
+    include: ['test/**/*.test.ts'],
     pool: 'forks',
     setupFiles: ['./test/setup.ts'],
   },

@@ -37,16 +37,33 @@ export interface ParsedPdfLink {
   url?: string
 }
 
+/** A normalized PDF.js text run for tolerant layout and typography assertions. */
+export interface ParsedPdfTextRun {
+  direction: string
+  fontName: string
+  fontSize: number
+  height: number
+  text: string
+  width: number
+  x: number
+  y: number
+}
+
 export interface ParsedPdfPage {
   annotations: PdfAnnotation[]
+  height: number
   number: number
   rawText: string
   text: string
   textItems: string[]
+  textRuns: ParsedPdfTextRun[]
+  width: number
 }
 
 export interface PdfOutlineItem {
   title: string
+  /** Initial viewer state for entries with children. Absent on leaf entries. */
+  expanded?: boolean
   children: PdfOutlineItem[]
 }
 
@@ -55,7 +72,7 @@ export interface ParsedPdf {
   pages: ParsedPdfPage[]
   /** Every link annotation in the document, flattened across pages. */
   links: ParsedPdfLink[]
-  /** The bookmark tree (outline) as a title-only nested structure. */
+  /** The bookmark tree (outline), including initial expansion state. */
   outline: PdfOutlineItem[]
 }
 
@@ -192,13 +209,22 @@ export async function toPdfBytes(input: PdfInput): Promise<Uint8Array> {
   )
 }
 
-interface RawOutlineItem { title?: unknown, items?: unknown }
+interface RawOutlineItem { title?: unknown, count?: unknown, items?: unknown }
 
 const simplifyOutline = (items: readonly RawOutlineItem[]): PdfOutlineItem[] =>
-  items.map(item => ({
-    title: typeof item.title === 'string' ? item.title : '',
-    children: Array.isArray(item.items) ? simplifyOutline(item.items as RawOutlineItem[]) : [],
-  }))
+  items.map((item) => {
+    const children = Array.isArray(item.items)
+      ? simplifyOutline(item.items as RawOutlineItem[])
+      : []
+
+    return {
+      title: typeof item.title === 'string' ? item.title : '',
+      ...(children.length === 0
+        ? {}
+        : { expanded: typeof item.count === 'number' && item.count > 0 }),
+      children,
+    }
+  })
 
 const flattenLinks = (pages: readonly ParsedPdfPage[]): ParsedPdfLink[] =>
   pages.flatMap(page =>
@@ -227,18 +253,37 @@ export async function parsePdf(input: PdfInput): Promise<ParsedPdf> {
       try {
         const textContent = await page.getTextContent()
         const textItems = textContent.items.flatMap(item => 'str' in item ? [item.str] : [])
+        const textRuns = textContent.items.flatMap((item) => {
+          if (!('str' in item)) return []
+
+          const [scaleX = 0, scaleY = 0, , , x = 0, y = 0] = item.transform
+          return [{
+            direction: item.dir,
+            fontName: item.fontName,
+            fontSize: roundCoordinate(Math.hypot(scaleX, scaleY)),
+            height: roundCoordinate(item.height),
+            text: item.str,
+            width: roundCoordinate(item.width),
+            x: roundCoordinate(x),
+            y: roundCoordinate(y),
+          }]
+        })
         const rawText = textContent.items
           .flatMap(item => 'str' in item ? [item.str, item.hasEOL ? '\n' : ''] : [])
           .join('')
         const annotations = (await page.getAnnotations({ intent: 'display' }))
           .map(normalizeAnnotation)
+        const viewport = page.getViewport({ scale: 1 })
 
         pages.push({
           annotations,
+          height: roundCoordinate(viewport.height),
           number: pageNumber,
           rawText,
           text: normalizePdfText(rawText),
           textItems,
+          textRuns,
+          width: roundCoordinate(viewport.width),
         })
       }
       finally {
@@ -257,7 +302,7 @@ export async function parsePdf(input: PdfInput): Promise<ParsedPdf> {
   })
 }
 
-/** Read the PDF outline (bookmark tree) as a title-only nested structure. */
+/** Read the PDF outline hierarchy and initial expansion state. */
 export async function getPdfOutline(input: PdfInput): Promise<PdfOutlineItem[]> {
   return withPdfDocument(await toPdfBytes(input), async (document) => {
     const outline = await document.getOutline() as RawOutlineItem[] | null
@@ -340,6 +385,18 @@ export async function decodePngPage(
     png,
     width: image.width,
   }
+}
+
+/** Encode a validated RGBA page image as PNG bytes. */
+export function encodePngPage(image: PdfPageImage): Uint8Array {
+  assertPageImage(image, 'encoded')
+  const { createCanvas } = loadCanvas()
+  const canvas = createCanvas(image.width, image.height)
+  const context = canvas.getContext('2d')
+  const data = context.createImageData(image.width, image.height)
+  data.data.set(image.pixels)
+  context.putImageData(data, 0, 0)
+  return new Uint8Array(canvas.encodeSync('png'))
 }
 
 /** Compare two rasterized pages using explicit per-channel and page thresholds. */

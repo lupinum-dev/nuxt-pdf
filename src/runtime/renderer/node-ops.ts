@@ -1,4 +1,5 @@
 import type { RendererOptions } from 'vue'
+import { NuxtPdfError, PDF_ERROR_CODES } from '../shared/errors'
 import { patchPdfProp } from './patch-prop'
 import {
   PDF_COMMENT,
@@ -96,20 +97,14 @@ const ELEMENT_CHILDREN: Record<PdfElementType, ReadonlySet<PdfElementType>> = {
   [PDF_PRIMITIVES.Stop]: NO_CHILDREN,
 }
 
-export type PdfRendererWarning = (message: string) => void
-
 export const createPdfRoot = (): PdfRoot => ({
   type: 'ROOT',
   document: null,
 })
 
-export const createPdfNodeOps = (
-  warn: PdfRendererWarning = message => console.warn(message),
-): RendererOptions<PdfHostNode, PdfHostElement> => {
+export const createPdfNodeOps = (): RendererOptions<PdfHostNode, PdfHostElement> => {
   const childOrder = new WeakMap<PdfHostElement, PdfHostNode[]>()
   const parents = new WeakMap<PdfHostNode, PdfHostElement>()
-  const warnedOrphans = new WeakSet<PdfTextInstance>()
-  const warnedInvalidChildren = new WeakSet<PdfElementNode>()
 
   const childrenOf = (parent: PdfHostElement): PdfHostNode[] => {
     let children = childOrder.get(parent)
@@ -122,22 +117,21 @@ export const createPdfNodeOps = (
     return children
   }
 
-  const warnAboutOrphan = (node: PdfTextInstance) => {
-    if (node.value === '' || warnedOrphans.has(node)) return
+  const rejectOrphanText = (parent?: PdfElementNode): never => {
+    const message = parent
+      ? `<${PDF_PRIMITIVE_NAMES[parent.type]}> cannot contain text. Wrap it in <PdfText>.`
+      : 'A PDF component root cannot contain text outside <PdfDocument>.'
 
-    warnedOrphans.add(node)
-    warn(`Invalid '${node.value}' string child outside <PdfText>.`)
+    throw new NuxtPdfError(PDF_ERROR_CODES.TreeInvalid, message)
   }
 
-  const warnAboutInvalidChild = (
+  const rejectInvalidChild = (
     parent: PdfElementNode,
     child: PdfElementNode,
-  ) => {
-    if (warnedInvalidChildren.has(child)) return
-
-    warnedInvalidChildren.add(child)
-    warn(
-      `Invalid PDF nesting: <${PDF_PRIMITIVE_NAMES[parent.type]}> cannot contain <${PDF_PRIMITIVE_NAMES[child.type]}>. The <${PDF_PRIMITIVE_NAMES[child.type]}> child was ignored.`,
+  ): never => {
+    throw new NuxtPdfError(
+      PDF_ERROR_CODES.TreeInvalid,
+      `Invalid PDF nesting: <${PDF_PRIMITIVE_NAMES[parent.type]}> cannot contain <${PDF_PRIMITIVE_NAMES[child.type]}>.`,
     )
   }
 
@@ -145,7 +139,9 @@ export const createPdfNodeOps = (
     const elements = children.filter(isPdfElementNode)
 
     for (const child of children) {
-      if (isPdfTextInstance(child)) warnAboutOrphan(child)
+      if (isPdfTextInstance(child) && child.value.trim() !== '') {
+        rejectOrphanText()
+      }
     }
 
     if (elements.length === 0) {
@@ -157,7 +153,8 @@ export const createPdfNodeOps = (
       elements.length !== 1
       || elements[0]?.type !== PDF_PRIMITIVES.Document
     ) {
-      throw new TypeError(
+      throw new NuxtPdfError(
+        PDF_ERROR_CODES.TreeInvalid,
         'A PDF component must render exactly one PdfDocument at its root.',
       )
     }
@@ -176,15 +173,12 @@ export const createPdfNodeOps = (
         isPdfElementNode(child)
         && !ELEMENT_CHILDREN[element.type].has(child.type)
       ) {
-        warnAboutInvalidChild(element, child)
-        continue
+        rejectInvalidChild(element, child)
       }
 
       if (isPdfTextInstance(child)) {
-        if (child.value === '') continue
-
         if (!acceptsText) {
-          warnAboutOrphan(child)
+          if (child.value.trim() !== '') rejectOrphanText(element)
           continue
         }
       }

@@ -1,5 +1,5 @@
 import { stat } from 'node:fs/promises'
-import { join } from 'node:path'
+import { isAbsolute, join, resolve as resolvePath } from 'node:path'
 import {
   addImports,
   addServerHandler,
@@ -16,7 +16,7 @@ import {
   discoverPdfTemplates,
   type PdfTemplateLayer,
 } from './build/discover-templates'
-import { bundlePdfFonts, DEFAULT_MAX_PDF_FONT_BYTES } from './build/fonts'
+import { bundlePdfFonts } from './build/fonts'
 import {
   generatePdfRegistryTypes,
   generatePdfRuntimeRegistry,
@@ -26,23 +26,67 @@ import {
   normalizeRemoteAssetPolicy,
   type RemoteAssetOptions,
 } from './runtime/server/assets/remote'
+import { loadPdfImageAsset } from './runtime/server/assets/resolve-asset'
 import {
-  DEFAULT_MAX_PDF_IMAGE_BYTES,
-  loadPdfImageAsset,
-} from './runtime/server/assets/resolve-asset'
-import {
+  DEFAULT_PDF_RENDER_LIMITS,
   normalizePdfLimits,
   type PdfLimitsOptions,
 } from './runtime/server/engine/limits'
 import type { PdfFontDeclaration } from './runtime/server/fonts'
 
+export type {
+  PdfLength,
+  PdfLengthOrPercentage,
+  PdfPercentage,
+  PdfStyle,
+  PdfStyleEntry,
+  PdfStyleValue,
+} from './runtime/renderer/types'
+
+export type {
+  PdfBaseProps,
+  PdfBookmark,
+  PdfCircleProps,
+  PdfClipPathProps,
+  PdfDefsProps,
+  PdfDocumentProps,
+  PdfEllipseProps,
+  PdfGProps,
+  PdfImageProps,
+  PdfImageSource,
+  PdfLinearGradientProps,
+  PdfLineProps,
+  PdfLinkProps,
+  PdfNoteProps,
+  PdfPageDimension,
+  PdfPageProps,
+  PdfPageSize,
+  PdfPageSizeName,
+  PdfPageUnit,
+  PdfPathProps,
+  PdfPolygonProps,
+  PdfPolylineProps,
+  PdfRadialGradientProps,
+  PdfRectProps,
+  PdfStopProps,
+  PdfSvgLength,
+  PdfSvgNumber,
+  PdfSvgTransform,
+  PdfSvgTransformOperation,
+  PdfSvgPresentationProps,
+  PdfSvgProps,
+  PdfTextProps,
+  PdfTspanProps,
+  PdfViewProps,
+} from './runtime/components'
+
 export interface ModuleOptions {
   fonts?: readonly PdfFontDeclaration[]
   remote?: RemoteAssetOptions
   /**
-   * Render limits enforced on every PDF render. Both fields are optional
-   * positive integers; omitted fields fall back to the built-in defaults
-   * (`timeoutMs` 30000, `maxPages` 2000).
+   * Canonical render, tree, image, remote-request, and output budgets. Every
+   * field is an optional positive safe integer; omitted fields use the
+   * documented built-in defaults.
    */
   limits?: PdfLimitsOptions
 }
@@ -131,19 +175,21 @@ export default defineNuxtModule<ModuleOptions>({
     )
     const templates = await discoverPdfTemplates(layers)
     const componentFiles = await discoverPdfComponentFiles(layers)
+    const limits = normalizePdfLimits(options.limits)
+    const resolvedLimits = limits ?? DEFAULT_PDF_RENDER_LIMITS
     const imageFiles = await discoverPdfImageFiles(layers)
     const assets = await Promise.all(imageFiles.map(image =>
-      loadPdfImageAsset(image.key, { roots: [image.rootDir] }),
+      loadPdfImageAsset(image.key, {
+        roots: [image.rootDir],
+        maxBytes: resolvedLimits.maxImageBytes,
+        maxPixels: resolvedLimits.maxImagePixels,
+      }),
     ))
     const fontRoots = await existingDirectories(
       layers.map(layer => join(layer.rootDir, 'pdfs', 'fonts')),
     )
-    const remote = normalizeRemoteAssetPolicy(options.remote, {
-      maxImageBytes: DEFAULT_MAX_PDF_IMAGE_BYTES,
-      maxFontBytes: DEFAULT_MAX_PDF_FONT_BYTES,
-    })
-    const limits = normalizePdfLimits(options.limits)
-    const fonts = await bundlePdfFonts(options.fonts ?? [], { fontRoots, remote })
+    const remote = normalizeRemoteAssetPolicy(options.remote)
+    const fonts = await bundlePdfFonts(options.fonts ?? [], { fontRoots })
     const pdfSfcFiles = new Map<string, 'component' | 'template'>(
       componentFiles.map(file => [file, 'component']),
     )
@@ -160,6 +206,7 @@ export default defineNuxtModule<ModuleOptions>({
       filename: '#pdf',
       getContents: () => generatePdfRuntimeRegistry(templates, {
         assets,
+        development: nuxt.options.dev,
         fonts,
         remote,
         limits,
@@ -230,6 +277,25 @@ export default defineNuxtModule<ModuleOptions>({
     })
 
     if (nuxt.options.dev) {
+      let clientViteServer: {
+        ws: { send(payload: { data: object, event: string, type: 'custom' }): void }
+      } | undefined
+
+      nuxt.hook('vite:serverCreated', (viteServer, environment) => {
+        if (environment.isClient) clientViteServer = viteServer
+      })
+      nuxt.hook('builder:watch', (_event, path) => {
+        const absolutePath = isAbsolute(path)
+          ? path
+          : resolvePath(nuxt.options.rootDir, path)
+        if (!pdfSfcFiles.has(absolutePath)) return
+        clientViteServer?.ws.send({
+          type: 'custom',
+          event: 'nuxt-pdf:update',
+          data: {},
+        })
+      })
+
       addServerHandler({ route: '/_pdf', handler: previewHandler })
       addServerHandler({ route: '/_pdf/**', handler: previewHandler })
     }

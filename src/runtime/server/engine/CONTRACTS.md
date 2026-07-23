@@ -35,8 +35,8 @@ appears.
    per-package only if the combined bump fails.
 3. Run the full evidence chain and record exact results:
    - `pnpm lint`
-   - `pnpm test` (193 tests, including the paired conformance fixtures and the
-     raster baselines)
+   - `pnpm test` (including the paired conformance fixtures and raster
+     baselines)
    - `pnpm test:types`
 4. Re-verify each documented contract below against the new engine source in the
    read-only reference checkout (`react-pdf/`). Update the **Reference commit**
@@ -102,6 +102,30 @@ Only `DOCUMENT` is accepted as the root passed to layout. Raw text is retained o
 
 Protected by `test/renderer.test.ts` and the paired conformance fixture. An incompatible change will fail exact tree assertions or layout before PDF serialization.
 
+### Closed authoring-input contract
+
+The host-node shape matches the engine; the public input surface deliberately
+does not match every upstream prop or stylesheet key. `PdfStyle` is owned by
+Nuxt PDF and lists only the value shapes and units covered by this repository's
+fixtures. Primitive props are likewise closed: `patchPdfProp` uses an exact
+per-primitive allowlist tied to the exported prop types, then the complete-tree
+validator checks cross-prop and context invariants. This catches Vue fallthrough
+attributes that TypeScript cannot reliably exclude. Unknown props, DOM/event
+attributes, props on the wrong primitive, both/neither image sources, both/neither
+link targets, and page-flow/SVG text branch violations all fail with
+`PDF_TREE_INVALID`; none reach layout as best-effort passthroughs.
+
+`PdfImage` therefore has exactly one of `src`/`source`, and `PdfLink` exactly one
+of `href`/`src`. SVG `PdfText` requires `x` and `y`, uses direct `fill` for paint,
+and rejects page-flow-only props. `PdfTspan` accepts only `x`, `y`, and `fill`.
+`PdfG` and shapes accept their direct presentation props but no generic `style`;
+`PdfSvg.style` remains page-flow sizing/positioning, while SVG text style is for
+text metrics rather than SVG paint.
+
+Protected by the real Vue SFC/type fixtures and renderer invalid-tree tests. A
+new public prop or style key requires types, runtime admission, invariant tests,
+and conformance evidence together; there is no compatibility passthrough.
+
 ## Layout contract
 
 `layoutDocument(document, fontStore)` accepts a `DocumentNode` and returns a `SafeDocumentNode`. The published JavaScript pipeline forwards additional arguments to every layout step and React PDF itself passes `fontStore` as the second argument. The published declaration incorrectly exposes only the document argument, so Nuxt PDF narrows this one call through a local function signature.
@@ -113,6 +137,11 @@ The layout result is derived and disposable. The mounted Vue tree remains the ca
 Protected by the engine integration and paired conformance tests. An incompatible change will fail type checking, semantic PDF assertions, or raster comparison.
 
 ### Layout purity contract (multi-pass re-layout)
+
+Registry ownership sits above this contract: after every page-number feed the
+live Vue tree is re-admitted (tree limits, metadata, image/remote policy) before
+the next layout. Layout itself still must treat the admitted tree as immutable
+input.
 
 The multi-pass loop (`layout-passes.ts`, used to resolve table-of-contents page
 numbers) lays out the **same mounted tree repeatedly** — once per fixed-point
@@ -184,7 +213,7 @@ section's **first** page, because a table-of-contents entry names where a sectio
   only the derived, disposable layout.
 
 The printed TOC number and the jump target thus share one source of truth.
-Protected by `test/toc-multipass-attack.test.ts` (the page-spanning regression),
+Protected by `test/toc-multipass-invariants.test.ts` (the page-spanning regression),
 `test/toc-multipass.test.ts`, and `test/internal-links.test.ts` (paired with
 React on non-splitting targets, where first- and last-page resolution agree).
 
@@ -214,26 +243,49 @@ engine code is involved beyond the pinned `@react-pdf/layout` and
   is an incomplete advisory type, not a runtime rule; `node-ops.ts` deliberately
   adds `Svg` to `PAGE_CHILDREN` on the evidence of the measure function. A future
   reader must not "correct" this back to match the upstream union.
-- **SVG props are camelCase and override style.** `resolveSvg` keys off exact
-  camelCase prop names (`strokeWidth`, `fillOpacity`, `stopColor`, `viewBox`,
-  `gradientTransform`) via `parseProps`/`pickStyleProps`, and merges
-  `Object.assign({}, style, props)` so props win over style. `transform` is a
-  *prop* on SVG nodes (parsed by `resolveSvg`), unlike `View`, where it is a
-  style key. The thin SVG components coerce kebab-case attribute names to these
-  camelCase keys (`compactSvgProps`) so static template attributes are not
-  silently dropped; `data-`/`aria-` names are left untouched so `patchPdfProp`
-  still rejects them.
-- **`url(#id)` references resolve within one Svg subtree.** `getDefs` indexes
-  `DEFS` children by `props.id`; `replaceDefs` substitutes matches for
-  `fill`/`clipPath` `url(#id)` references and detaches the `DEFS` subtree. A
-  dangling reference yields `undefined` (no fill), which differs from browsers.
+- **SVG presentation is a direct-prop contract.** `resolveSvg` keys off exact
+  camelCase names (`strokeWidth`, `fillOpacity`, `stopColor`, `viewBox`) via
+  `parseProps`/`pickStyleProps`; `transform` is a prop on SVG groups/shapes,
+  unlike `View`, where it is a style key. Although upstream internally merges a
+  node's style and props, Nuxt PDF does not expose generic style on `PdfG`,
+  shapes, or `PdfTspan`, so that merge is not public precedence behavior. The
+  thin components coerce kebab-case template attributes to camelCase
+  (`compactProps`); `data-`/`aria-` names stay untouched so `patchPdfProp`
+  rejects them.
+- **The numeric surface is parsed and validated before layout.** Geometry is a
+  finite number/numeric string, plus percentages only for `PdfSvgLength` props;
+  stroke width excludes percentages. Dimensions/radii are non-negative,
+  opacities and stops stay in their unit intervals, `viewBox` has four finite
+  numbers with positive dimensions, and transforms are one to three unitless
+  `translate`/`rotate` operations. This is narrower than arbitrary browser SVG
+  syntax by design.
+- **`url(#id)` references are scoped and fail closed.** Upstream `getDefs`
+  indexes a `DEFS` subtree, `replaceDefs` substitutes `fill`/`clipPath`
+  references, and then detaches `DEFS`. Nuxt PDF validates before layout that an
+  SVG has at most one `PdfDefs`, ids are safe and unique within that SVG, fills
+  target gradients, and clip paths target `PdfClipPath`. Missing, malformed, or
+  incompatible references fail with `PDF_TREE_INVALID`, so upstream's dangling
+  reference fallback is intentionally unreachable. Definition ids are scoped
+  per SVG and are a separate namespace from document destination ids.
+- **Resolved explicit zeroes are repaired before paint.** Layout parses author
+  strings to numbers and resolves a gradient reference into `node.props.fill`;
+  the pinned renderer then uses truthiness fallbacks that lose some numeric
+  zeroes. `serializePdfLayout` walks the disposable resolved tree immediately
+  before `renderPDF`: `fillOpacity: 0` becomes the truthy numeric string `'0'`;
+  `strokeWidth: 0` clears the stroke so PDFKit cannot interpret width zero as a
+  hairline; linear-gradient `x2` and radial-gradient `cx`/`cy`/`fx`/`fy`/`r`
+  zeroes become `'0'` on the resolved definition object. Under the closed
+  object-bounding-box gradient contract the renderer coerces those strings back
+  to numeric zero at use, preserving authored SVG semantics.
 - **Scope exclusions.** `Marker` (and `markerStart`/`Mid`/`End`) has additional
   `resolveSvg` container logic that is intentionally not exposed; the `Defs`
   child set and prop types exclude it. `List`, `Canvas`, `ImageBackground`, and
   form primitives are also out of scope.
 
-Protected by `test/svg-conformance.test.ts` (semantic + raster parity against
-React) and the SVG nesting/casing tests in `test/renderer.test.ts`.
+Protected by `test/svg-conformance.test.ts` (semantic/raster parity, direct SVG
+text fill, and zero-value regressions) and the SVG nesting, prop-surface,
+reference-scope, numeric, transform, and casing tests in
+`test/renderer.test.ts`.
 
 ## PDFKit contract
 
@@ -262,10 +314,9 @@ Protected by the local-font conformance fixture. Asset policy, path validation, 
 
 ## Remote resource boundary
 
-Both of React PDF's remote fetch seams are structurally unreachable under every
-configuration, because our code converts any remote URL into embedded bytes (an
-image `{data, format}` buffer) or a `data:font/...` URL **before** layout or the
-font store runs.
+Both of React PDF's remote fetch seams are structurally unreachable. Our code
+converts every allowlisted remote image into validated bytes before layout, and
+only registers build-embedded local font data URLs.
 
 - **Image seam.** `@react-pdf/image` `resolve.ts` `fetchRemoteFile` calls global
   `fetch(src.uri, {method, headers, body, credentials})` and reads
@@ -279,17 +330,30 @@ font store runs.
   only registers `data:font/(otf|ttf);base64,...` sources, so `FontSource._load`
   always takes the data-URL branch and never reaches `fetchFont`.
 
-When `pdf.remote` is configured, the fetching is done by our own
-`fetchRemoteResource` (`assets/remote.ts`): https-only allowlist match re-checked
-on every manual redirect hop, `GET` with no headers/credentials, a per-hop
-`AbortController` timeout, and a streamed byte cap. It returns raw bytes that the
-image or font caller validates with the same signature checks as local assets.
-Remote images are resolved at render time (their `src` is a dynamic prop);
-remote fonts are resolved at build time inside `bundlePdfFonts`, keeping the
-render path zero-network. The engine's own fetch code stays dead. Protected by
+When `pdf.remote` is configured, `fetchRemoteResource` (`assets/remote.ts`)
+accepts exact HTTPS image prefixes only, re-checks every one of at most three
+redirects, sends credential-less `GET`s, and uses the render's shared deadline,
+abort signal, request/concurrency limits, and byte budgets. PNG/JPEG structure
+and dimensions are validated before the engine receives bytes. Remote fonts are
+unconditionally rejected. The engine's own fetch code stays dead. Protected by
 `test/remote.test.ts`.
 
 ## Deliberately unused contracts
+
+### Worker cancellation decision
+
+The post-admission spike mounted 12,000 ordinary View/Text rows (about 36,000
+canonical nodes, below the default 50,000-node cap) under a 10 ms deadline. On
+the development reference machine it reached the first cooperative check after
+roughly 4.5 seconds. This proves the deadline is not hard cancellation.
+
+A worker was not adopted. The Vue component and its setup/module closures are
+the canonical document source and cannot be transferred to a worker. Re-importing
+the generated Nitro registry inside a worker requires a second worker-specific
+entry/bundle and did not satisfy the single portable Node/Nitro path required for
+both node-server and serverless builds. Serializing a second document schema is
+explicitly out of scope. Admission budgets plus cooperative checks therefore
+remain the supported boundary; hard cancellation is a documented non-feature.
 
 - React reconciler and renderer lifecycle
 - React hooks and DOM helpers

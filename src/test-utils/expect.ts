@@ -25,9 +25,10 @@ export type LinkQuery
     | { url: string, page?: number }
     | { destination: string, url: string, page?: number }
 
-/** A partial outline shape: title is required, children optional (and recursive). */
+/** A partial outline shape: title is required; state and children are optional. */
 export interface OutlineShape {
   title: string
+  expanded?: boolean
   children?: OutlineShape[]
 }
 
@@ -84,6 +85,11 @@ const outlineMismatch = (
     if (found.title !== expected.title) {
       return `expected outline title ${JSON.stringify(expected.title)} at ${here}, `
         + `found ${JSON.stringify(found.title)}`
+    }
+
+    if (expected.expanded !== undefined && found.expanded !== expected.expanded) {
+      return `expected outline expanded=${expected.expanded} at ${here}, `
+        + `found ${String(found.expanded)}`
     }
 
     if (expected.children !== undefined) {

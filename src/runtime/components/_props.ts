@@ -5,10 +5,6 @@ import type {
 
 export type PdfBookmark = string | {
   title: string
-  top?: number
-  left?: number
-  zoom?: number
-  fit?: boolean
   expanded?: boolean
 }
 
@@ -36,15 +32,7 @@ export type PdfDocumentProps = {
   producer?: string
   language?: string
   creationDate?: Date
-  modificationDate?: Date
   pdfVersion?: '1.3' | '1.4' | '1.5' | '1.6' | '1.7' | '1.7ext3'
-  pageMode?:
-    | 'useNone'
-    | 'useOutlines'
-    | 'useThumbs'
-    | 'fullScreen'
-    | 'useOC'
-    | 'useAttachments'
   pageLayout?:
     | 'singlePage'
     | 'oneColumn'
@@ -52,45 +40,114 @@ export type PdfDocumentProps = {
     | 'twoColumnRight'
     | 'twoPageLeft'
     | 'twoPageRight'
-  ownerPassword?: string
-  userPassword?: string
-  permissions?: {
-    printing?: 'lowResolution' | 'highResolution'
-    modifying?: boolean
-    copying?: boolean
-    annotating?: boolean
-    fillingForms?: boolean
-    contentAccessibility?: boolean
-    documentAssembly?: boolean
-  }
 }
+
+export const PDF_PAGE_SIZE_NAMES = [
+  '4A0',
+  '2A0',
+  'A0',
+  'A1',
+  'A2',
+  'A3',
+  'A4',
+  'A5',
+  'A6',
+  'A7',
+  'A8',
+  'A9',
+  'A10',
+  'B0',
+  'B1',
+  'B2',
+  'B3',
+  'B4',
+  'B5',
+  'B6',
+  'B7',
+  'B8',
+  'B9',
+  'B10',
+  'C0',
+  'C1',
+  'C2',
+  'C3',
+  'C4',
+  'C5',
+  'C6',
+  'C7',
+  'C8',
+  'C9',
+  'C10',
+  'RA0',
+  'RA1',
+  'RA2',
+  'RA3',
+  'RA4',
+  'SRA0',
+  'SRA1',
+  'SRA2',
+  'SRA3',
+  'SRA4',
+  'EXECUTIVE',
+  'FOLIO',
+  'LEGAL',
+  'LETTER',
+  'TABLOID',
+  'ID1',
+] as const
+
+export type PdfPageSizeName = (typeof PDF_PAGE_SIZE_NAMES)[number]
+
+export type PdfPageUnit = 'pt' | 'in' | 'mm' | 'cm' | 'px'
+export type PdfPageDimension = number | `${number}${PdfPageUnit}`
+export type PdfPageSize
+  = | PdfPageSizeName
+    | readonly [PdfPageDimension, PdfPageDimension]
+    | { width: PdfPageDimension, height: PdfPageDimension }
 
 export type PdfPageProps = PdfBaseProps & PdfBookmarkProp & {
   wrap?: boolean
-  size?:
-    | number
-    | string
-    | [number | string]
-    | [number | string, number | string]
-    | { width: number | string, height?: number | string }
+  size?: PdfPageSize
   orientation?: 'portrait' | 'landscape'
   dpi?: number
 }
+
+/** Numeric SVG values accepted by the pinned layout parser. */
+export type PdfSvgNumber = number | `${number}`
+export type PdfSvgLength = PdfSvgNumber | `${number}%`
+export type PdfSvgTransformOperation
+  = | `translate(${number})`
+    | `translate(${number},${number})`
+    | `translate(${number}, ${number})`
+    | `translate(${number} ${number})`
+    | `rotate(${number})`
+export type PdfSvgTransform
+  = | PdfSvgTransformOperation
+    | `${PdfSvgTransformOperation} ${PdfSvgTransformOperation}`
+    | `${PdfSvgTransformOperation} ${PdfSvgTransformOperation} ${PdfSvgTransformOperation}`
 
 export type PdfViewProps = PdfBaseProps & PdfBookmarkProp & {
   wrap?: boolean
 }
 
-export type PdfTextProps = PdfBaseProps & PdfBookmarkProp & {
+type PdfFlowTextProps = PdfBaseProps & PdfBookmarkProp & {
   wrap?: boolean
   widows?: number
   orphans?: number
   render?: PdfDynamicTextRender
   hyphenationCallback?: (word: string) => string[]
-  /** SVG text positioning when nested inside a `PdfSvg`. */
-  x?: number
-  y?: number
 }
+
+type PdfSvgTextProps = {
+  /** SVG text positioning is explicit and required inside a `PdfSvg`. */
+  x: PdfSvgLength
+  y: PdfSvgLength
+  fill?: string
+  style?: PdfStyleValue
+  hyphenationCallback?: (word: string) => string[]
+}
+
+export type PdfTextProps = PdfFlowTextProps | PdfSvgTextProps
 
 export type PdfImageSource
   = | string
@@ -99,16 +156,18 @@ export type PdfImageSource
     | { data: Uint8Array, format: 'png' | 'jpg' }
     | { uri: string, format?: 'png' | 'jpg' }
 
-export type PdfImageProps = PdfBaseProps & PdfBookmarkProp & {
-  src?: PdfImageSource
-  source?: PdfImageSource
-  cache?: boolean
-}
+type PdfImageSourceProp
+  = | { src: PdfImageSource, source?: never }
+    | { src?: never, source: PdfImageSource }
 
-export type PdfLinkProps = PdfBaseProps & {
+export type PdfImageProps = PdfBaseProps & PdfBookmarkProp & PdfImageSourceProp
+
+type PdfLinkTarget
+  = | { href: string, src?: never }
+    | { href?: never, src: string }
+
+export type PdfLinkProps = PdfBaseProps & PdfLinkTarget & {
   wrap?: boolean
-  href?: string
-  src?: string
   hitSlop?: {
     top?: number
     right?: number
@@ -119,56 +178,37 @@ export type PdfLinkProps = PdfBaseProps & {
 
 export type PdfNoteProps = PdfBaseProps
 
-export const compactPdfProps = (props: object): Record<string, unknown> => {
-  const result: Record<string, unknown> = {}
+const KEBAB_SEGMENT = /-([a-z])/g
 
-  for (const [key, value] of Object.entries(props)) {
-    if (value !== undefined) result[key] = value
-  }
-
-  return result
-}
-
-type SvgLength = string | number
+// data-*/aria-* stay kebab so patchPdfProp keeps rejecting them as DOM-only.
+const normalizePropName = (key: string): string =>
+  key.startsWith('data-') || key.startsWith('aria-')
+    ? key
+    : key.replace(KEBAB_SEGMENT, (_, letter: string) => letter.toUpperCase())
 
 /**
- * SVG presentation attributes, mirroring the engine's
- * `SVGPresentationAttributes`. On SVG nodes these are camelCase *props* that
- * override `style`; `transform` is a prop here (unlike `PdfView`, where it is a
- * style key).
+ * Fixture-proven subset of the engine's SVG presentation attributes. On SVG
+ * nodes these are camelCase props. `transform` is a prop here (unlike
+ * `PdfView`, where it is a style key).
  */
 export type PdfSvgPresentationProps = {
   fill?: string
-  color?: string
   stroke?: string
-  transform?: string
-  strokeDasharray?: string
-  opacity?: SvgLength
-  strokeWidth?: SvgLength
-  fillOpacity?: SvgLength
-  fillRule?: 'nonzero' | 'evenodd'
-  strokeOpacity?: SvgLength
-  textAnchor?: 'start' | 'middle' | 'end'
+  transform?: PdfSvgTransform
+  strokeWidth?: PdfSvgNumber
+  fillOpacity?: PdfSvgLength
+  strokeOpacity?: PdfSvgLength
   strokeLinecap?: 'butt' | 'round' | 'square'
-  strokeLinejoin?: 'butt' | 'round' | 'square' | 'miter' | 'bevel'
-  visibility?: 'visible' | 'hidden' | 'collapse'
+  strokeLinejoin?: 'miter' | 'round' | 'bevel'
   clipPath?: string
-  dominantBaseline?:
-    | 'auto'
-    | 'middle'
-    | 'central'
-    | 'hanging'
-    | 'mathematical'
-    | 'text-after-edge'
-    | 'text-before-edge'
-  style?: PdfStyleValue
 }
 
-export type PdfSvgProps = PdfSvgPresentationProps & {
-  width?: SvgLength
-  height?: SvgLength
+export type PdfSvgProps = {
+  width?: PdfSvgLength
+  height?: PdfSvgLength
   viewBox?: string
-  preserveAspectRatio?: string
+  /** Page-flow sizing and positioning for the SVG root. */
+  style?: PdfStyleValue
 }
 
 export type PdfGProps = PdfSvgPresentationProps
@@ -178,32 +218,32 @@ export type PdfPathProps = PdfSvgPresentationProps & {
 }
 
 export type PdfRectProps = PdfSvgPresentationProps & {
-  x?: SvgLength
-  y?: SvgLength
-  width: SvgLength
-  height: SvgLength
-  rx?: SvgLength
-  ry?: SvgLength
+  x?: PdfSvgLength
+  y?: PdfSvgLength
+  width: PdfSvgLength
+  height: PdfSvgLength
+  rx?: PdfSvgLength
+  ry?: PdfSvgLength
 }
 
 export type PdfCircleProps = PdfSvgPresentationProps & {
-  cx?: SvgLength
-  cy?: SvgLength
-  r: SvgLength
+  cx?: PdfSvgLength
+  cy?: PdfSvgLength
+  r: PdfSvgLength
 }
 
 export type PdfEllipseProps = PdfSvgPresentationProps & {
-  cx?: SvgLength
-  cy?: SvgLength
-  rx: SvgLength
-  ry: SvgLength
+  cx?: PdfSvgLength
+  cy?: PdfSvgLength
+  rx: PdfSvgLength
+  ry: PdfSvgLength
 }
 
 export type PdfLineProps = PdfSvgPresentationProps & {
-  x1: SvgLength
-  y1: SvgLength
-  x2: SvgLength
-  y2: SvgLength
+  x1: PdfSvgLength
+  y1: PdfSvgLength
+  x2: PdfSvgLength
+  y2: PdfSvgLength
 }
 
 export type PdfPolylineProps = PdfSvgPresentationProps & {
@@ -217,66 +257,55 @@ export type PdfPolygonProps = PdfSvgPresentationProps & {
 export type PdfDefsProps = Record<never, never>
 
 export type PdfClipPathProps = {
-  id?: string
+  id: string
 }
 
 type PdfGradientProps = {
   id: string
-  xlinkHref?: string
-  gradientTransform?: string
-  gradientUnits?: 'userSpaceOnUse' | 'objectBoundingBox'
 }
 
 export type PdfLinearGradientProps = PdfGradientProps & {
-  x1?: SvgLength
-  y1?: SvgLength
-  x2?: SvgLength
-  y2?: SvgLength
+  x1?: PdfSvgLength
+  y1?: PdfSvgLength
+  x2?: PdfSvgLength
+  y2?: PdfSvgLength
 }
 
 export type PdfRadialGradientProps = PdfGradientProps & {
-  cx?: SvgLength
-  cy?: SvgLength
-  r?: SvgLength
-  fx?: SvgLength
-  fy?: SvgLength
-  fr?: SvgLength
+  cx?: PdfSvgLength
+  cy?: PdfSvgLength
+  r?: PdfSvgLength
+  fx?: PdfSvgLength
+  fy?: PdfSvgLength
 }
 
 export type PdfStopProps = {
-  offset: SvgLength
+  offset: PdfSvgLength
   stopColor: string
-  stopOpacity?: SvgLength
+  stopOpacity?: PdfSvgLength
 }
 
-export type PdfTspanProps = PdfSvgPresentationProps & {
-  x?: SvgLength
-  y?: SvgLength
+export type PdfTspanProps = {
+  x?: PdfSvgLength
+  y?: PdfSvgLength
+  fill?: string
 }
-
-const KEBAB_SEGMENT = /-([a-z])/g
-
-// data-*/aria-* stay kebab so patchPdfProp keeps rejecting them as DOM-only.
-const isDomOnlyAttribute = (key: string): boolean =>
-  key.startsWith('data-') || key.startsWith('aria-')
 
 /**
- * Compact SVG props, coercing kebab-case attribute names (`stroke-width`,
- * `stop-color`) to the exact camelCase keys the engine's `resolveSvg` reads.
- * Without this, static kebab attributes from Vue templates would silently
- * no-op. Pure input coercion, not a second source of truth.
+ * Compact props for PDF and SVG primitives, coercing kebab-case attribute
+ * names (`stroke-width`, `stop-color`, `min-presence-ahead`) to the exact
+ * camelCase keys the engine reads. Without this, static kebab attributes from
+ * Vue templates would silently no-op. Pure input coercion, not a second
+ * source of truth. `data-`/`aria-` names stay kebab so `patchPdfProp` keeps
+ * rejecting them as DOM-only.
  */
-export const compactSvgProps = (props: object): Record<string, unknown> => {
+export const compactProps = (props: object): Record<string, unknown> => {
   const result: Record<string, unknown> = {}
 
   for (const [key, value] of Object.entries(props)) {
     if (value === undefined) continue
 
-    const name = isDomOnlyAttribute(key)
-      ? key
-      : key.replace(KEBAB_SEGMENT, (_, letter: string) => letter.toUpperCase())
-
-    result[name] = value
+    result[normalizePropName(key)] = value
   }
 
   return result

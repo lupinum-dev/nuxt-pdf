@@ -1,15 +1,19 @@
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { PdfAssertionError } from './expect'
 import {
   comparePageImages,
   decodePngPage,
+  encodePngPage,
   rasterizePdf,
   type PageImageComparison,
   type PdfInput,
+  type PdfPageImage,
 } from './pdf'
 
 export interface ComparePdfSnapshotOptions {
+  /** Directory for expected, actual, diff, and JSON failure artifacts. */
+  artifactDir?: string
   /** Maximum ratio of changed pixels allowed per page (default 0.005). */
   threshold?: number
   /** Maximum per-channel RGBA difference for a matching pixel (default 25). */
@@ -36,6 +40,72 @@ const pageFileName = (pageNumber: number): string => `page-${pageNumber}.png`
 
 const isPageBaseline = (name: string): boolean => /^page-\d+\.png$/.test(name)
 
+const differenceImage = (
+  actual: PdfPageImage,
+  expected: PdfPageImage,
+): PdfPageImage => {
+  const width = Math.max(actual.width, expected.width)
+  const height = Math.max(actual.height, expected.height)
+  const pixels = new Uint8ClampedArray(width * height * 4)
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const output = (y * width + x) * 4
+      const actualOffset = (y * actual.width + x) * 4
+      const expectedOffset = (y * expected.width + x) * 4
+      const inActual = x < actual.width && y < actual.height
+      const inExpected = x < expected.width && y < expected.height
+
+      if (!inActual || !inExpected) {
+        pixels.set([255, 0, 0, 255], output)
+        continue
+      }
+
+      const difference = Math.max(
+        ...[0, 1, 2, 3].map(channel => Math.abs(
+          actual.pixels[actualOffset + channel]!
+          - expected.pixels[expectedOffset + channel]!,
+        )),
+      )
+      const intensity = Math.min(255, difference * 4)
+      pixels.set([255, 255 - intensity, 255 - intensity, 255], output)
+    }
+  }
+
+  return { height, number: actual.number, pixels, png: new Uint8Array(), width }
+}
+
+const writeFailureArtifacts = async (
+  artifactDir: string,
+  failures: readonly {
+    actual: PdfPageImage
+    comparison: PageImageComparison
+    expected: PdfPageImage
+  }[],
+  thresholds: { channelThreshold: number, maxChangedPixelRatio: number },
+): Promise<void> => {
+  await rm(artifactDir, { force: true, recursive: true })
+  await mkdir(artifactDir, { recursive: true })
+  await Promise.all(failures.flatMap(({ actual, expected }) => {
+    const page = `page-${actual.number}`
+    return [
+      writeFile(join(artifactDir, `${page}-actual.png`), actual.png),
+      writeFile(join(artifactDir, `${page}-expected.png`), expected.png),
+      writeFile(
+        join(artifactDir, `${page}-diff.png`),
+        encodePngPage(differenceImage(actual, expected)),
+      ),
+    ]
+  }))
+  await writeFile(join(artifactDir, 'metrics.json'), `${JSON.stringify({
+    pages: failures.map(({ actual, comparison }) => ({
+      page: actual.number,
+      ...comparison,
+    })),
+    thresholds,
+  }, null, 2)}\n`)
+}
+
 /**
  * Compare a rendered PDF against a directory of reviewed per-page PNG baselines,
  * following the `UPDATE_PDF_BASELINES` review policy. With `update` (or the env
@@ -53,6 +123,8 @@ export async function comparePdfSnapshot(
     channelThreshold: options.channelThreshold ?? 25,
     maxChangedPixelRatio: options.threshold ?? 0.005,
   } as const
+  const artifactDir = options.artifactDir
+    ?? join(process.cwd(), 'reports', 'pdf-snapshots', basename(baselineDir))
 
   const pages = await rasterizePdf(input, { scale: options.scale ?? 1 })
 
@@ -85,6 +157,11 @@ export async function comparePdfSnapshot(
   }
 
   const comparisons: PageImageComparison[] = []
+  const failures: Array<{
+    actual: PdfPageImage
+    comparison: PageImageComparison
+    expected: PdfPageImage
+  }> = []
 
   for (const page of pages) {
     const baselinePath = join(baselineDir, pageFileName(page.number))
@@ -93,14 +170,17 @@ export async function comparePdfSnapshot(
     comparisons.push(comparison)
 
     if (!comparison.matches) {
-      throw new PdfAssertionError(
-        `Page ${page.number} does not match its reviewed baseline (${baselinePath}): `
-        + `${comparison.changedPixels}/${comparison.totalPixels} pixels changed `
-        + `(ratio ${comparison.changedPixelRatio.toFixed(4)}, max channel diff `
-        + `${comparison.maxChannelDifference}, dimensions match: ${comparison.dimensionsMatch}). `
-        + `Re-run with UPDATE_PDF_BASELINES=1 if this change is intended.`,
-      )
+      failures.push({ actual: page, comparison, expected: baseline })
     }
+  }
+
+  if (failures.length > 0) {
+    await writeFailureArtifacts(artifactDir, failures, thresholds)
+    throw new PdfAssertionError(
+      `${failures.length} page(s) do not match their reviewed baselines. `
+      + `Expected, actual, diff, and metrics artifacts were written to ${JSON.stringify(artifactDir)}. `
+      + `Re-run with UPDATE_PDF_BASELINES=1 if this change is intended.`,
+    )
   }
 
   return { matches: true, updated: false, pages: comparisons }

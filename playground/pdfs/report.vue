@@ -51,7 +51,6 @@ definePdf<ReportProps>({
     :author="report.author"
     creator="Nuxt PDF"
     :subject="report.title"
-    page-mode="useOutlines"
   >
     <!-- Contents -->
     <PdfPage

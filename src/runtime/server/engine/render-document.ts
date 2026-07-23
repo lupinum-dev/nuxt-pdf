@@ -1,3 +1,6 @@
+// eslint-disable-next-line @typescript-eslint/triple-slash-reference -- ambient declaration must follow source imports into generated Nuxt consumer typechecks
+/// <reference path="./react-pdf-pdfkit.d.ts" />
+
 import { Buffer } from 'node:buffer'
 import type FontStore from '@react-pdf/font'
 import layoutDocument, {
@@ -18,10 +21,10 @@ import {
   PDF_PRIMITIVES,
   type PdfElementNode,
   type PdfNode,
+  type PdfStyleValue,
 } from '../../renderer/types'
 import {
   enforceMaxPages,
-  type RenderDeadline,
   type RenderLimits,
 } from './limits'
 
@@ -66,9 +69,11 @@ const normalizeDynamicTextLineHeight = (node: PdfElementNode): void => {
     node.type === PDF_PRIMITIVES.Text
     && typeof node.props.render === 'function'
   ) {
-    node.style = Array.isArray(node.style)
+    // The empty-string sentinel is an engine-only workaround, never valid
+    // author input, so keep it outside the public PdfStyle contract.
+    node.style = (Array.isArray(node.style)
       ? [...node.style, { lineHeight: DYNAMIC_LINE_HEIGHT_SENTINEL }]
-      : { ...(node.style ?? {}), lineHeight: DYNAMIC_LINE_HEIGHT_SENTINEL }
+      : { ...(node.style ?? {}), lineHeight: DYNAMIC_LINE_HEIGHT_SENTINEL }) as PdfStyleValue
   }
 
   for (const child of node.children) {
@@ -82,13 +87,44 @@ const compact = (values: Record<string, unknown>) => Object.fromEntries(
   Object.entries(values).filter(([, value]) => value !== undefined && value !== null),
 )
 
-const collectStream = (stream: NodeJS.ReadableStream) => new Promise<Uint8Array>((resolve, reject) => {
+const collectStream = (
+  stream: PDFDocument,
+  limits?: RenderLimits,
+) => new Promise<Uint8Array>((resolve, reject) => {
   const chunks: Uint8Array[] = []
+  let total = 0
 
   stream.on('data', (chunk: Uint8Array | Buffer | string) => {
-    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk)
+    try {
+      limits?.deadline.check()
+      const bytes = typeof chunk === 'string' ? Buffer.from(chunk) : Buffer.from(chunk)
+      total += bytes.byteLength
+      if (limits && total > limits.maxOutputBytes) {
+        const error = new NuxtPdfError(
+          PDF_ERROR_CODES.LimitExceeded,
+          `PDF output exceeded pdf.limits.maxOutputBytes (${limits.maxOutputBytes}).`,
+        )
+        limits.abortController.abort(error)
+        stream.destroy(error)
+        return
+      }
+      chunks.push(bytes)
+    }
+    catch (error) {
+      const cause = error instanceof Error ? error : new Error(String(error))
+      limits?.abortController.abort(cause)
+      stream.destroy(cause)
+    }
   })
-  stream.on('end', () => resolve(Buffer.concat(chunks)))
+  stream.on('end', () => {
+    try {
+      limits?.deadline.check()
+      resolve(Buffer.concat(chunks, total))
+    }
+    catch (error) {
+      reject(error)
+    }
+  })
   stream.on('error', reject)
 })
 
@@ -98,9 +134,6 @@ const createContext = (props: DocumentMetadata, compress: boolean) => new PDFDoc
   lang: props.language,
   displayTitle: true,
   autoFirstPage: false,
-  ownerPassword: props.ownerPassword,
-  userPassword: props.userPassword,
-  permissions: props.permissions,
   pageLayout: props.pageLayout,
   info: compact({
     Title: props.title,
@@ -110,7 +143,6 @@ const createContext = (props: DocumentMetadata, compress: boolean) => new PDFDoc
     Creator: props.creator ?? 'nuxt-pdf',
     Producer: props.producer ?? 'nuxt-pdf',
     CreationDate: props.creationDate ?? new Date(),
-    ModificationDate: props.modificationDate,
   }),
 })
 
@@ -207,13 +239,13 @@ const nodeId = (node: PdfElementNode): string | undefined => {
 export const extractDestinationPages = (
   layout: SafeDocumentNode,
 ): DestinationPageMap => {
-  const pages: DestinationPageMap = {}
+  const pages = Object.create(null) as DestinationPageMap
 
   documentPages(layout).forEach((page, index) => {
     const pageNumber = index + 1
     visitPageNodes(page, (node) => {
       const id = nodeId(node)
-      if (id !== undefined && !(id in pages)) pages[id] = pageNumber
+      if (id !== undefined && !Object.hasOwn(pages, id)) pages[id] = pageNumber
     })
   })
 
@@ -274,27 +306,101 @@ const anchorDestinationsAtFirstPage = (layout: SafeDocumentNode): void => {
   root.children = documentPages(layout).map(strip) as PdfElementNode['children']
 }
 
+const SVG_SHAPE_TYPES = new Set<string>([
+  PDF_PRIMITIVES.Circle,
+  PDF_PRIMITIVES.Ellipse,
+  PDF_PRIMITIVES.G,
+  PDF_PRIMITIVES.Line,
+  PDF_PRIMITIVES.Path,
+  PDF_PRIMITIVES.Polygon,
+  PDF_PRIMITIVES.Polyline,
+  PDF_PRIMITIVES.Rect,
+  PDF_PRIMITIVES.Text,
+])
+
+const GRADIENT_ZERO_KEYS = {
+  [PDF_PRIMITIVES.LinearGradient]: ['x2'],
+  [PDF_PRIMITIVES.RadialGradient]: ['cx', 'cy', 'fx', 'fy', 'r'],
+} as const
+
+const normalizeGradientZeros = (value: unknown): void => {
+  if (
+    typeof value !== 'object'
+    || value === null
+    || !('type' in value)
+    || !('props' in value)
+    || (
+      value.type !== PDF_PRIMITIVES.LinearGradient
+      && value.type !== PDF_PRIMITIVES.RadialGradient
+    )
+    || typeof value.props !== 'object'
+    || value.props === null
+  ) return
+
+  const props = value.props as Record<string, unknown>
+  const keys = GRADIENT_ZERO_KEYS[value.type]
+  for (const key of keys) {
+    if (props[key] === 0) props[key] = '0'
+  }
+}
+
+/**
+ * Repair explicit SVG zeroes on the disposable, fully-resolved tree.
+ *
+ * The pinned `@react-pdf/render` release uses truthiness fallbacks for these
+ * values. Layout has already parsed author strings to numbers, so normalizing
+ * before layout cannot survive. Under the closed objectBoundingBox gradient
+ * contract, render multiplies/coerces a truthy string zero before PDFKit sees
+ * it. A zero-width stroke is removed because SVG defines it as not painted
+ * (PDF's native width zero would be a hairline).
+ */
+const normalizeResolvedSvgZeros = (layout: SafeDocumentNode): void => {
+  for (const page of documentPages(layout)) {
+    visitPageNodes(page, (node) => {
+      normalizeGradientZeros(node.props.fill)
+
+      if (!SVG_SHAPE_TYPES.has(node.type)) return
+
+      if (node.props.fillOpacity === 0) node.props.fillOpacity = '0'
+      if (node.props.strokeWidth === 0) node.props.stroke = null
+    })
+  }
+}
+
 // Serialization seam. Paints one already-laid-out document to PDF bytes.
 export const serializePdfLayout = async (
   props: DocumentMetadata,
   layout: SafeDocumentNode,
   compress: boolean,
-  deadline?: RenderDeadline,
+  limits?: RenderLimits,
 ): Promise<Uint8Array> => {
   // Checked before the paint (outside the try below) so an expired budget stays
   // PDF_LIMIT_EXCEEDED instead of being re-wrapped as a serialization failure.
-  deadline?.check()
+  limits?.deadline.check()
   try {
     anchorDestinationsAtFirstPage(layout)
+    normalizeResolvedSvgZeros(layout)
     const context = createContext(props, compress)
-    const stream = renderPDF(
-      context as unknown as Parameters<typeof renderPDF>[0],
-      layout,
-    ) as unknown as NodeJS.ReadableStream
+    // Listen before the synchronous painter starts so early PDFKit chunks and
+    // errors cannot race the collector.
+    const collected = collectStream(context, limits)
+    try {
+      renderPDF(
+        context as unknown as Parameters<typeof renderPDF>[0],
+        layout,
+      )
+    }
+    catch (error) {
+      const cause = error instanceof Error ? error : new Error(String(error))
+      context.destroy(cause)
+      await collected.catch(() => undefined)
+      throw cause
+    }
 
-    return await collectStream(stream)
+    return await collected
   }
   catch (error) {
+    if (error instanceof NuxtPdfError) throw error
     throw new NuxtPdfError(
       PDF_ERROR_CODES.RenderError,
       `PDF serialization failed: ${error instanceof Error ? error.message : String(error)}`,
@@ -313,7 +419,7 @@ export const renderDocument = async (
     document.props,
     layout,
     options.compress ?? true,
-    options.limits?.deadline,
+    options.limits,
   )
 
   return { bytes, layout }
