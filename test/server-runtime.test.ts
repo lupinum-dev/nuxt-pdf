@@ -172,7 +172,9 @@ describe('PDF render result', () => {
   it('keeps completed bytes and diagnostics immutable across conversions', async () => {
     const source = new TextEncoder().encode('%PDF-result')
     const expected = Buffer.from(source)
-    const faces = [{ family: 'Roboto', fontWeight: 400 as const }]
+    const faces: Array<{ family: string, fontWeight?: number }> = [
+      { family: 'Roboto', fontWeight: 400 },
+    ]
     const measurements = {
       ...renderDiagnostics({ registeredFontFaces: faces }),
       content: 'must not escape',
