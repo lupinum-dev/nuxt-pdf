@@ -1,73 +1,50 @@
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
-import { afterEach, describe, expect, it } from 'vitest'
-import { compilePdfSfc } from '../src/build/pdf-sfc-plugin'
-import { bundlePdfFonts } from '../src/build/fonts'
-import { createPdfTemplate } from '../src/runtime/server/registry'
-import { PDF_DEFINITION_PROPERTY } from '../src/runtime/shared/template'
+import { fileURLToPath } from 'node:url'
+import { describe, expect, it } from 'vitest'
+import { renderPdfSfc } from '../src/test'
 import { sampleEbook } from '../playground/shared/ebook'
 import {
   comparePageImages,
   decodePngPage,
   getPdfOutline,
-  parsePdf,
   rasterizePdf,
 } from './utils/pdf'
 
-// The shipped ebook showcase, compiled through the SFC plugin exactly as the
-// Nuxt build does (auto-injecting the usePdfPageNumbers import) and rendered
-// through the registry. Proves the flagship usePdfPageNumbers story end-to-end:
-// multi-pass numbering feeds BOTH the Contents dot-leaders and the chapter-aware
-// running foot, plus the per-chapter outline and internal links.
+// The shipped ebook showcase, compiled and rendered through the shipped test
+// helper (auto-injecting the usePdfPageNumbers import). Proves the flagship
+// usePdfPageNumbers story end-to-end: multi-pass numbering feeds BOTH the
+// Contents dot-leaders and the chapter-aware running foot, plus the per-chapter
+// outline and internal links.
 const ebookSource = resolve('playground/pdfs/ebook.vue')
-const composablesImport = resolve('src/runtime/composables/index')
-// Sits beside the source so its `../shared/ebook` import resolves unchanged.
-const compiledFile = resolve('playground/pdfs/.ebook.compiled.mjs')
 
 const baselineDirectory = fileURLToPath(new URL('./fixtures/baselines/ebook', import.meta.url))
 const updatePdfBaselines = process.env.UPDATE_PDF_BASELINES === '1'
 const rasterThresholds = { channelThreshold: 25, maxChangedPixelRatio: 0.005 } as const
 
-interface PdfDefinitionModule {
-  default: object
-}
-
-afterEach(async () => {
-  await rm(compiledFile, { force: true })
-})
+// Bundle the same Inter/Lora files the playground registers in nuxt.config,
+// so the render resolves the exact families the SFC references.
+const playgroundFonts = [
+  { family: 'Inter', src: './Inter-400.ttf', fontWeight: 400 },
+  { family: 'Inter', src: './Inter-500.ttf', fontWeight: 500 },
+  { family: 'Inter', src: './Inter-600.ttf', fontWeight: 600 },
+  { family: 'Inter', src: './Inter-700.ttf', fontWeight: 700 },
+  { family: 'Inter', src: './Inter-800.ttf', fontWeight: 800 },
+  { family: 'Lora', src: './Lora-400.ttf', fontWeight: 400 },
+  { family: 'Lora', src: './Lora-400-italic.ttf', fontWeight: 400, fontStyle: 'italic' as const },
+  { family: 'Lora', src: './Lora-600.ttf', fontWeight: 600 },
+  { family: 'Lora', src: './Lora-700.ttf', fontWeight: 700 },
+]
 
 describe('playground ebook.vue (usePdfPageNumbers showcase)', () => {
   it('auto-injects the composable, resolves the TOC + chapter-aware foot, and matches its raster baseline', async () => {
-    const source = await readFile(ebookSource, 'utf8')
-    const compiled = await compilePdfSfc(source, ebookSource, 'template', false, composablesImport)
-
-    // The plugin injected the auto-imported composable.
-    expect(compiled.code).toContain('usePdfPageNumbers')
-    expect(compiled.code).toContain(JSON.stringify(composablesImport))
-
-    await writeFile(compiledFile, compiled.code)
-    const module = await import(`${pathToFileURL(compiledFile).href}?v=1`) as PdfDefinitionModule
-    const component = module.default as { [PDF_DEFINITION_PROPERTY]?: object }
-    expect(component[PDF_DEFINITION_PROPERTY]).toBeTypeOf('object')
-
-    // Bundle the same Inter/Lora files the playground registers in nuxt.config,
-    // so the render resolves the exact families the SFC references.
-    const fonts = await bundlePdfFonts([
-      { family: 'Inter', src: './Inter-400.ttf', fontWeight: 400 },
-      { family: 'Inter', src: './Inter-500.ttf', fontWeight: 500 },
-      { family: 'Inter', src: './Inter-600.ttf', fontWeight: 600 },
-      { family: 'Inter', src: './Inter-700.ttf', fontWeight: 700 },
-      { family: 'Inter', src: './Inter-800.ttf', fontWeight: 800 },
-      { family: 'Lora', src: './Lora-400.ttf', fontWeight: 400 },
-      { family: 'Lora', src: './Lora-400-italic.ttf', fontWeight: 400, fontStyle: 'italic' },
-      { family: 'Lora', src: './Lora-600.ttf', fontWeight: 600 },
-      { family: 'Lora', src: './Lora-700.ttf', fontWeight: 700 },
-    ], { fontRoots: [resolve('playground/pdfs/fonts')] })
-
-    const template = createPdfTemplate('ebook', component, { fonts })
-    const bytes = await (await template.render({ ebook: sampleEbook })).toUint8Array()
-    const parsed = await parsePdf(bytes)
+    const { bytes, parsed, result } = await renderPdfSfc(
+      ebookSource,
+      { ebook: sampleEbook },
+      { fonts: playgroundFonts },
+    )
+    // Multi-pass activation proves the auto-injected composable ran.
+    expect(result.diagnostics.passes).toBeGreaterThanOrEqual(2)
 
     // Cover + title + contents + a multi-page body: several chapters span pages,
     // so the page count comfortably exceeds one-page-per-chapter.

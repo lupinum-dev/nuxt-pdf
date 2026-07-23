@@ -1,28 +1,21 @@
-import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
-import { afterEach, describe, expect, it } from 'vitest'
-import { compilePdfSfc } from '../src/build/pdf-sfc-plugin'
-import { bundlePdfFonts } from '../src/build/fonts'
-import { createPdfTemplate } from '../src/runtime/server/registry'
-import { PDF_DEFINITION_PROPERTY } from '../src/runtime/shared/template'
+import { fileURLToPath } from 'node:url'
+import { describe, expect, it } from 'vitest'
+import { renderPdfSfc } from '../src/test'
 import { formatMenuPrice, formatWinePrice, sampleMenu } from '../playground/shared/menu'
 import {
   comparePageImages,
   decodePngPage,
   getPdfOutline,
-  parsePdf,
   rasterizePdf,
 } from './utils/pdf'
 
-// The real playground template, compiled through the SFC plugin exactly as the
-// Nuxt build does, then rendered through the registry. Proves the showcase menu
-// end-to-end from an authored SFC: two A5 pages, umlaut round-tripping, dish +
-// price pairings, the wine list, the bookmark outline, and a reviewed raster
-// baseline per page.
+// The real playground template, compiled and rendered through the shipped test
+// helper. Proves the showcase menu end-to-end from an authored SFC: two A5
+// pages, umlaut round-tripping, dish + price pairings, the wine list, the
+// bookmark outline, and a reviewed raster baseline per page.
 const menuSource = resolve('playground/pdfs/menu.vue')
-const fontRoot = resolve('playground/pdfs/fonts')
-const composablesImport = resolve('src/runtime/composables/index')
 
 // The Inter/Lora families the menu references, declared exactly as the
 // playground registers them (playground/nuxt.config.ts pdf.fonts) so the render
@@ -35,8 +28,6 @@ const fontDeclarations = [
   { family: 'Lora', src: 'Lora-400-italic.ttf', fontWeight: 400, fontStyle: 'italic' as const },
   { family: 'Lora', src: 'Lora-700.ttf', fontWeight: 700 },
 ]
-// Sits beside the source so its `../shared/menu` import resolves unchanged.
-const compiledFile = resolve('playground/pdfs/.menu.compiled.mjs')
 const baselineDirectory = fileURLToPath(new URL(
   './fixtures/baselines/menu',
   import.meta.url,
@@ -47,28 +38,13 @@ const rasterThresholds = {
   maxChangedPixelRatio: 0.005,
 } as const
 
-interface PdfDefinitionModule {
-  default: object
-}
-
-afterEach(async () => {
-  await rm(compiledFile, { force: true })
-})
-
 describe('playground menu.vue (showcase A5 menu)', () => {
   it('renders a two-page menu with umlauts, priced dishes, wines, and an outline', async () => {
-    const source = await readFile(menuSource, 'utf8')
-    const compiled = await compilePdfSfc(source, menuSource, 'template', false, composablesImport)
-
-    await writeFile(compiledFile, compiled.code)
-    const module = await import(`${pathToFileURL(compiledFile).href}?v=1`) as PdfDefinitionModule
-    const component = module.default as { [PDF_DEFINITION_PROPERTY]?: object }
-    expect(component[PDF_DEFINITION_PROPERTY]).toBeTypeOf('object')
-
-    const fonts = await bundlePdfFonts(fontDeclarations, { fontRoots: [fontRoot] })
-    const template = createPdfTemplate('menu', component, { fonts })
-    const bytes = await (await template.render({ menu: sampleMenu })).toUint8Array()
-    const parsed = await parsePdf(bytes)
+    const { bytes, parsed } = await renderPdfSfc(
+      menuSource,
+      { menu: sampleMenu },
+      { fonts: fontDeclarations },
+    )
 
     // Exactly two A5 pages.
     expect(parsed.pageCount).toBe(2)

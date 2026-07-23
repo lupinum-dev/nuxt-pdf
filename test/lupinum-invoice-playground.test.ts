@@ -1,11 +1,7 @@
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { pathToFileURL } from 'node:url'
-import { afterEach, describe, expect, it } from 'vitest'
-import { compilePdfSfc } from '../src/build/pdf-sfc-plugin'
-import { bundlePdfFonts } from '../src/build/fonts'
-import { createPdfTemplate } from '../src/runtime/server/registry'
-import { PDF_DEFINITION_PROPERTY } from '../src/runtime/shared/template'
+import { describe, expect, it } from 'vitest'
+import { renderPdfSfc } from '../src/test'
 import {
   formatLupinumMoney,
   longLupinumInvoice,
@@ -15,12 +11,9 @@ import {
   resolveLupinumInvoiceCopy,
   sampleLupinumInvoice,
 } from '../playground/shared/lupinum-invoice'
-import { comparePageImages, decodePngPage, parsePdf, rasterizePdf } from './utils/pdf'
+import { comparePageImages, decodePngPage, rasterizePdf } from './utils/pdf'
 
 const templateSource = resolve('playground/pdfs/lupinum-invoice.vue')
-const compiledFile = resolve('playground/pdfs/.lupinum-invoice.compiled.mjs')
-const fontRoot = resolve('playground/pdfs/fonts')
-const logoPath = resolve('playground/pdfs/assets/lupinum-logo.png')
 const baselinePath = resolve('test/fixtures/baselines/lupinum-invoice/page-1.png')
 const outputPath = resolve('output/pdf/lupinum-invoice.pdf')
 const updateBaselines = process.env.UPDATE_PDF_BASELINES === '1'
@@ -33,32 +26,6 @@ const fontDeclarations = [
   { family: 'Lupinum Mono', src: 'GeistMono-SemiBold.otf', fontWeight: 600 },
   { family: 'Lupinum Mono', src: 'GeistMono-Bold.otf', fontWeight: 700 },
 ]
-
-interface PdfDefinitionModule {
-  default: object
-}
-
-afterEach(async () => {
-  await rm(compiledFile, { force: true })
-})
-
-const loadTemplate = async () => {
-  const source = await readFile(templateSource, 'utf8')
-  const compiled = await compilePdfSfc(source, templateSource, 'template')
-  await writeFile(compiledFile, compiled.code)
-  const module = await import(`${pathToFileURL(compiledFile).href}?v=${Date.now()}`) as PdfDefinitionModule
-  const component = module.default as { [PDF_DEFINITION_PROPERTY]?: object }
-  const fonts = await bundlePdfFonts(fontDeclarations, { fontRoots: [fontRoot] })
-  const logo = await readFile(logoPath)
-
-  expect(component[PDF_DEFINITION_PROPERTY]).toBeTypeOf('object')
-  return createPdfTemplate('lupinum-invoice', component, {
-    assets: {
-      'lupinum-logo.png': { data: logo, format: 'png' },
-    },
-    fonts,
-  })
-}
 
 describe('playground lupinum-invoice.vue', () => {
   it('keeps pricing, dates, and editable copy in plain invoice data', () => {
@@ -88,10 +55,11 @@ describe('playground lupinum-invoice.vue', () => {
   })
 
   it('renders the editable GlasPro reference invoice with reviewed fidelity', async () => {
-    const template = await loadTemplate()
-    const result = await template.render({ invoice: sampleLupinumInvoice })
-    const bytes = await result.toUint8Array()
-    const parsed = await parsePdf(bytes)
+    const { bytes, parsed } = await renderPdfSfc(
+      templateSource,
+      { invoice: sampleLupinumInvoice },
+      { fonts: fontDeclarations },
+    )
     const totals = lupinumInvoiceTotals(sampleLupinumInvoice)
 
     expect(parsed.pageCount).toBe(1)
@@ -139,9 +107,11 @@ describe('playground lupinum-invoice.vue', () => {
   }, 30_000)
 
   it('paginates a long keyed line-item list without losing content', async () => {
-    const template = await loadTemplate()
-    const bytes = await (await template.render({ invoice: longLupinumInvoice })).toUint8Array()
-    const parsed = await parsePdf(bytes)
+    const { parsed } = await renderPdfSfc(
+      templateSource,
+      { invoice: longLupinumInvoice },
+      { fonts: fontDeclarations },
+    )
     const text = parsed.pages.map(page => page.text).join(' ')
 
     expect(parsed.pageCount).toBeGreaterThan(1)

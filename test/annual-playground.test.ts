@@ -1,11 +1,7 @@
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { pathToFileURL } from 'node:url'
-import { afterEach, describe, expect, it } from 'vitest'
-import { compilePdfSfc } from '../src/build/pdf-sfc-plugin'
-import { bundlePdfFonts } from '../src/build/fonts'
-import { createPdfTemplate } from '../src/runtime/server/registry'
-import { PDF_DEFINITION_PROPERTY } from '../src/runtime/shared/template'
+import { describe, expect, it } from 'vitest'
+import { renderPdfSfc } from '../src/test'
 import {
   boardCutReport,
   buildKpis,
@@ -16,27 +12,19 @@ import {
   revenueOf,
   sampleAnnualReport,
 } from '../playground/shared/annual'
-import { comparePageImages, decodePngPage, parsePdf, rasterizePdf } from './utils/pdf'
+import { comparePageImages, decodePngPage, rasterizePdf } from './utils/pdf'
 
-// The real playground annual-report template, compiled through the SFC plugin
-// exactly as the Nuxt build does, then rendered through the registry with the
-// playground's own Inter/Lora font library bundled in. Proves the whole
-// showcase end-to-end: SVG charts, KPI tiles, the ledger table, section
+// The real playground annual-report template, compiled and rendered through the
+// shipped test helper with the playground's Inter/Lora font library. Proves the
+// whole showcase end-to-end: SVG charts, KPI tiles, the ledger table, section
 // bookmarks, dynamic footers — plus a reviewed per-page raster baseline.
 const templateSource = resolve('playground/pdfs/annual-report.vue')
-const composablesImport = resolve('src/runtime/composables/index')
-const compiledFile = resolve('playground/pdfs/.annual-report.compiled.mjs')
-const fontRoot = resolve('playground/pdfs/fonts')
 const baselineDirectory = resolve('test/fixtures/baselines/annual')
 const updateBaselines = process.env.UPDATE_PDF_BASELINES === '1'
 const rasterThresholds = {
   channelThreshold: 25,
   maxChangedPixelRatio: 0.005,
 } as const
-
-interface PdfDefinitionModule {
-  default: object
-}
 
 const playgroundFonts = [
   { family: 'Inter', src: 'Inter-400.ttf', fontWeight: 400 },
@@ -49,10 +37,6 @@ const playgroundFonts = [
   { family: 'Lora', src: 'Lora-600.ttf', fontWeight: 600 },
   { family: 'Lora', src: 'Lora-700.ttf', fontWeight: 700 },
 ]
-
-afterEach(async () => {
-  await rm(compiledFile, { force: true })
-})
 
 describe('playground annual-report.vue (showcase)', () => {
   it('renders the cover, letter, KPIs, SVG charts, ledger, and outline', async () => {
@@ -68,18 +52,11 @@ describe('playground annual-report.vue (showcase)', () => {
     // Exactly one sector is the highlighted segment.
     expect(sampleAnnualReport.sectors.filter(s => s.highlight)).toHaveLength(1)
 
-    const source = await readFile(templateSource, 'utf8')
-    const compiled = await compilePdfSfc(source, templateSource, 'template', false, composablesImport)
-    await writeFile(compiledFile, compiled.code)
-
-    const module = await import(`${pathToFileURL(compiledFile).href}?v=1`) as PdfDefinitionModule
-    const component = module.default as { [PDF_DEFINITION_PROPERTY]?: object }
-    expect(component[PDF_DEFINITION_PROPERTY]).toBeTypeOf('object')
-
-    const fonts = await bundlePdfFonts(playgroundFonts, { fontRoots: [fontRoot] })
-    const template = createPdfTemplate('annual', component, { fonts })
-    const bytes = await (await template.render({ report: sampleAnnualReport })).toUint8Array()
-    const parsed = await parsePdf(bytes)
+    const { bytes, parsed } = await renderPdfSfc(
+      templateSource,
+      { report: sampleAnnualReport },
+      { fonts: playgroundFonts },
+    )
 
     // Cover, letter, highlights, performance, financials.
     expect(parsed.pageCount).toBe(5)
@@ -153,8 +130,10 @@ describe('playground annual-report.vue (showcase)', () => {
     expect(boardCutReport.sectors).toHaveLength(sampleAnnualReport.sectors.length - 1)
     expect(boardCutReport.sectors.reduce((sum, s) => sum + s.value, 0)).toBe(revenueOf(current))
     expect(boardCutReport.sectors.filter(s => s.highlight).map(s => s.id)).toEqual(['public'])
-    const boardParsed = await parsePdf(
-      await (await template.render({ report: boardCutReport })).toUint8Array(),
+    const { parsed: boardParsed } = await renderPdfSfc(
+      templateSource,
+      { report: boardCutReport },
+      { fonts: playgroundFonts },
     )
     expect(boardParsed.pageCount).toBe(5)
     // The sample donut carries an 'Other' sector; the board cut folds it away,

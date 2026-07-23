@@ -9,6 +9,7 @@ export default defineConfig({
       'test/serverless-build.test.ts',
     ],
     fileParallelism: false,
+    include: ['test/**/*.test.ts'],
     pool: 'forks',
     setupFiles: ['./test/setup.ts'],
   },
