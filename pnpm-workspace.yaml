@@ -2,6 +2,10 @@ packages:
   - playground
   - docs
 
+overrides:
+  # Remove when ipx and nuxt-og-image accept the patched sharp minor.
+  sharp: 0.35.3
+
 allowBuilds:
   '@parcel/watcher': true
   esbuild: true
