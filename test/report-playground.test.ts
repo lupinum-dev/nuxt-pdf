@@ -1,48 +1,22 @@
-import { readFile, rm, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { pathToFileURL } from 'node:url'
-import { afterEach, describe, expect, it } from 'vitest'
-import { compilePdfSfc } from '../src/build/pdf-sfc-plugin'
-import { createPdfTemplate } from '../src/runtime/server/registry'
-import { PDF_DEFINITION_PROPERTY } from '../src/runtime/shared/template'
+import { describe, expect, it } from 'vitest'
+import { renderPdfSfc } from '../src/test'
 import { sampleReport } from '../playground/shared/report'
-import { getPdfOutline, parsePdf } from './utils/pdf'
+import { getPdfOutline } from './utils/pdf'
 
-// The real playground template, compiled through the SFC plugin exactly as the
-// Nuxt build does (auto-injecting the usePdfPageNumbers import), then rendered
-// through the registry. Proves the shipped feature end-to-end from an authored
-// SFC: composable auto-import, multi-pass activation, TOC page numbers, internal
+// The real playground template, compiled and rendered through the shipped test
+// helper. Proves the public helper follows the production SFC and registry path:
+// composable auto-import, multi-pass activation, TOC page numbers, internal
 // links, bookmarks/outline, and dynamic footers.
 const reportSource = resolve('playground/pdfs/report.vue')
-const composablesImport = resolve('src/runtime/composables/index')
-// Sits beside the source so its `../shared/report` import resolves unchanged.
-const compiledFile = resolve('playground/pdfs/.report.compiled.mjs')
-
-interface PdfDefinitionModule {
-  default: object
-}
-
-afterEach(async () => {
-  await rm(compiledFile, { force: true })
-})
 
 describe('playground report.vue (shipped TOC + bookmarks)', () => {
   it('auto-injects the composable import and renders a correct report', async () => {
-    const source = await readFile(reportSource, 'utf8')
-    const compiled = await compilePdfSfc(source, reportSource, 'template', false, composablesImport)
-
-    // The plugin injected the auto-imported composable.
-    expect(compiled.code).toContain('usePdfPageNumbers')
-    expect(compiled.code).toContain(JSON.stringify(composablesImport))
-
-    await writeFile(compiledFile, compiled.code)
-    const module = await import(`${pathToFileURL(compiledFile).href}?v=1`) as PdfDefinitionModule
-    const component = module.default as { [PDF_DEFINITION_PROPERTY]?: object }
-    expect(component[PDF_DEFINITION_PROPERTY]).toBeTypeOf('object')
-
-    const template = createPdfTemplate('report', component)
-    const bytes = await (await template.render({ report: sampleReport })).toUint8Array()
-    const parsed = await parsePdf(bytes)
+    const { bytes, parsed, result } = await renderPdfSfc(
+      reportSource,
+      { report: sampleReport },
+    )
+    expect(result.diagnostics.passes).toBeGreaterThanOrEqual(2)
 
     // Contents page links resolve, and every section heading prints on the TOC.
     const tocText = parsed.pages[0]!.text

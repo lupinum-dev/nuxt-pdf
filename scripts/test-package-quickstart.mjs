@@ -177,6 +177,7 @@ type InvoiceProps = {
 }
 
 const props = defineProps<InvoiceProps>()
+const pageNumbers = usePdfPageNumbers()
 
 definePdf<InvoiceProps>({
   title: ({ invoice }) => \`Invoice \${invoice.number}\`,
@@ -206,6 +207,7 @@ definePdf<InvoiceProps>({
         Installable invoice {{ props.invoice.number }}
       </PdfText>
       <PdfText>Total: {{ props.invoice.total }}</PdfText>
+      <PdfText id="target">Target page {{ pageNumbers.target ?? '' }}</PdfText>
       <PdfText
         fixed
         :style="{ bottom: 24, position: 'absolute', right: 48 }"
@@ -265,8 +267,12 @@ expectPdf(rendered.parsed)
   .toHavePageCount(1)
   .toContainText('Invoice QS-001')
   .toContainText('Prepared for Ada Lovelace')
+  .toContainText('Target page 1')
   .toContainText('Page 1 of 1')
 
+if (rendered.result.diagnostics.passes < 2) {
+  throw new Error('Packed-SFC composable did not activate multi-pass rendering.')
+}
 const title = rendered.parsed.pages[0].textRuns.find(run => run.text.includes('Installable'))
 if (!title || title.fontSize !== 24 || title.x < 40 || title.y < 700) {
   throw new Error('Unexpected packed-SFC title geometry: ' + JSON.stringify(title))
@@ -301,6 +307,7 @@ const assertPdfSemantics = async (bytes) => {
     assert(text.includes('Installable invoice QS-001'), `PDF is missing the typed invoice data. Extracted: ${JSON.stringify(text)}`)
     assert(text.includes('Prepared for Ada Lovelace'), 'PDF is missing the customer data.')
     assert(text.includes('Total: EUR 1,250.00'), 'PDF is missing the nested total.')
+    assert(text.includes('Target page 1'), 'PDF is missing the resolved destination page.')
     assert(text.includes('Page 1 of 1'), 'PDF is missing dynamic page text.')
   }
   finally {

@@ -1,6 +1,7 @@
+import { existsSync } from 'node:fs'
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { basename, dirname, join, resolve } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { build, type Plugin } from 'esbuild'
 import type { Component } from 'vue'
 import { discoverPdfImageFiles } from '../build/discover-templates'
@@ -8,6 +9,7 @@ import { bundlePdfFonts } from '../build/fonts'
 import { compilePdfSfc } from '../build/pdf-sfc-plugin'
 import type { PdfFontDeclaration } from '../runtime/server/fonts'
 import { loadPdfImageAsset } from '../runtime/server/assets/resolve-asset'
+import { resolvePdfRenderLimits } from '../runtime/server/engine/limits'
 import {
   renderPdfTemplate,
   type RenderedPdfTemplate,
@@ -33,7 +35,21 @@ const findPdfRoot = (filename: string): string => {
   throw new Error(`PDF SFC ${JSON.stringify(filename)} must be inside a pdfs directory.`)
 }
 
-const sfcCompilerPlugin = (entry: string): Plugin => ({
+const resolveComposablesImport = (): string => {
+  const directory = dirname(fileURLToPath(import.meta.url))
+  const built = join(directory, 'runtime', 'composables', 'index.js')
+  if (existsSync(built)) return built
+
+  const source = resolve(directory, '..', 'runtime', 'composables', 'index.ts')
+  if (existsSync(source)) return source
+
+  throw new Error('Unable to locate the Nuxt PDF composables runtime.')
+}
+
+const sfcCompilerPlugin = (
+  entry: string,
+  composablesImport: string,
+): Plugin => ({
   name: 'nuxt-pdf:test-sfc',
   setup(build) {
     build.onResolve({ filter: /^(?:@[^/]+\/)?[^./][^:]*/ }, ({ path }) => ({
@@ -45,8 +61,8 @@ const sfcCompilerPlugin = (entry: string): Plugin => ({
         await readFile(path, 'utf8'),
         path,
         path === entry ? 'template' : 'component',
-        false,
-        '@lupinum/nuxt-pdf',
+        true,
+        composablesImport,
       )).code,
       loader: 'js',
       resolveDir: dirname(path),
@@ -57,6 +73,7 @@ const sfcCompilerPlugin = (entry: string): Plugin => ({
 /** Compile a real PDF SFC graph with the same compiler used by the Nuxt module. */
 export async function loadPdfSfc(filename: string): Promise<Component> {
   const entry = resolve(filename)
+  const composablesImport = resolveComposablesImport()
   const result = await build({
     absWorkingDir: dirname(entry),
     bundle: true,
@@ -64,7 +81,7 @@ export async function loadPdfSfc(filename: string): Promise<Component> {
     format: 'esm',
     packages: 'external',
     platform: 'node',
-    plugins: [sfcCompilerPlugin(entry)],
+    plugins: [sfcCompilerPlugin(entry, composablesImport)],
     sourcemap: 'inline',
     target: 'node22',
     write: false,
@@ -99,13 +116,18 @@ export async function renderPdfSfc<Props extends object>(
   const entry = resolve(filename)
   const pdfRoot = findPdfRoot(entry)
   const rootDir = resolve(options.rootDir ?? dirname(pdfRoot))
+  const limits = resolvePdfRenderLimits(options.limits)
   const [component, imageFiles, fonts] = await Promise.all([
     loadPdfSfc(entry),
     discoverPdfImageFiles([{ name: 'test', rootDir }]),
     bundlePdfFonts(options.fonts ?? [], { fontRoots: [join(rootDir, 'pdfs', 'fonts')] }),
   ])
   const loadedAssets = await Promise.all(imageFiles.map(image =>
-    loadPdfImageAsset(image.key, { roots: [image.rootDir] })))
+    loadPdfImageAsset(image.key, {
+      roots: [image.rootDir],
+      maxBytes: limits.maxImageBytes,
+      maxPixels: limits.maxImagePixels,
+    })))
   const assets = Object.fromEntries(loadedAssets.map(asset => [asset.key, asset]))
 
   return renderPdfTemplate(component, props, {
@@ -113,7 +135,7 @@ export async function renderPdfSfc<Props extends object>(
     file: entry,
     fonts,
     key: options.key,
-    limits: options.limits,
+    limits,
     remote: options.remote,
   })
 }
