@@ -370,12 +370,13 @@ pipeline (`test/limits.test.ts`):
   `NuxtPdfError` naming the page count, the cap, and the `pdf.limits.maxPages`
   config key, attributed to the template through the same boundary as every
   other render failure.
-- **`timeoutMs`** (default `30000`) — the whole render (mount, asset resolution,
-  every layout pass, and serialization) is bounded by one deadline started before
-  mount. On expiry it fails with a `PDF_LIMIT_EXCEEDED` error naming the elapsed
-  budget. Upstream layout is not abortable mid-step, so the deadline is polled
-  between engine stages and passes, not mid-step; worst-case overshoot is one
-  engine stage. This is a checked budget, not hard cancellation (see "not
+- **`timeoutMs`** (default `30000`) — the whole public render (metadata
+  evaluation, mount, asset resolution, every layout pass, and serialization) is
+  bounded by one deadline started at the public render boundary before metadata
+  evaluation. On expiry it fails with a `PDF_LIMIT_EXCEEDED` error naming the
+  elapsed budget. Upstream layout is not abortable mid-step, so the deadline is
+  polled between engine stages and passes, not mid-step; worst-case overshoot is
+  one engine stage. This is a checked budget, not hard cancellation (see "not
   claimed").
 
 Both defaults are generous enough that no legitimate document reaches them, and

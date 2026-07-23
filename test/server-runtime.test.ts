@@ -14,6 +14,7 @@ import {
   type PdfRenderDiagnostics,
 } from '../src/runtime/server/registry'
 import { usePdfPageNumbers } from '../src/runtime/composables/use-pdf-page-numbers'
+import { DEFAULT_PDF_RENDER_LIMITS } from '../src/runtime/server/engine/limits'
 import { renderPdfPreview } from '../src/runtime/server/preview'
 import { NuxtPdfError } from '../src/runtime/shared/errors'
 import {
@@ -405,6 +406,11 @@ describe('PDF runtime registry', () => {
       language: 'en-GB',
       title: 'Definition wins',
     })
+    expect(result.metadata).toEqual({
+      filename: undefined,
+      language: 'en-GB',
+      title: 'Definition wins',
+    })
   })
 
   it('preserves PdfDocument metadata when definePdf leaves it absent', async () => {
@@ -429,6 +435,46 @@ describe('PDF runtime registry', () => {
       language: 'de-AT',
       title: 'Document fallback',
     })
+    expect(result.metadata).toEqual({
+      filename: 'fallback.pdf',
+      language: 'de-AT',
+      title: 'Document fallback',
+    })
+  })
+
+  it('includes metadata evaluation in the render deadline and duration', async () => {
+    const component = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, null, {
+          default: () => h(PdfText, null, () => 'Timed metadata'),
+        }),
+      }),
+    )
+    Object.defineProperty(component, PDF_DEFINITION_PROPERTY, {
+      value: {
+        title: () => {
+          const start = performance.now()
+          while (performance.now() - start < 120) {
+            // Synchronous metadata is part of the public render operation.
+          }
+          return 'Timed metadata'
+        },
+      } satisfies PdfDefinition<object>,
+    })
+
+    const timedOut = createPdfTemplate('metadata-timeout', component, {
+      limits: {
+        ...DEFAULT_PDF_RENDER_LIMITS,
+        timeoutMs: 50,
+      },
+    })
+    await expect(timedOut.render({})).rejects.toMatchObject({
+      code: 'PDF_LIMIT_EXCEEDED',
+      templateKey: 'metadata-timeout',
+    })
+
+    const measured = await createPdfTemplate('metadata-duration', component).render({})
+    expect(measured.diagnostics.durationMs).toBeGreaterThanOrEqual(120)
   })
 
   it('fails usefully for missing metadata and unknown canonical keys', async () => {

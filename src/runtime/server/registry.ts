@@ -23,8 +23,9 @@ import { renderDocumentMultiPass } from './engine/layout-passes'
 import {
   createRenderLimits,
   enforceTreeLimits,
-  resolvePdfRenderLimits,
+  type RenderLimits,
   type PdfRenderLimits,
+  resolvePdfRenderLimits,
 } from './engine/limits'
 import {
   createPdfFontStore,
@@ -204,10 +205,24 @@ const applyDocumentMetadata = (
 
 interface TemplateRenderOutput {
   bytes: Uint8Array
+  metadata: ResolvedPdfMetadata
   /** Layout passes actually run: 1 for the single-pass path, ≥ 2 for multi-pass. */
   passes: number
   pageCount: number
 }
+
+const completedMetadata = (
+  document: Awaited<ReturnType<typeof mountPdfComponent>>['document'],
+  definition: ResolvedPdfMetadata,
+): ResolvedPdfMetadata => ({
+  filename: definition.filename,
+  language: typeof document.props.language === 'string'
+    ? document.props.language
+    : undefined,
+  title: typeof document.props.title === 'string'
+    ? document.props.title
+    : undefined,
+})
 
 const renderTemplate = async <Props extends object>(
   key: string,
@@ -216,6 +231,7 @@ const renderTemplate = async <Props extends object>(
   metadata: ResolvedPdfMetadata,
   options: PdfTemplateRuntimeOptions,
   maxPasses: number | undefined,
+  limits: RenderLimits,
   // One sink serves the public render path in every environment. The caller
   // records the same prefixed messages it logs, so diagnostics stay truthful.
   warnSink: (message: string) => void,
@@ -224,9 +240,6 @@ const renderTemplate = async <Props extends object>(
   const warn = (message: string): void =>
     warnSink(`${templatePrefix(key, options.file)}: ${message}`)
 
-  // Built once here so the deadline clock covers the WHOLE render — mount, asset
-  // resolution, every layout pass, and serialization — under one shared budget.
-  const limits = createRenderLimits(resolvePdfRenderLimits(options.limits))
   const imageState = createPdfImageResolutionState(limits)
 
   const admitDocument = async (
@@ -274,6 +287,7 @@ const renderTemplate = async <Props extends object>(
       )
       return {
         bytes: result.bytes,
+        metadata: completedMetadata(live.document, metadata),
         passes: result.passes,
         pageCount: countPages(result.layout),
       }
@@ -282,7 +296,12 @@ const renderTemplate = async <Props extends object>(
     await admitDocument(mounted.document)
     const document = mounted.document as unknown as Parameters<typeof renderDocument>[0]
     const result = await renderDocument(document, { fontStore, limits })
-    return { bytes: result.bytes, passes: 1, pageCount: countPages(result.layout) }
+    return {
+      bytes: result.bytes,
+      metadata: completedMetadata(mounted.document, metadata),
+      passes: 1,
+      pageCount: countPages(result.layout),
+    }
   }
   finally {
     mounted?.unmount()
@@ -310,16 +329,26 @@ export const createPdfTemplate = <Props extends object>(
       throw templateError(ref, 'render props must be an object.')
     }
 
-    const metadata = resolveMetadata(ref, definition, props)
     const warnings: string[] = []
     const start = performance.now()
-    const { bytes, passes, pageCount } = await renderTemplate(
+    // The public render boundary owns the only deadline. It starts before
+    // metadata evaluation so both timeoutMs and durationMs describe the same
+    // completed operation.
+    const limits = createRenderLimits(resolvePdfRenderLimits(options.limits))
+    const definitionMetadata = resolveMetadata(ref, definition, props)
+    const {
+      bytes,
+      metadata,
+      passes,
+      pageCount,
+    } = await renderTemplate(
       key,
       component,
       props,
-      metadata,
+      definitionMetadata,
       options,
       definition.maxPasses,
+      limits,
       (message) => {
         warnings.push(message)
         console.warn(message)
