@@ -37,6 +37,8 @@ jobs:
       - run: npm install --global pnpm@10.34.5
       - run: pnpm install --frozen-lockfile
       - run: pnpm verify
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
       - name: Create release evidence
         run: |
           mkdir -p release-artifacts
@@ -51,7 +53,7 @@ jobs:
           path: release-artifacts
       - name: Validate npm publication
         if: inputs.dry_run
-        run: npm publish release-artifacts/*.tgz --dry-run --tag "${{ inputs.tag }}"
+        run: npm publish ./release-artifacts/*.tgz --dry-run --tag "${{ inputs.tag }}"
       - name: Publish with npm provenance
         if: ${{ !inputs.dry_run }}
-        run: npm publish release-artifacts/*.tgz --provenance --access public --tag "${{ inputs.tag }}"
+        run: npm publish ./release-artifacts/*.tgz --provenance --access public --tag "${{ inputs.tag }}"
