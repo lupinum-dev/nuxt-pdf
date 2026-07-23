@@ -1,6 +1,14 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { defineComponent, h, type Component } from 'vue'
 import { describe, expect, it } from 'vitest'
-import { PdfDocument, PdfPage, PdfText } from '../src/runtime/components'
+import {
+  PdfDocument,
+  PdfImage,
+  PdfPage,
+  PdfText,
+} from '../src/runtime/components'
+import { usePdfPageNumbers } from '../src/runtime/composables'
 import { createPdfTemplate } from '../src/runtime/server/registry'
 import {
   DEFAULT_PDF_MAX_PAGES,
@@ -39,6 +47,53 @@ const OnePageDoc = asTemplate(defineComponent({
     return () => h(PdfDocument, {}, {
       default: () => h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
         default: () => h(PdfText, { style: { fontSize: 18 } }, { default: () => 'Hello' }),
+      }),
+    })
+  },
+}))
+
+const LateTreeDoc = asTemplate(defineComponent({
+  name: 'LateTreeDoc',
+  setup() {
+    const pages = usePdfPageNumbers()
+    return () => h(PdfDocument, {}, {
+      default: () => h(PdfPage, {}, {
+        default: () => [
+          h(PdfText, { id: 'target' }, { default: () => 'Target' }),
+          ...(pages.target === undefined
+            ? []
+            : Array.from({ length: 20 }, (_, index) =>
+                h(PdfText, { key: index }, { default: () => `Late ${index}` }))),
+        ],
+      }),
+    })
+  },
+}))
+
+const lateImageBytes = readFileSync(fileURLToPath(new URL(
+  './fixtures/assets/sample.png',
+  import.meta.url,
+)))
+const lateImagePath = fileURLToPath(new URL(
+  './fixtures/assets/sample.png',
+  import.meta.url,
+))
+
+const lateImageDocument = (source: string): Component => asTemplate(defineComponent({
+  name: 'LateImageDocument',
+  setup() {
+    const pages = usePdfPageNumbers()
+    return () => h(PdfDocument, {}, {
+      default: () => h(PdfPage, {}, {
+        default: () => [
+          h(PdfText, { id: 'target' }, { default: () => 'Target' }),
+          ...(pages.target === undefined
+            ? []
+            : [h(PdfImage, {
+                src: source,
+                style: { height: 100, width: 100 },
+              })]),
+        ],
       }),
     })
   },
@@ -130,6 +185,52 @@ describe('render limits', () => {
       code: 'PDF_LIMIT_EXCEEDED',
       message: expect.stringContaining('pdf.limits.maxOutputBytes (100)'),
       templateKey: 'output-cap',
+    })
+  })
+
+  it('re-applies tree admission after page-number feedback changes the tree', async () => {
+    const template = createPdfTemplate('late-tree', LateTreeDoc, {
+      limits: renderLimits({ maxNodes: 10 }),
+    })
+
+    await expect(template.render({})).rejects.toMatchObject({
+      code: 'PDF_LIMIT_EXCEEDED',
+      message: expect.stringContaining('more than 10 nodes'),
+      templateKey: 'late-tree',
+    })
+  })
+
+  it('re-applies image admission after page-number feedback introduces an image', async () => {
+    const template = createPdfTemplate('late-image', lateImageDocument('sample.png'), {
+      assets: {
+        'sample.png': {
+          data: lateImageBytes,
+          format: 'png',
+        },
+      },
+      limits: renderLimits({
+        maxImageBytes: 100,
+        maxTotalImageBytes: 100,
+      }),
+    })
+
+    await expect(template.render({})).rejects.toMatchObject({
+      code: 'PDF_LIMIT_EXCEEDED',
+      message: expect.stringContaining('100-byte source limit'),
+      templateKey: 'late-image',
+    })
+  })
+
+  it('blocks an absolute image introduced after page-number feedback', async () => {
+    const template = createPdfTemplate(
+      'late-absolute-image',
+      lateImageDocument(lateImagePath),
+    )
+
+    await expect(template.render({})).rejects.toMatchObject({
+      code: 'PDF_ASSET_BLOCKED',
+      message: expect.stringContaining('relative local asset path'),
+      templateKey: 'late-absolute-image',
     })
   })
 })

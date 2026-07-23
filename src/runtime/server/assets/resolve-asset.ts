@@ -64,6 +64,12 @@ export interface ResolvePdfImageAssetsOptions {
   assets: PdfImageAssetMap
   limits?: RenderLimits
   remote?: RemoteAssetPolicy
+  /**
+   * Mutable accounting shared by every image-admission pass in one render.
+   * Multi-pass documents re-render their Vue tree between layout passes; this
+   * state keeps deduplication and byte/request budgets render-wide.
+   */
+  state?: PdfImageResolutionState
 }
 
 type ResolvedPdfImageAsset = Readonly<{
@@ -80,6 +86,13 @@ type ImageBudgetState = {
 }
 
 type ImageResolutionCache = Map<unknown, Promise<Buffer>>
+
+export interface PdfImageResolutionState {
+  readonly budget: ImageBudgetState
+  readonly inflight: Map<string, Promise<Buffer>>
+  readonly remote: RemoteRequestState
+  readonly resolved: ImageResolutionCache
+}
 
 type ImageTarget = {
   node: PdfElementNode
@@ -697,6 +710,15 @@ const collectImageNodes = (document: PdfDocumentNode): PdfElementNode[] => {
   return images
 }
 
+export const createPdfImageResolutionState = (
+  limits: RenderLimits,
+): PdfImageResolutionState => ({
+  budget: { bytes: 0, pixels: 0 },
+  inflight: new Map(),
+  remote: createRemoteRequestState(limits),
+  resolved: new Map(),
+})
+
 /**
  * Resolves every image on the canonical renderer tree before layout. The pass
  * is atomic: no image prop changes unless all image sources validate.
@@ -713,10 +735,7 @@ export const resolvePdfImageAssets = async (
     return invalid('A generated PDF image asset map is required.')
   }
 
-  const inflight = new Map<string, Promise<Buffer>>()
-  const remoteState = createRemoteRequestState(limits)
-  const resolvedImages: ImageResolutionCache = new Map()
-  const budget: ImageBudgetState = { bytes: 0, pixels: 0 }
+  const state = options.state ?? createPdfImageResolutionState(limits)
   const targets: ImageTarget[] = []
 
   for (const node of collectImageNodes(document)) {
@@ -749,10 +768,10 @@ export const resolvePdfImageAssets = async (
         options.assets,
         limits,
         options.remote,
-        remoteState,
-        inflight,
-        resolvedImages,
-        budget,
+        state.remote,
+        state.inflight,
+        state.resolved,
+        state.budget,
       ),
     ))
   }

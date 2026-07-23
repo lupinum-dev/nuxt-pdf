@@ -13,6 +13,7 @@ import {
   type ResolvedPdfMetadata,
 } from '../shared/template'
 import {
+  createPdfImageResolutionState,
   resolvePdfImageAssets,
   type PdfImageAssetMap,
 } from './assets/resolve-asset'
@@ -226,6 +227,20 @@ const renderTemplate = async <Props extends object>(
   // Built once here so the deadline clock covers the WHOLE render — mount, asset
   // resolution, every layout pass, and serialization — under one shared budget.
   const limits = createRenderLimits(resolvePdfRenderLimits(options.limits))
+  const imageState = createPdfImageResolutionState(limits)
+
+  const admitDocument = async (
+    document: Awaited<ReturnType<typeof mountPdfComponent>>['document'],
+  ): Promise<void> => {
+    enforceTreeLimits(document, limits)
+    applyDocumentMetadata(document, metadata)
+    await resolvePdfImageAssets(document, {
+      assets: options.assets ?? EMPTY_ASSETS,
+      limits,
+      remote: options.remote,
+      state: imageState,
+    })
+  }
 
   try {
     mounted = await mountPdfComponent(
@@ -233,15 +248,6 @@ const renderTemplate = async <Props extends object>(
       props as Record<string, unknown>,
       warn,
     )
-    enforceTreeLimits(mounted.document, limits)
-    applyDocumentMetadata(mounted.document, metadata)
-    await resolvePdfImageAssets(mounted.document, {
-      assets: options.assets ?? EMPTY_ASSETS,
-      limits,
-      remote: options.remote,
-    })
-
-    const document = mounted.document as unknown as Parameters<typeof renderDocument>[0]
     const fontStore = createPdfFontStore(options.fonts)
 
     // Gate: only a template that reads `usePdfPageNumbers()` consumes resolved
@@ -258,11 +264,10 @@ const renderTemplate = async <Props extends object>(
           },
           feed: async (pages) => {
             await live.feedPageNumbers(pages)
-            // Feeding page numbers re-renders the Vue tree and therefore
-            // restores authored PdfDocument props. Reapply definePdf's
-            // authoritative values before every layout pass so metadata cannot
-            // regress to the component fallback during a multi-pass render.
-            applyDocumentMetadata(live.document, metadata)
+            // Page-number feedback can change the authored tree. Re-admit that
+            // exact tree before every layout pass so conditional content cannot
+            // bypass node, image, path, or remote-resource policy.
+            await admitDocument(live.document)
           },
         },
         { fontStore, maxPasses, limits },
@@ -274,6 +279,8 @@ const renderTemplate = async <Props extends object>(
       }
     }
 
+    await admitDocument(mounted.document)
+    const document = mounted.document as unknown as Parameters<typeof renderDocument>[0]
     const result = await renderDocument(document, { fontStore, limits })
     return { bytes: result.bytes, passes: 1, pageCount: countPages(result.layout) }
   }
