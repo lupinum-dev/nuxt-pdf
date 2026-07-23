@@ -99,6 +99,26 @@ const lateImageDocument = (source: string): Component => asTemplate(defineCompon
   },
 }))
 
+const MultiPassImageDoc = asTemplate(defineComponent({
+  name: 'MultiPassImageDocument',
+  setup() {
+    const pages = usePdfPageNumbers()
+    return () => h(PdfDocument, {}, {
+      default: () => h(PdfPage, {}, {
+        default: () => [
+          h(PdfText, { id: 'target' }, {
+            default: () => `Target ${pages.target ?? ''}`,
+          }),
+          h(PdfImage, {
+            src: 'sample.png',
+            style: { height: 100, width: 100 },
+          }),
+        ],
+      }),
+    })
+  },
+}))
+
 describe('render limits', () => {
   it('applies the generous built-in defaults to a normal render', async () => {
     const template = createPdfTemplate('normal', OnePageDoc, {})
@@ -232,6 +252,25 @@ describe('render limits', () => {
       message: expect.stringContaining('relative local asset path'),
       templateKey: 'late-absolute-image',
     })
+  })
+
+  it('charges a stable image once across multi-pass re-admission', async () => {
+    const template = createPdfTemplate('multi-pass-image', MultiPassImageDoc, {
+      assets: {
+        'sample.png': {
+          data: lateImageBytes,
+          format: 'png',
+        },
+      },
+      limits: renderLimits({
+        maxImageBytes: lateImageBytes.byteLength,
+        maxTotalImageBytes: lateImageBytes.byteLength,
+      }),
+    })
+
+    const result = await template.render({})
+    expect(result.diagnostics.passes).toBeGreaterThanOrEqual(2)
+    expect(result.diagnostics.pageCount).toBe(1)
   })
 })
 

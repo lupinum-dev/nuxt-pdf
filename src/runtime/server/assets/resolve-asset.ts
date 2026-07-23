@@ -781,7 +781,12 @@ export const resolvePdfImageAssets = async (
   }
 
   targets.forEach((target, index) => {
-    target.node.props[target.prop] = resolved[index]!
+    const data = resolved[index]!
+    target.node.props[target.prop] = data
+    // Vue can leave this resolved Buffer on the host node when an authored
+    // image prop is unchanged on the next feedback pass. Alias it to the
+    // already-admitted result so render-wide budgets charge the image once.
+    state.resolved.set(data, Promise.resolve(data))
   })
 
   return document
