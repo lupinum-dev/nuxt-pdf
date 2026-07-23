@@ -38,4 +38,4 @@ assert(
   `CONFORMANCE.md has no ${packageJson.version} version boundary.`,
 )
 
-console.log(`Release metadata matches ${packageJson.name}@${packageJson.version}.`)
+console.log(`Version headings match ${packageJson.name}@${packageJson.version}.`)

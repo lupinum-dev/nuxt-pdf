@@ -228,6 +228,8 @@ The 0.2.0 tests verify:
   definition, sample data, scenarios, source path, or a preview render method;
 - `definePdf` title/language precedence over `PdfDocument` fallback props,
   including reapplication after every page-number feed in a multi-pass render;
+  completed `result.metadata` reports the title/language actually written into
+  the PDF after that precedence, plus the resolved filename;
 - template attribution on failure: every error surfaced from a template's
   `render()` is a `NuxtPdfError` carrying `templateKey`; development renders
   also carry `templateFile` and a message prefixed with the source file
@@ -274,12 +276,15 @@ and exposes it through one composable and existing props. The tested boundary:
   that could be mistaken for first-pass state.
 - **Convergence.** The loop is a fixed point: it re-lays-out the same mounted
   tree, feeding each pass's `id → page` map back through the composable, until the
-  map it produces equals the map it was laid out with. An ordinary document
-  converges in two passes. A document whose layout depends on the numbers it
-  prints (a TOC entry whose height changes with its page number) never converges
-  and, after `maxPasses` (a validated positive integer on `definePdf`, default 5),
-  raises a `PDF_LIMIT_EXCEEDED` `NuxtPdfError` attributed to the template key and
-  file through the same boundary as every other render failure.
+  map it produces equals the map it was laid out with. After every feed the live
+  tree is re-admitted — tree limits, metadata reapplication, and image/resource
+  policy run again against that exact tree — so conditional content introduced by
+  page numbers cannot bypass admission. An ordinary document converges in two
+  passes. A document whose layout depends on the numbers it prints (a TOC entry
+  whose height changes with its page number) never converges and, after
+  `maxPasses` (a validated positive integer on `definePdf`, default 5), raises a
+  `PDF_LIMIT_EXCEEDED` `NuxtPdfError` attributed to the template key and file
+  through the same boundary as every other render failure.
 - **Named destinations resolve to a section's first page.** A node's `id` becomes
   a named destination; a `PdfLink` `src="#id"` jumps to it. When the id sits on a
   node that spans a page boundary, both the printed number and the jump target
@@ -359,30 +364,32 @@ private-IP or DNS rebinding exceptions, and any cross-render caching.
 
 ### Render limits
 
-Every render is bounded by two operator-overridable limits under `pdf.limits`,
+Every render is bounded by the operator-overridable `pdf.limits` fields below,
 enforced identically on the single-pass and multi-pass paths through one shared
-pipeline (`test/limits.test.ts`):
+pipeline (`test/limits.test.ts`). Defaults apply when a field is omitted; every
+field is a positive safe integer validated at module setup.
 
-- **`maxPages`** (default `2000`) — the laid-out page count is checked once,
-  right after layout and before serialization, at the single shared layout seam
-  both paths pass through (`layoutPdfTree`), including every intermediate
-  multi-pass iteration. Exceeding it fails closed with a `PDF_LIMIT_EXCEEDED`
-  `NuxtPdfError` naming the page count, the cap, and the `pdf.limits.maxPages`
-  config key, attributed to the template through the same boundary as every
-  other render failure.
-- **`timeoutMs`** (default `30000`) — the whole public render (metadata
-  evaluation, mount, asset resolution, every layout pass, and serialization) is
-  bounded by one deadline started at the public render boundary before metadata
-  evaluation. On expiry it fails with a `PDF_LIMIT_EXCEEDED` error naming the
-  elapsed budget. Upstream layout is not abortable mid-step, so the deadline is
-  polled between engine stages and passes, not mid-step; worst-case overshoot is
-  one engine stage. This is a checked budget, not hard cancellation (see "not
-  claimed").
+| Field | Default | When checked |
+| --- | --- | --- |
+| `timeoutMs` | `30_000` | Whole public render deadline, started before metadata evaluation |
+| `maxPages` | `2_000` | After each layout, before serialization |
+| `maxNodes` | `50_000` | Post-mount tree walk (and after every multi-pass feed) |
+| `maxTreeDepth` | `128` | Post-mount tree walk (and after every multi-pass feed) |
+| `maxTextCharacters` | `2_000_000` | Post-mount tree walk (and after every multi-pass feed) |
+| `maxImages` | `256` | Post-mount tree walk (and after every multi-pass feed) |
+| `maxImageBytes` | `10_485_760` | Per unique image before engine admission |
+| `maxTotalImageBytes` | `33_554_432` | Aggregate unique images for the render |
+| `maxImagePixels` | `25_000_000` | Per unique image before engine admission |
+| `maxTotalImagePixels` | `100_000_000` | Aggregate unique images for the render |
+| `maxRemoteRequests` | `32` | Remote fetch accounting, including redirect hops |
+| `maxRemoteConcurrency` | `4` | Simultaneous remote HTTP requests |
+| `maxOutputBytes` | `67_108_864` | Completed PDF byte buffer before result handoff |
 
-Both defaults are generous enough that no legitimate document reaches them, and
-both are validated as positive integers at module setup (a non-positive,
-non-integer, or non-numeric value fails the build). With no `pdf.limits`
-configured the same defaults still apply, so every render is bounded.
+Exceeding a limit fails closed with `PDF_LIMIT_EXCEEDED`. Tree/node/text/image-count
+checks are **post-mount rejection**: Vue has already mounted the tree, so they do
+not create hard memory isolation before mount. Image byte/pixel and remote
+accounting share one render-wide state across multi-pass feeds. `timeoutMs` is a
+checked deadline polled between engine stages, not mid-step hard cancellation.
 
 ### Serverless build
 
@@ -460,10 +467,12 @@ failure messages, in `test/test-utils-public.test.ts`.
 - Hard render cancellation. The `pdf.limits.timeoutMs` budget is polled between
   engine stages and passes — upstream layout is not abortable mid-step — so a
   single engine stage can overshoot it; it is a checked deadline, not mid-step
-  cancellation. Time-budget and page-count limits themselves are claimed above
+  cancellation. The thirteen `pdf.limits` fields themselves are claimed above
   under "Render limits".
-- Worker isolation, concurrency guarantees, output byte limits, or
-  decoded-pixel limits.
+- Pre-mount memory isolation. `maxNodes`, `maxTreeDepth`, `maxTextCharacters`,
+  and `maxImages` reject after Vue has mounted the tree; they are not a sandbox
+  that prevents allocation during mount.
+- Worker isolation or cross-render concurrency guarantees.
 - Visual equivalence beyond the paired fixture, pinned inputs, and tested
   raster environment.
 

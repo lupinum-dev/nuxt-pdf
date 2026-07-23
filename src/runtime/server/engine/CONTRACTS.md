@@ -138,6 +138,11 @@ Protected by the engine integration and paired conformance tests. An incompatibl
 
 ### Layout purity contract (multi-pass re-layout)
 
+Registry ownership sits above this contract: after every page-number feed the
+live Vue tree is re-admitted (tree limits, metadata, image/remote policy) before
+the next layout. Layout itself still must treat the admitted tree as immutable
+input.
+
 The multi-pass loop (`layout-passes.ts`, used to resolve table-of-contents page
 numbers) lays out the **same mounted tree repeatedly** — once per fixed-point
 pass — without cloning it. That is only sound because `layoutDocument` treats its

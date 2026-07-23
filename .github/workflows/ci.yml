@@ -40,7 +40,7 @@ jobs:
       - run: pnpm lint
       - run: pnpm test:types
       - run: pnpm test:docs
-      - run: pnpm test:release-metadata
+      - run: pnpm test:version-headings
       - run: pnpm test:dependencies
       - run: pnpm build && pnpm test:package-metadata
 
