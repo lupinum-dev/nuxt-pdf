@@ -20,7 +20,9 @@ assert(
   `package.json contains an invalid release version: ${packageJson.version}.`,
 )
 
-const changelogVersions = [...changelog.matchAll(/^## (\S+)$/gm)]
+const changelogVersions = [
+  ...changelog.matchAll(/^## (\S+)(?: - \d{4}-\d{2}-\d{2})?$/gm),
+]
   .map(match => match[1])
 const currentChangelogVersion = changelogVersions.find(version => version !== 'Unreleased')
 assert(
