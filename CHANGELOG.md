@@ -28,6 +28,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Breaking changes
 
+- Template keys now use one slash-separated vocabulary everywhere. A nested
+  template such as `pdfs/reports/monthly.vue` is registered as
+  `pdf['reports/monthly']`; camel-cased aliases such as `pdf.reportsMonthly`
+  are removed.
+- The inert `diagnostics.warnings` field and preview warning plumbing are
+  removed. Render failures remain typed errors; diagnostics report only
+  measured facts about a completed render.
 - `pdf.remote` now permits images only and contains only `allow` plus
   `timeoutMs`. Move former `maxImageBytes` configuration to
   `pdf.limits.maxImageBytes`; remote fonts must become local `pdfs/fonts`
@@ -77,7 +84,7 @@ conformance fixture. Everything is additive: no 0.1.0 public API changed.
   template-attributed errors: every failure from a template's `render()` carries
   `templateKey`/`templateFile` and a message prefixed with the source file.
 - **Development preview workbench** at `/_pdf`: scenario tabs, a per-render
-  diagnostics strip (duration, size, page count, layout passes, warnings), and a
+  diagnostics strip (duration, size, page count, and layout passes), and a
   readable error panel. Server-rendered, absent from production builds.
 - **Documentation site** under `docs/` and a `playground/pdfs/report.vue`
   demonstrating the TOC, bookmarks, and page numbers end to end.

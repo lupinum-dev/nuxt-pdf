@@ -229,7 +229,8 @@ The 0.2.0 tests verify:
 - `definePdf` title/language precedence over `PdfDocument` fallback props,
   including reapplication after every page-number feed in a multi-pass render;
   completed `result.metadata` reports the title/language actually written into
-  the PDF after that precedence, plus the resolved filename;
+  the PDF after that precedence, plus the resolved download filename (the
+  filename is response metadata, not a PDF Info field);
 - template attribution on failure: every error surfaced from a template's
   `render()` is a `NuxtPdfError` carrying `templateKey`; development renders
   also carry `templateFile` and a message prefixed with the source file

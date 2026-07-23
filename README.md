@@ -135,9 +135,7 @@ preview and the raw PDF. Each viewer page:
   PDF, with the active one highlighted (an unknown `?scenario=` still 404s with
   the available names);
 - renders a diagnostics strip for that render — duration, output size, page
-  count, and layout passes — plus every warning the render emitted (in
-  development these are collected for the panel; production still logs them with
-  `console.warn`);
+  count, layout passes, and registered font faces;
 - shows a content-free error summary when a render fails while retaining the
   previous successful PDF with an explicit stale marker;
 - provides separate refresh, inline raw-PDF, and download actions; and
