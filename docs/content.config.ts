@@ -8,6 +8,5 @@ export default defineGinkoDocsConfig({
     url: site.url,
   },
   locales: ["en"],
-  defaultLocale: "en",
   blog: false,
 });
