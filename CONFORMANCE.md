@@ -408,8 +408,9 @@ runtime is not executed locally.
 ### Testing utilities
 
 The verification helpers this suite runs on ship as `@lupinum/nuxt-pdf/test`.
-`test/utils/pdf.ts` re-exports `src/test-utils/`, so the entire suite exercises
-the same shipped code — there is one parser, not two. Claimed:
+They live in `src/test/`; repository tests import that canonical implementation
+directly and the package bundles it as the public test entry — there is one
+parser, not two. Claimed:
 
 - `parsePdf` accepts PDF bytes or a `PdfRenderResult` and returns page text,
   page count, flattened link annotations (named destination or external URL),
