@@ -9,7 +9,7 @@ import { bundlePdfFonts } from '../build/fonts'
 import { compilePdfSfc } from '../build/pdf-sfc-plugin'
 import type { PdfFontDeclaration } from '../runtime/fonts'
 import { loadPdfImageAsset } from '../runtime/server/assets/resolve-asset'
-import { resolvePdfRenderLimits } from '../runtime/server/engine/limits'
+import { resolvePdfRenderLimits } from '../runtime/server/render-limits'
 import {
   renderPdfTemplate,
   type RenderedPdfTemplate,

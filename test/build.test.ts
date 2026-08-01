@@ -14,7 +14,7 @@ import {
   generatePdfRegistryTypes,
   generatePdfRuntimeRegistry,
 } from '../src/build/generate-registry'
-import { DEFAULT_PDF_RENDER_LIMITS } from '../src/runtime/server/engine/limits'
+import { DEFAULT_PDF_RENDER_LIMITS } from '../src/runtime/server/render-limits'
 
 const temporaryDirectories: string[] = []
 

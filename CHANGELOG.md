@@ -11,6 +11,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Public font configuration types (`PdfFontDeclaration`, `PdfFontStyle`,
   `PdfFontWeight`, and `PdfFontWeightName`) are now exported from the package
   root instead of leaking through a private server implementation path.
+- `PdfLimitsOptions` is now a named package-root export backed by the same
+  canonical option shape used by the Nuxt module.
 
 ## 0.3.0 - 2026-07-23
 

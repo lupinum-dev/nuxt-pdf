@@ -20,7 +20,7 @@ import {
 import {
   createRenderLimits,
   DEFAULT_PDF_RENDER_LIMITS,
-} from '../src/runtime/server/engine/limits'
+} from '../src/runtime/server/render-limits'
 import {
   PDF_PRIMITIVES,
   type PdfDocumentNode,

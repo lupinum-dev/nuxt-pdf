@@ -2,7 +2,7 @@ import { defineComponent, h, type Component } from 'vue'
 import { createPdfTemplate } from '../runtime/server/registry'
 import type { PdfImageAssetMap } from '../runtime/server/assets/resolve-asset'
 import type { RemoteAssetPolicy } from '../runtime/server/assets/remote'
-import type { PdfRenderLimits } from '../runtime/server/engine/limits'
+import type { PdfRenderLimits } from '../runtime/server/render-limits'
 import type { BundledPdfFontDescriptor } from '../runtime/fonts'
 import {
   PDF_DEFINITION_PROPERTY,

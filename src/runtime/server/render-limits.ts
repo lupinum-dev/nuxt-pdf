@@ -1,10 +1,10 @@
-import { NuxtPdfError, PDF_ERROR_CODES } from '../../shared/errors'
+import { NuxtPdfError, PDF_ERROR_CODES } from '../shared/errors'
 import {
   PDF_PRIMITIVES,
   type PdfDocumentNode,
   type PdfElementNode,
   type PdfNode,
-} from '../../renderer/types'
+} from '../renderer/types'
 
 export const DEFAULT_PDF_TIMEOUT_MS = 30_000
 export const DEFAULT_PDF_MAX_PAGES = 2_000
@@ -38,21 +38,7 @@ export interface PdfLimitsOptions {
 }
 
 /** Fully resolved render limits threaded through the registry runtime options. */
-export interface PdfRenderLimits {
-  timeoutMs: number
-  maxPages: number
-  maxNodes: number
-  maxTreeDepth: number
-  maxTextCharacters: number
-  maxImages: number
-  maxImageBytes: number
-  maxTotalImageBytes: number
-  maxImagePixels: number
-  maxTotalImagePixels: number
-  maxRemoteRequests: number
-  maxRemoteConcurrency: number
-  maxOutputBytes: number
-}
+export type PdfRenderLimits = Required<PdfLimitsOptions>
 
 export const DEFAULT_PDF_RENDER_LIMITS: Readonly<PdfRenderLimits> = Object.freeze({
   timeoutMs: DEFAULT_PDF_TIMEOUT_MS,

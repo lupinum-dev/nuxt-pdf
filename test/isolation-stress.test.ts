@@ -9,7 +9,7 @@ import {
   PdfText,
 } from '../src/runtime/components'
 import { usePdfPageNumbers } from '../src/runtime/composables'
-import { DEFAULT_PDF_RENDER_LIMITS } from '../src/runtime/server/engine/limits'
+import { DEFAULT_PDF_RENDER_LIMITS } from '../src/runtime/server/render-limits'
 import { createPdfTemplate } from '../src/runtime/server/registry'
 import {
   PDF_DEFINITION_PROPERTY,

@@ -26,7 +26,7 @@ import {
 import {
   enforceMaxPages,
   type RenderLimits,
-} from './limits'
+} from '../render-limits'
 
 export interface PdfEngineOptions {
   compress?: boolean

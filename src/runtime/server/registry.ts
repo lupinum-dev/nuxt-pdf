@@ -26,7 +26,7 @@ import {
   type RenderLimits,
   type PdfRenderLimits,
   resolvePdfRenderLimits,
-} from './engine/limits'
+} from './render-limits'
 import type { BundledPdfFontDescriptor } from '../fonts'
 import { createPdfFontStore } from './engine/fonts'
 import { createPdfRenderResult } from './result'

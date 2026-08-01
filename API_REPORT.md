@@ -10,6 +10,8 @@ canonical sources.
 Source: `dist/types.d.mts`
 
 ```ts
+export { type PdfLimitsOptions } from '../dist/runtime/server/render-limits.js'
+
 export { type PdfFontDeclaration, type PdfFontStyle, type PdfFontWeight, type PdfFontWeightName } from '../dist/runtime/fonts.js'
 
 export { type PdfLength, type PdfLengthOrPercentage, type PdfPercentage, type PdfStyle, type PdfStyleEntry, type PdfStyleValue } from '../dist/runtime/renderer/types.js'
@@ -28,7 +30,8 @@ Source: `dist/module.d.mts`
 ```ts
 import * as _nuxt_schema from '@nuxt/schema';
 import { RemoteAssetOptions } from '../dist/runtime/server/assets/remote.js';
-import { PdfLimitsOptions } from '../dist/runtime/server/engine/limits.js';
+import { PdfLimitsOptions } from '../dist/runtime/server/render-limits.js';
+export { PdfLimitsOptions } from '../dist/runtime/server/render-limits.js';
 import { PdfFontDeclaration } from '../dist/runtime/fonts.js';
 export { PdfFontDeclaration, PdfFontStyle, PdfFontWeight, PdfFontWeightName } from '../dist/runtime/fonts.js';
 export { PdfLength, PdfLengthOrPercentage, PdfPercentage, PdfStyle, PdfStyleEntry, PdfStyleValue } from '../dist/runtime/renderer/types.js';
@@ -59,7 +62,7 @@ import { PdfRenderResult } from '../dist/runtime/shared/template.js';
 import { Component } from 'vue';
 import { PdfImageAssetMap } from '../dist/runtime/server/assets/resolve-asset.js';
 import { RemoteAssetPolicy } from '../dist/runtime/server/assets/remote.js';
-import { PdfRenderLimits } from '../dist/runtime/server/engine/limits.js';
+import { PdfRenderLimits } from '../dist/runtime/server/render-limits.js';
 import { BundledPdfFontDescriptor, PdfFontDeclaration } from '../dist/runtime/fonts.js';
 
 /** Raw PDF (or PNG) bytes accepted by the low-level readers. */

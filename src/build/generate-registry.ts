@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer'
 import type { RemoteAssetPolicy } from '../runtime/server/assets/remote'
-import type { PdfRenderLimits } from '../runtime/server/engine/limits'
+import type { PdfRenderLimits } from '../runtime/server/render-limits'
 import type { PdfTemplate } from './discover-templates'
 
 export type PdfRegistryTypeGenerationOptions = {

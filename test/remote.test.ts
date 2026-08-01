@@ -31,7 +31,7 @@ import { resolvePdfImageAssets } from '../src/runtime/server/assets/resolve-asse
 import {
   createRenderLimits,
   DEFAULT_PDF_RENDER_LIMITS,
-} from '../src/runtime/server/engine/limits'
+} from '../src/runtime/server/render-limits'
 import { renderDocument } from '../src/runtime/server/engine/render-document'
 import { createPdfFontStore } from '../src/runtime/server/engine/fonts'
 import {
