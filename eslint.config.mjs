@@ -1,6 +1,32 @@
 // @ts-check
 import { createConfigForNuxt } from '@nuxt/eslint-config/flat'
 
+const lowerReactPdfRestriction = {
+  group: ['@react-pdf/*'],
+  message: 'Lower React-PDF packages belong to the server engine boundary.',
+}
+
+const runtimeFacadeRestrictions = [
+  {
+    group: [
+      '../renderer/*',
+      '../renderer/**',
+      '../../renderer/*',
+      '../../renderer/**',
+    ],
+    message: 'Import the renderer facade instead of its private files.',
+  },
+  {
+    group: [
+      '../components/*',
+      '../components/**',
+      '../../components/*',
+      '../../components/**',
+    ],
+    message: 'Import the components facade instead of its private files.',
+  },
+]
+
 // Run `npx @eslint/config-inspector` to inspect the resolved config interactively
 export default createConfigForNuxt({
   features: {
@@ -24,10 +50,26 @@ export default createConfigForNuxt({
       ignores: ['src/runtime/server/engine/**'],
       rules: {
         'no-restricted-imports': ['error', {
-          patterns: [{
-            group: ['@react-pdf/*'],
-            message: 'Lower React-PDF packages belong to the server engine boundary.',
-          }],
+          patterns: [lowerReactPdfRestriction],
+        }],
+      },
+    },
+    {
+      files: ['src/runtime/**/*.{ts,vue}'],
+      rules: {
+        'no-restricted-imports': ['error', {
+          patterns: [
+            lowerReactPdfRestriction,
+            ...runtimeFacadeRestrictions,
+          ],
+        }],
+      },
+    },
+    {
+      files: ['src/runtime/server/engine/**/*.{ts,vue}'],
+      rules: {
+        'no-restricted-imports': ['error', {
+          patterns: runtimeFacadeRestrictions,
         }],
       },
     },
@@ -36,10 +78,7 @@ export default createConfigForNuxt({
       rules: {
         'no-restricted-imports': ['error', {
           patterns: [
-            {
-              group: ['@react-pdf/*'],
-              message: 'Lower React-PDF packages belong to the server engine boundary.',
-            },
+            lowerReactPdfRestriction,
             {
               group: ['../renderer', '../renderer/*', '../renderer/**'],
               message: 'Authoring components must not depend on renderer internals.',

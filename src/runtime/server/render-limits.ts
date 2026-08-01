@@ -4,7 +4,7 @@ import type {
   PdfDocumentNode,
   PdfElementNode,
   PdfNode,
-} from '../renderer/types'
+} from '../renderer'
 
 export const DEFAULT_PDF_TIMEOUT_MS = 30_000
 export const DEFAULT_PDF_MAX_PAGES = 2_000

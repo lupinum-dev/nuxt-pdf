@@ -10,7 +10,7 @@ import {
 import type {
   PdfDocumentNode,
   PdfElementNode,
-} from '../../renderer/types'
+} from '../../renderer'
 import { PDF_PRIMITIVES } from '../../authoring'
 import {
   PDF_ASSET_ERROR_CODES,

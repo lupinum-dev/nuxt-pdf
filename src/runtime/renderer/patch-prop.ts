@@ -31,7 +31,7 @@ import type {
   PdfTextProps,
   PdfTspanProps,
   PdfViewProps,
-} from '../components/_props'
+} from '../components'
 import {
   PDF_PRIMITIVE_NAMES,
   type PdfElementType,

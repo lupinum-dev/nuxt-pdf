@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import { mountPdfComponent } from '../renderer/render-component'
+import { mountPdfComponent } from '../renderer'
 import {
   NuxtPdfError,
   PDF_ERROR_CODES,

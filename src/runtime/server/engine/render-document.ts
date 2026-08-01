@@ -24,7 +24,7 @@ import {
 import type {
   PdfElementNode,
   PdfNode,
-} from '../../renderer/types'
+} from '../../renderer'
 import {
   enforceMaxPages,
   type RenderLimits,

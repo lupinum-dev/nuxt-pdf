@@ -7,6 +7,7 @@ export {
   PdfText,
   PdfView,
 } from './document'
+export { PDF_PAGE_SIZE_NAMES } from './_props'
 export {
   PdfCircle,
   PdfClipPath,
