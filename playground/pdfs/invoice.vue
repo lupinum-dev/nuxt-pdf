@@ -8,8 +8,8 @@ import {
   invoiceTotal,
   sampleInvoice,
 } from '../shared/invoice'
-import InvoiceLine from './components/InvoiceLine.vue'
-import InvoiceSection from './components/InvoiceSection.vue'
+import InvoiceLine from './components/invoice/InvoiceLine.vue'
+import InvoiceSection from './components/invoice/InvoiceSection.vue'
 
 defineOptions({ name: 'FieldnoteInvoicePdf' })
 

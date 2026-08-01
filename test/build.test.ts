@@ -71,6 +71,7 @@ describe('PDF template discovery', () => {
       'pdfs/reports/monthly.vue': '<template />',
       'pdfs/invoice.vue': '<template>project</template>',
       'pdfs/components/LineItem.vue': '<template />',
+      'pdfs/components/invoice/InvoiceSummary.vue': '<template />',
       'pdfs/assets/logo.vue': '<template />',
       'pdfs/assets/brand/logo.png': 'image',
       'pdfs/fonts/specimen.vue': '<template />',
@@ -109,6 +110,7 @@ describe('PDF template discovery', () => {
       { rootDir: base },
     ])).toEqual([
       join(project, 'pdfs/components/LineItem.vue'),
+      join(project, 'pdfs/components/invoice/InvoiceSummary.vue'),
     ])
     expect(await discoverPdfImageFiles([
       { rootDir: project },
