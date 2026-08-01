@@ -1,9 +1,9 @@
 import type { RendererOptions } from 'vue'
+import { PDF_PRIMITIVES } from '../authoring'
 import { NuxtPdfError, PDF_ERROR_CODES } from '../shared/errors'
 import { patchPdfProp } from './patch-prop'
 import {
   PDF_COMMENT,
-  PDF_PRIMITIVES,
   PDF_PRIMITIVE_NAMES,
   isPdfCommentNode,
   isPdfElementNode,

@@ -1,4 +1,10 @@
 import type { RendererOptions } from 'vue'
+import {
+  PDF_PRIMITIVES,
+  type PdfDynamicPageProps,
+  type PdfDynamicTextRender,
+  type PdfStyleValue,
+} from '../authoring'
 import { NuxtPdfError, PDF_ERROR_CODES } from '../shared/errors'
 import type {
   PdfBaseProps,
@@ -27,14 +33,10 @@ import type {
   PdfViewProps,
 } from '../components/_props'
 import {
-  PDF_PRIMITIVES,
   PDF_PRIMITIVE_NAMES,
-  type PdfDynamicPageProps,
-  type PdfDynamicTextRender,
   type PdfElementType,
   type PdfHostElement,
   type PdfHostNode,
-  type PdfStyleValue,
 } from './types'
 
 type KeysOfUnion<Value> = Value extends unknown ? keyof Value : never

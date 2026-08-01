@@ -34,11 +34,11 @@ import {
 } from '../src/runtime/server/render-limits'
 import { renderDocument } from '../src/runtime/server/engine/render-document'
 import { createPdfFontStore } from '../src/runtime/server/engine/fonts'
-import {
-  PDF_PRIMITIVES,
-  type PdfDocumentNode,
-  type PdfElementNode,
+import type {
+  PdfDocumentNode,
+  PdfElementNode,
 } from '../src/runtime/renderer/types'
+import { PDF_PRIMITIVES } from '../src/runtime/authoring'
 
 // The remote policy is https-only, so the fixtures are served over a real TLS
 // loopback with a per-run self-signed cert. Client verification is disabled

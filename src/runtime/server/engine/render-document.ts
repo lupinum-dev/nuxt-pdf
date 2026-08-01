@@ -19,9 +19,11 @@ import {
 } from '../../shared/errors'
 import {
   PDF_PRIMITIVES,
-  type PdfElementNode,
-  type PdfNode,
   type PdfStyleValue,
+} from '../../authoring'
+import type {
+  PdfElementNode,
+  PdfNode,
 } from '../../renderer/types'
 import {
   enforceMaxPages,

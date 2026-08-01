@@ -16,7 +16,7 @@ export { type PdfLimitsOptions } from '../dist/runtime/server/render-limits.js'
 
 export { type PdfFontDeclaration, type PdfFontStyle, type PdfFontWeight, type PdfFontWeightName } from '../dist/runtime/fonts.js'
 
-export { type PdfLength, type PdfLengthOrPercentage, type PdfPercentage, type PdfStyle, type PdfStyleEntry, type PdfStyleValue } from '../dist/runtime/renderer/types.js'
+export { type PdfLength, type PdfLengthOrPercentage, type PdfPercentage, type PdfStyle, type PdfStyleEntry, type PdfStyleValue } from '../dist/runtime/authoring.js'
 
 export { type PdfBaseProps, type PdfBookmark, type PdfCircleProps, type PdfClipPathProps, type PdfDefsProps, type PdfDocumentProps, type PdfEllipseProps, type PdfGProps, type PdfImageProps, type PdfImageSource, type PdfLineProps, type PdfLinearGradientProps, type PdfLinkProps, type PdfNoteProps, type PdfPageDimension, type PdfPageProps, type PdfPageSize, type PdfPageSizeName, type PdfPageUnit, type PdfPathProps, type PdfPolygonProps, type PdfPolylineProps, type PdfRadialGradientProps, type PdfRectProps, type PdfStopProps, type PdfSvgLength, type PdfSvgNumber, type PdfSvgPresentationProps, type PdfSvgProps, type PdfSvgTransform, type PdfSvgTransformOperation, type PdfTextProps, type PdfTspanProps, type PdfViewProps } from '../dist/runtime/components/index.js'
 
@@ -37,7 +37,7 @@ import { PdfLimitsOptions } from '../dist/runtime/server/render-limits.js';
 export { PdfLimitsOptions } from '../dist/runtime/server/render-limits.js';
 import { PdfFontDeclaration } from '../dist/runtime/fonts.js';
 export { PdfFontDeclaration, PdfFontStyle, PdfFontWeight, PdfFontWeightName } from '../dist/runtime/fonts.js';
-export { PdfLength, PdfLengthOrPercentage, PdfPercentage, PdfStyle, PdfStyleEntry, PdfStyleValue } from '../dist/runtime/renderer/types.js';
+export { PdfLength, PdfLengthOrPercentage, PdfPercentage, PdfStyle, PdfStyleEntry, PdfStyleValue } from '../dist/runtime/authoring.js';
 export { PdfBaseProps, PdfBookmark, PdfCircleProps, PdfClipPathProps, PdfDefsProps, PdfDocumentProps, PdfEllipseProps, PdfGProps, PdfImageProps, PdfImageSource, PdfLineProps, PdfLinearGradientProps, PdfLinkProps, PdfNoteProps, PdfPageDimension, PdfPageProps, PdfPageSize, PdfPageSizeName, PdfPageUnit, PdfPathProps, PdfPolygonProps, PdfPolylineProps, PdfRadialGradientProps, PdfRectProps, PdfStopProps, PdfSvgLength, PdfSvgNumber, PdfSvgPresentationProps, PdfSvgProps, PdfSvgTransform, PdfSvgTransformOperation, PdfTextProps, PdfTspanProps, PdfViewProps } from '../dist/runtime/components/index.js';
 
 interface ModuleOptions {
@@ -68,7 +68,7 @@ import '@nuxt/schema';
 import '../dist/runtime/server/assets/remote.js';
 import '../dist/runtime/server/render-limits.js';
 import '../dist/runtime/fonts.js';
-import '../dist/runtime/renderer/types.js';
+import '../dist/runtime/authoring.js';
 import '../dist/runtime/components/index.js';
 
 /** Raw PDF (or PNG) bytes accepted by the low-level readers. */

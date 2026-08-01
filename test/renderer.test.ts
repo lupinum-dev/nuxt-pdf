@@ -42,9 +42,11 @@ import { mountPdfComponent } from '../src/runtime/renderer'
 import { renderDocument } from '../src/runtime/server/engine/render-document'
 import {
   PDF_PRIMITIVES,
-  type PdfElementNode,
   type PdfStyle,
-  type PdfTextInstance,
+} from '../src/runtime/authoring'
+import type {
+  PdfElementNode,
+  PdfTextInstance,
 } from '../src/runtime/renderer/types'
 import { rasterizePdf } from '../src/test/pdf'
 

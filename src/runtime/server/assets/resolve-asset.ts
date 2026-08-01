@@ -7,11 +7,11 @@ import {
   resolve,
   sep,
 } from 'node:path'
-import {
-  PDF_PRIMITIVES,
-  type PdfDocumentNode,
-  type PdfElementNode,
+import type {
+  PdfDocumentNode,
+  PdfElementNode,
 } from '../../renderer/types'
+import { PDF_PRIMITIVES } from '../../authoring'
 import {
   PDF_ASSET_ERROR_CODES,
   PdfAssetError,

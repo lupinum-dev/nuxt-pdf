@@ -12,8 +12,8 @@ import { mountPdfComponent } from '../src/runtime/renderer/render-component'
 import {
   PDF_PRIMITIVES,
   type PdfDynamicTextRender,
-  type PdfElementNode,
-} from '../src/runtime/renderer/types'
+} from '../src/runtime/authoring'
+import type { PdfElementNode } from '../src/runtime/renderer/types'
 
 const fixturesDirectory = resolve('test/fixtures/pdf-sfc')
 const invoiceFile = join(fixturesDirectory, 'InvoiceDocument.vue')

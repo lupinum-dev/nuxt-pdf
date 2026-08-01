@@ -1,6 +1,6 @@
 import { defineComponent, h, type PropType } from 'vue'
+import type { PdfStyleValue } from '@lupinum/nuxt-pdf'
 import { PdfText } from '../../../../src/runtime/components'
-import type { PdfStyleValue } from '../../../../src/runtime/renderer/types'
 
 // A headline PdfText that forbids intra-word hyphenation. Setting
 // `hyphenationCallback` here (in JS) keeps the exact camelCase key the engine

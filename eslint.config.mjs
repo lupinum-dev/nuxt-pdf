@@ -31,4 +31,21 @@ export default createConfigForNuxt({
         }],
       },
     },
+    {
+      files: ['src/runtime/components/**/*.{ts,vue}'],
+      rules: {
+        'no-restricted-imports': ['error', {
+          patterns: [
+            {
+              group: ['@react-pdf/*'],
+              message: 'Lower React-PDF packages belong to the server engine boundary.',
+            },
+            {
+              group: ['../renderer', '../renderer/*', '../renderer/**'],
+              message: 'Authoring components must not depend on renderer internals.',
+            },
+          ],
+        }],
+      },
+    },
   )

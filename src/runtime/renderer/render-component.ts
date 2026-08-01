@@ -8,6 +8,7 @@ import {
   type Component,
 } from 'vue'
 import { PDF_PAGE_NUMBERS_KEY } from '../composables/use-pdf-page-numbers'
+import { PDF_PRIMITIVES } from '../authoring'
 import {
   PdfCircle,
   PdfClipPath,
@@ -37,12 +38,11 @@ import {
   createPdfRoot,
 } from './node-ops'
 import { NuxtPdfError, PDF_ERROR_CODES } from '../shared/errors'
-import {
-  PDF_PRIMITIVES,
-  type PdfDocumentNode,
-  type PdfHostElement,
-  type PdfHostNode,
-  type PdfRoot,
+import type {
+  PdfDocumentNode,
+  PdfHostElement,
+  PdfHostNode,
+  PdfRoot,
 } from './types'
 import { validatePdfDocumentTree } from './validate-tree'
 

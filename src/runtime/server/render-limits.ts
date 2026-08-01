@@ -1,9 +1,9 @@
 import { NuxtPdfError, PDF_ERROR_CODES } from '../shared/errors'
-import {
-  PDF_PRIMITIVES,
-  type PdfDocumentNode,
-  type PdfElementNode,
-  type PdfNode,
+import { PDF_PRIMITIVES } from '../authoring'
+import type {
+  PdfDocumentNode,
+  PdfElementNode,
+  PdfNode,
 } from '../renderer/types'
 
 export const DEFAULT_PDF_TIMEOUT_MS = 30_000

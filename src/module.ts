@@ -52,7 +52,7 @@ export type {
   PdfStyle,
   PdfStyleEntry,
   PdfStyleValue,
-} from './runtime/renderer/types'
+} from './runtime/authoring'
 
 export type {
   PdfBaseProps,

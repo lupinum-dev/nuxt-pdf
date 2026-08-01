@@ -1,7 +1,7 @@
 import { NuxtPdfError, PDF_ERROR_CODES } from '../shared/errors'
+import { PDF_PRIMITIVES } from '../authoring'
 import { PDF_PAGE_SIZE_NAMES } from '../components/_props'
 import {
-  PDF_PRIMITIVES,
   PDF_PRIMITIVE_NAMES,
   type PdfDocumentNode,
   type PdfElementNode,
