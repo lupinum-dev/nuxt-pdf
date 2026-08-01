@@ -74,14 +74,46 @@ function verifyPublicOptionTypes(): void {
     // @ts-expect-error Attribution is inferred instead of configured by callers.
     key: 'invoice',
   })
+  void renderPdfTemplate(InvoiceDoc, { customer: 'Acme Corp' }, {
+    // @ts-expect-error Source attribution is inferred instead of configured by callers.
+    file: 'pdfs/invoice.vue',
+  })
   void renderPdfSfc('./pdfs/invoice.vue', {}, {
     // @ts-expect-error The application root is inferred from the SFC path.
     rootDir: '/tmp/app',
+  })
+  void renderPdfSfc('./pdfs/invoice.vue', {}, {
+    // @ts-expect-error The template key is inferred from the SFC path.
+    key: 'invoice',
   })
 }
 void verifyPublicOptionTypes
 
 describe('@lupinum/nuxt-pdf/test public surface', () => {
+  it('rejects removed registry options instead of silently ignoring them', async () => {
+    const removedTemplateOptions = {
+      assets: {},
+      file: 'pdfs/invoice.vue',
+      fonts: [],
+      key: 'invoice',
+    }
+    for (const [key, value] of Object.entries(removedTemplateOptions)) {
+      await expect(renderPdfTemplate(
+        InvoiceDoc,
+        { customer: 'Acme Corp' },
+        { [key]: value } as RenderPdfTemplateOptions,
+      )).rejects.toThrow(`renderPdfTemplate received unsupported option "${key}"`)
+    }
+
+    for (const key of ['key', 'rootDir']) {
+      await expect(renderPdfSfc(
+        './missing/pdfs/invoice.vue',
+        {},
+        { [key]: 'invoice' } as RenderPdfSfcOptions,
+      )).rejects.toThrow(`renderPdfSfc received unsupported option "${key}"`)
+    }
+  })
+
   it('renders a template through the real pipeline and parses it', async () => {
     const { bytes, parsed, result } = await renderPdfTemplate(
       InvoiceDoc,

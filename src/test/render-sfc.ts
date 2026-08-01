@@ -18,6 +18,7 @@ import {
   resolvePdfRenderLimits,
 } from '../runtime/server/render-limits'
 import {
+  assertRenderOptionKeys,
   renderPreparedPdfTemplate,
   type RenderedPdfTemplate,
   type RenderPdfTemplateOptions,
@@ -26,6 +27,8 @@ import {
 /** User-shaped SFC render configuration, matching the Nuxt module options. */
 export type RenderPdfSfcOptions = RenderPdfTemplateOptions
   & Pick<ModuleOptions, 'fonts'>
+
+const RENDER_PDF_SFC_OPTION_KEYS = ['fonts', 'limits', 'remote'] as const
 
 const findPdfRoot = (filename: string): string => {
   let directory = dirname(filename)
@@ -116,6 +119,8 @@ export async function renderPdfSfc<Props extends object>(
   props: Props,
   options: RenderPdfSfcOptions = {},
 ): Promise<RenderedPdfTemplate> {
+  assertRenderOptionKeys('renderPdfSfc', options, RENDER_PDF_SFC_OPTION_KEYS)
+
   const entry = resolve(filename)
   const pdfRoot = findPdfRoot(entry)
   const rootDir = dirname(pdfRoot)

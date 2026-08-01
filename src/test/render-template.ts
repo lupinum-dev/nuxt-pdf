@@ -16,6 +16,8 @@ import { parsePdf, type ParsedPdf } from './pdf'
 /** User-shaped render policy, matching the corresponding Nuxt module options. */
 export type RenderPdfTemplateOptions = Pick<ModuleOptions, 'limits' | 'remote'>
 
+const RENDER_PDF_TEMPLATE_OPTION_KEYS = ['limits', 'remote'] as const
+
 type PreparedPdfTemplateOptions = PdfTemplateRuntimeOptions & {
   key?: string
 }
@@ -59,6 +61,22 @@ const componentName = (component: Component): string => {
   return typeof name === 'string' && name !== '' ? name : 'template'
 }
 
+/** Package-internal guard for public helpers that accept user configuration. */
+export function assertRenderOptionKeys(
+  helper: string,
+  options: object,
+  allowedKeys: readonly string[],
+): void {
+  const unsupportedKey = Object.keys(options)
+    .find(key => !allowedKeys.includes(key))
+  if (unsupportedKey === undefined) return
+
+  throw new TypeError(
+    `${helper} received unsupported option ${JSON.stringify(unsupportedKey)}. `
+    + `Supported options: ${allowedKeys.join(', ')}.`,
+  )
+}
+
 /** Package-internal entry for tests that already own prepared registry inputs. */
 export async function renderPreparedPdfTemplate<Props extends object>(
   component: Component,
@@ -89,6 +107,12 @@ export async function renderPdfTemplate<Props extends object>(
   props: Props,
   options: RenderPdfTemplateOptions = {},
 ): Promise<RenderedPdfTemplate> {
+  assertRenderOptionKeys(
+    'renderPdfTemplate',
+    options,
+    RENDER_PDF_TEMPLATE_OPTION_KEYS,
+  )
+
   return renderPreparedPdfTemplate(component, props, {
     limits: normalizePdfLimits(options.limits),
     remote: normalizeRemoteAssetPolicy(options.remote),
