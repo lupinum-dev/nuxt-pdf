@@ -10,6 +10,8 @@ canonical sources.
 Source: `dist/types.d.mts`
 
 ```ts
+export { type RemoteAssetOptions } from '../dist/runtime/server/assets/remote.js'
+
 export { type PdfLimitsOptions } from '../dist/runtime/server/render-limits.js'
 
 export { type PdfFontDeclaration, type PdfFontStyle, type PdfFontWeight, type PdfFontWeightName } from '../dist/runtime/fonts.js'
@@ -30,6 +32,7 @@ Source: `dist/module.d.mts`
 ```ts
 import * as _nuxt_schema from '@nuxt/schema';
 import { RemoteAssetOptions } from '../dist/runtime/server/assets/remote.js';
+export { RemoteAssetOptions } from '../dist/runtime/server/assets/remote.js';
 import { PdfLimitsOptions } from '../dist/runtime/server/render-limits.js';
 export { PdfLimitsOptions } from '../dist/runtime/server/render-limits.js';
 import { PdfFontDeclaration } from '../dist/runtime/fonts.js';
@@ -60,10 +63,13 @@ Source: `dist/test.d.mts`
 ```ts
 import { PdfRenderResult } from '../dist/runtime/shared/template.js';
 import { Component } from 'vue';
-import { PdfImageAssetMap } from '../dist/runtime/server/assets/resolve-asset.js';
-import { RemoteAssetPolicy } from '../dist/runtime/server/assets/remote.js';
-import { PdfRenderLimits } from '../dist/runtime/server/render-limits.js';
-import { BundledPdfFontDescriptor, PdfFontDeclaration } from '../dist/runtime/fonts.js';
+import { ModuleOptions } from './module.mjs';
+import '@nuxt/schema';
+import '../dist/runtime/server/assets/remote.js';
+import '../dist/runtime/server/render-limits.js';
+import '../dist/runtime/fonts.js';
+import '../dist/runtime/renderer/types.js';
+import '../dist/runtime/components/index.js';
 
 /** Raw PDF (or PNG) bytes accepted by the low-level readers. */
 type PdfData = ArrayBuffer | Uint8Array;
@@ -194,20 +200,8 @@ interface PdfExpectation {
  */
 declare function expectPdf(parsed: ParsedPdf): PdfExpectation;
 
-interface RenderPdfTemplateOptions {
-    /** Named image assets, exactly as the generated server registry passes them. */
-    assets?: PdfImageAssetMap;
-    /** Embedded font descriptors registered for this render. */
-    fonts?: readonly BundledPdfFontDescriptor[];
-    /** Remote-asset allowlist policy; omitted means remote fetching is disabled. */
-    remote?: RemoteAssetPolicy;
-    /** Fully resolved per-render budgets; omitted uses the production defaults. */
-    limits?: PdfRenderLimits;
-    /** Template key used in error attribution (defaults to the component name). */
-    key?: string;
-    /** Source file used in error attribution. */
-    file?: string;
-}
+/** User-shaped render policy, matching the corresponding Nuxt module options. */
+type RenderPdfTemplateOptions = Pick<ModuleOptions, 'limits' | 'remote'>;
 interface RenderedPdfTemplate {
     /** The rendered PDF bytes. */
     bytes: Uint8Array;
@@ -223,12 +217,8 @@ interface RenderedPdfTemplate {
  */
 declare function renderPdfTemplate<Props extends object>(component: Component, props: Props, options?: RenderPdfTemplateOptions): Promise<RenderedPdfTemplate>;
 
-interface RenderPdfSfcOptions extends Omit<RenderPdfTemplateOptions, 'assets' | 'file' | 'fonts'> {
-    /** Font faces declared exactly as in `pdf.fonts`; resolved from `pdfs/fonts`. */
-    fonts?: readonly PdfFontDeclaration[];
-    /** Application root containing `pdfs/`; inferred from the template path. */
-    rootDir?: string;
-}
+/** User-shaped SFC render configuration, matching the Nuxt module options. */
+type RenderPdfSfcOptions = RenderPdfTemplateOptions & Pick<ModuleOptions, 'fonts'>;
 /** Compile a real PDF SFC graph with the same compiler used by the Nuxt module. */
 declare function loadPdfSfc(filename: string): Promise<Component>;
 /** Compile and render a real `pdfs/*.vue` template with production resource handling. */

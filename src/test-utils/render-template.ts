@@ -1,9 +1,11 @@
 import { defineComponent, h, type Component } from 'vue'
-import { createPdfTemplate } from '../runtime/server/registry'
-import type { PdfImageAssetMap } from '../runtime/server/assets/resolve-asset'
-import type { RemoteAssetPolicy } from '../runtime/server/assets/remote'
-import type { PdfRenderLimits } from '../runtime/server/render-limits'
-import type { BundledPdfFontDescriptor } from '../runtime/fonts'
+import type { ModuleOptions } from '../module'
+import { normalizeRemoteAssetPolicy } from '../runtime/server/assets/remote'
+import {
+  createPdfTemplate,
+  type PdfTemplateRuntimeOptions,
+} from '../runtime/server/registry'
+import { normalizePdfLimits } from '../runtime/server/render-limits'
 import {
   PDF_DEFINITION_PROPERTY,
   type PdfDefinition,
@@ -11,19 +13,11 @@ import {
 } from '../runtime/shared/template'
 import { parsePdf, type ParsedPdf } from './pdf'
 
-export interface RenderPdfTemplateOptions {
-  /** Named image assets, exactly as the generated server registry passes them. */
-  assets?: PdfImageAssetMap
-  /** Embedded font descriptors registered for this render. */
-  fonts?: readonly BundledPdfFontDescriptor[]
-  /** Remote-asset allowlist policy; omitted means remote fetching is disabled. */
-  remote?: RemoteAssetPolicy
-  /** Fully resolved per-render budgets; omitted uses the production defaults. */
-  limits?: PdfRenderLimits
-  /** Template key used in error attribution (defaults to the component name). */
+/** User-shaped render policy, matching the corresponding Nuxt module options. */
+export type RenderPdfTemplateOptions = Pick<ModuleOptions, 'limits' | 'remote'>
+
+type PreparedPdfTemplateOptions = PdfTemplateRuntimeOptions & {
   key?: string
-  /** Source file used in error attribution. */
-  file?: string
 }
 
 export interface RenderedPdfTemplate {
@@ -60,6 +54,31 @@ const ensurePdfComponent = (component: Component): Component => {
   return Object.assign(wrapper, { [PDF_DEFINITION_PROPERTY]: definition })
 }
 
+const componentName = (component: Component): string => {
+  const name = (component as { name?: unknown }).name
+  return typeof name === 'string' && name !== '' ? name : 'template'
+}
+
+/** Package-internal entry for tests that already own prepared registry inputs. */
+export async function renderPreparedPdfTemplate<Props extends object>(
+  component: Component,
+  props: Props,
+  options: PreparedPdfTemplateOptions = {},
+): Promise<RenderedPdfTemplate> {
+  const { key = componentName(component), ...runtimeOptions } = options
+  const template = createPdfTemplate<Props>(
+    key,
+    ensurePdfComponent(component),
+    runtimeOptions,
+  )
+
+  const result = await template.render(props)
+  const bytes = await result.toUint8Array()
+  const parsed = await parsePdf(bytes)
+
+  return { bytes, parsed, result }
+}
+
 /**
  * Render a Vue PDF component through the real Nuxt PDF pipeline — mount, asset
  * resolution, font registration, single- or multi-pass layout — without booting
@@ -70,21 +89,8 @@ export async function renderPdfTemplate<Props extends object>(
   props: Props,
   options: RenderPdfTemplateOptions = {},
 ): Promise<RenderedPdfTemplate> {
-  const template = createPdfTemplate<Props>(
-    options.key ?? 'template',
-    ensurePdfComponent(component),
-    {
-      assets: options.assets,
-      fonts: options.fonts,
-      remote: options.remote,
-      limits: options.limits,
-      file: options.file,
-    },
-  )
-
-  const result = await template.render(props)
-  const bytes = await result.toUint8Array()
-  const parsed = await parsePdf(bytes)
-
-  return { bytes, parsed, result }
+  return renderPreparedPdfTemplate(component, props, {
+    limits: normalizePdfLimits(options.limits),
+    remote: normalizeRemoteAssetPolicy(options.remote),
+  })
 }

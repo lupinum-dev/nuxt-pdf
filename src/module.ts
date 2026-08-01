@@ -43,6 +43,8 @@ export type {
 
 export type { PdfLimitsOptions } from './runtime/server/render-limits'
 
+export type { RemoteAssetOptions } from './runtime/server/assets/remote'
+
 export type {
   PdfLength,
   PdfLengthOrPercentage,

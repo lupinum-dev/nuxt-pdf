@@ -1,10 +1,8 @@
-import { copyFile, mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { defineComponent, h } from 'vue'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { bundlePdfFonts } from '../src/build/fonts'
+import { describe, expect, it } from 'vitest'
 import {
   PdfDocument,
   PdfLink,
@@ -12,7 +10,6 @@ import {
   PdfText,
   PdfView,
 } from '../src/runtime/components'
-import type { BundledPdfFontDescriptor } from '../src/runtime/fonts'
 // Import through the shipped public entry so the test exercises exactly what
 // users get from `@lupinum/nuxt-pdf/test`.
 import {
@@ -22,13 +19,13 @@ import {
   parsePdf,
   renderPdfSfc,
   renderPdfTemplate,
+  type RenderPdfSfcOptions,
+  type RenderPdfTemplateOptions,
 } from '../src/test/index'
 import { sampleInvoice } from '../playground/shared/invoice'
 
-const fontSource = fileURLToPath(new URL('./fixtures/assets/Roboto-Regular.ttf', import.meta.url))
-
 // A realistic, self-contained template: two explicit pages, an internal link to
-// a bookmarked section, an external link, and Roboto text — no Nuxt, no SFC.
+// a bookmarked section, and an external link — no Nuxt and no SFC.
 const InvoiceDoc = defineComponent({
   name: 'InvoiceDoc',
   props: { customer: { type: String, required: true } },
@@ -36,14 +33,14 @@ const InvoiceDoc = defineComponent({
     return () =>
       h(PdfDocument, {}, {
         default: () => [
-          h(PdfPage, { size: 'A4', style: { padding: 40, fontFamily: 'Roboto' } }, {
+          h(PdfPage, { size: 'A4', style: { padding: 40, fontFamily: 'Helvetica' } }, {
             default: () => [
               h(PdfText, { style: { fontSize: 20, marginBottom: 12 } }, { default: () => `Invoice for ${props.customer}` }),
               h(PdfLink, { src: '#terms', style: { fontSize: 12, marginBottom: 6 } }, { default: () => 'See the terms' }),
               h(PdfLink, { src: 'https://example.com', style: { fontSize: 12 } }, { default: () => 'Visit example.com' }),
             ],
           }),
-          h(PdfPage, { size: 'A4', style: { padding: 40, fontFamily: 'Roboto' } }, {
+          h(PdfPage, { size: 'A4', style: { padding: 40, fontFamily: 'Helvetica' } }, {
             default: () => h(PdfView, { id: 'terms', bookmark: { title: 'Terms' } }, {
               default: () => h(PdfText, { style: { fontSize: 14 } }, { default: () => 'Terms and conditions apply.' }),
             }),
@@ -53,32 +50,42 @@ const InvoiceDoc = defineComponent({
   },
 })
 
+function verifyPublicOptionTypes(): void {
+  const templateOptions: RenderPdfTemplateOptions = {
+    limits: { maxPages: 2 },
+    remote: { allow: ['https://assets.example.com/pdf/'] },
+  }
+  const sfcOptions: RenderPdfSfcOptions = {
+    ...templateOptions,
+    fonts: [{ family: 'Invoice Sans', src: 'InvoiceSans-Regular.ttf' }],
+  }
+  void templateOptions
+  void sfcOptions
+
+  void renderPdfTemplate(InvoiceDoc, { customer: 'Acme Corp' }, {
+    // @ts-expect-error Prepared asset maps are registry internals, not user configuration.
+    assets: {},
+  })
+  void renderPdfTemplate(InvoiceDoc, { customer: 'Acme Corp' }, {
+    // @ts-expect-error Embedded font descriptors are build output, not direct-template input.
+    fonts: [],
+  })
+  void renderPdfTemplate(InvoiceDoc, { customer: 'Acme Corp' }, {
+    // @ts-expect-error Attribution is inferred instead of configured by callers.
+    key: 'invoice',
+  })
+  void renderPdfSfc('./pdfs/invoice.vue', {}, {
+    // @ts-expect-error The application root is inferred from the SFC path.
+    rootDir: '/tmp/app',
+  })
+}
+void verifyPublicOptionTypes
+
 describe('@lupinum/nuxt-pdf/test public surface', () => {
-  let fonts: readonly BundledPdfFontDescriptor[]
-  let fontDir: string
-
-  beforeAll(async () => {
-    // Font roots must be absolute `pdfs/fonts` directories; stage one in a temp
-    // dir exactly as the Nuxt build does.
-    fontDir = await mkdtemp(join(tmpdir(), 'nuxt-pdf-test-fonts-'))
-    const fontRoot = join(fontDir, 'pdfs/fonts')
-    await mkdir(fontRoot, { recursive: true })
-    await copyFile(fontSource, join(fontRoot, 'Roboto-Regular.ttf'))
-    fonts = await bundlePdfFonts(
-      [{ family: 'Roboto', src: 'Roboto-Regular.ttf' }],
-      { fontRoots: [fontRoot] },
-    )
-  })
-
-  afterAll(async () => {
-    await rm(fontDir, { force: true, recursive: true })
-  })
-
   it('renders a template through the real pipeline and parses it', async () => {
     const { bytes, parsed, result } = await renderPdfTemplate(
       InvoiceDoc,
       { customer: 'Acme Corp' },
-      { fonts },
     )
 
     expect(bytes.length).toBeGreaterThan(0)
@@ -86,11 +93,7 @@ describe('@lupinum/nuxt-pdf/test public surface', () => {
       byteLength: bytes.byteLength,
       pageCount: 2,
       passes: 1,
-      registeredFontFaces: [{
-        family: 'Roboto',
-        fontStyle: undefined,
-        fontWeight: undefined,
-      }],
+      registeredFontFaces: [],
     })
     expect(Object.isFrozen(result.diagnostics)).toBe(true)
 
@@ -119,6 +122,36 @@ describe('@lupinum/nuxt-pdf/test public surface', () => {
     ]))
   }, 30_000)
 
+  it('accepts and validates user-shaped remote and limit options', async () => {
+    const rendered = await renderPdfTemplate(
+      InvoiceDoc,
+      { customer: 'Acme Corp' },
+      {
+        limits: { maxPages: 2 },
+        remote: { allow: ['https://assets.example.com/pdf/'] },
+      },
+    )
+    expect(rendered.result.diagnostics.pageCount).toBe(2)
+
+    await expect(renderPdfTemplate(
+      InvoiceDoc,
+      { customer: 'Acme Corp' },
+      { limits: { maxPages: 1 } },
+    )).rejects.toThrow(/exceeding the 1-page limit/)
+
+    await expect(renderPdfTemplate(
+      InvoiceDoc,
+      { customer: 'Acme Corp' },
+      { remote: { allow: ['http://assets.example.com/pdf/'] } },
+    )).rejects.toThrow(/pdf\.remote\.allow entries must use the https:\/\/ scheme/)
+
+    await expect(renderPdfTemplate(
+      InvoiceDoc,
+      { customer: 'Acme Corp' },
+      { limits: { maxPages: 0 } },
+    )).rejects.toThrow(/pdf\.limits\.maxPages must be a positive safe integer/)
+  }, 30_000)
+
   it('compiles a real nested PDF SFC graph with local resources', async () => {
     const rendered = await renderPdfSfc(
       resolve('playground/pdfs/invoice.vue'),
@@ -135,7 +168,7 @@ describe('@lupinum/nuxt-pdf/test public surface', () => {
   }, 30_000)
 
   it('throws PdfAssertionError with actionable messages on failure', async () => {
-    const { parsed } = await renderPdfTemplate(InvoiceDoc, { customer: 'Acme Corp' }, { fonts })
+    const { parsed } = await renderPdfTemplate(InvoiceDoc, { customer: 'Acme Corp' })
 
     expect(() => expectPdf(parsed).toHavePageCount(99))
       .toThrow(/Expected the PDF to have 99 page\(s\), but it has 2/)
@@ -152,7 +185,7 @@ describe('@lupinum/nuxt-pdf/test public surface', () => {
   }, 30_000)
 
   it('supports the reviewed raster baseline flow (write then compare)', async () => {
-    const { bytes } = await renderPdfTemplate(InvoiceDoc, { customer: 'Acme Corp' }, { fonts })
+    const { bytes } = await renderPdfTemplate(InvoiceDoc, { customer: 'Acme Corp' })
     const baselineDir = await mkdtemp(join(tmpdir(), 'nuxt-pdf-snapshot-'))
 
     try {
@@ -171,7 +204,6 @@ describe('@lupinum/nuxt-pdf/test public surface', () => {
       const { bytes: other } = await renderPdfTemplate(
         InvoiceDoc,
         { customer: 'A Completely Different Customer Name Entirely' },
-        { fonts },
       )
       const artifactDir = join(baselineDir, 'failure-artifacts')
       await expect(comparePdfSnapshot(other, baselineDir, { artifactDir }))

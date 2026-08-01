@@ -5,7 +5,7 @@ import { defineComponent, h } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { bundlePdfFonts } from '../src/build/fonts'
 import { PdfDocument, PdfPage, PdfText } from '../src/runtime/components'
-import { renderPdfTemplate } from '../src/test-utils/render-template'
+import { renderPreparedPdfTemplate } from '../src/test-utils/render-template'
 import { comparePdfSnapshot } from '../src/test-utils/snapshot'
 
 const internationalRoot = resolve('test/fixtures/fonts/international')
@@ -75,7 +75,7 @@ describe('international typography evidence', () => {
         { family: 'Noto Emoji Subset', src: 'NotoEmoji-Subset.ttf' },
         { family: 'Source Code Variable', src: 'SourceCodeVF-Upright.ttf' },
       ], { fontRoots: [fontRoot] })
-      const rendered = await renderPdfTemplate(TypographyCalibration, {}, { fonts })
+      const rendered = await renderPreparedPdfTemplate(TypographyCalibration, {}, { fonts })
       const [first, second] = rendered.parsed.pages
 
       expect(rendered.result.diagnostics.registeredFontFaces.map(face => face.family)).toEqual([

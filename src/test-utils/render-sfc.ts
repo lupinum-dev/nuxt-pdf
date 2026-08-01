@@ -1,28 +1,31 @@
 import { existsSync } from 'node:fs'
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
-import { basename, dirname, join, resolve } from 'node:path'
+import { basename, dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { build, type Plugin } from 'esbuild'
 import type { Component } from 'vue'
-import { discoverPdfImageFiles } from '../build/discover-templates'
+import {
+  discoverPdfImageFiles,
+  templateKeyFromRelativePath,
+} from '../build/discover-templates'
 import { bundlePdfFonts } from '../build/fonts'
 import { compilePdfSfc } from '../build/pdf-sfc-plugin'
-import type { PdfFontDeclaration } from '../runtime/fonts'
+import type { ModuleOptions } from '../module'
+import { normalizeRemoteAssetPolicy } from '../runtime/server/assets/remote'
 import { loadPdfImageAsset } from '../runtime/server/assets/resolve-asset'
-import { resolvePdfRenderLimits } from '../runtime/server/render-limits'
 import {
-  renderPdfTemplate,
+  normalizePdfLimits,
+  resolvePdfRenderLimits,
+} from '../runtime/server/render-limits'
+import {
+  renderPreparedPdfTemplate,
   type RenderedPdfTemplate,
   type RenderPdfTemplateOptions,
 } from './render-template'
 
-export interface RenderPdfSfcOptions
-  extends Omit<RenderPdfTemplateOptions, 'assets' | 'file' | 'fonts'> {
-  /** Font faces declared exactly as in `pdf.fonts`; resolved from `pdfs/fonts`. */
-  fonts?: readonly PdfFontDeclaration[]
-  /** Application root containing `pdfs/`; inferred from the template path. */
-  rootDir?: string
-}
+/** User-shaped SFC render configuration, matching the Nuxt module options. */
+export type RenderPdfSfcOptions = RenderPdfTemplateOptions
+  & Pick<ModuleOptions, 'fonts'>
 
 const findPdfRoot = (filename: string): string => {
   let directory = dirname(filename)
@@ -115,8 +118,14 @@ export async function renderPdfSfc<Props extends object>(
 ): Promise<RenderedPdfTemplate> {
   const entry = resolve(filename)
   const pdfRoot = findPdfRoot(entry)
-  const rootDir = resolve(options.rootDir ?? dirname(pdfRoot))
-  const limits = resolvePdfRenderLimits(options.limits)
+  const rootDir = dirname(pdfRoot)
+  const relativePath = relative(pdfRoot, entry).replaceAll('\\', '/')
+  const key = templateKeyFromRelativePath(relativePath)
+  if (key === null) {
+    throw new Error(`PDF SFC ${JSON.stringify(entry)} must be a template directly inside pdfs/ or one of its feature directories.`)
+  }
+  const normalizedLimits = normalizePdfLimits(options.limits)
+  const limits = resolvePdfRenderLimits(normalizedLimits)
   const [component, imageFiles, fonts] = await Promise.all([
     loadPdfSfc(entry),
     discoverPdfImageFiles([{ name: 'test', rootDir }]),
@@ -130,12 +139,12 @@ export async function renderPdfSfc<Props extends object>(
     })))
   const assets = Object.fromEntries(loadedAssets.map(asset => [asset.key, asset]))
 
-  return renderPdfTemplate(component, props, {
+  return renderPreparedPdfTemplate(component, props, {
     assets,
-    file: entry,
+    file: `pdfs/${relativePath}`,
     fonts,
-    key: options.key,
-    limits,
-    remote: options.remote,
+    key,
+    limits: normalizedLimits,
+    remote: normalizeRemoteAssetPolicy(options.remote),
   })
 }
