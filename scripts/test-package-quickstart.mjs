@@ -125,6 +125,65 @@ allowBuilds:
 </template>
 `)
 
+  await writeFile(join(appDir, 'public-api-types.ts'), `import type {
+  PdfFontDeclaration,
+  PdfLimitsOptions,
+  RemoteAssetOptions,
+} from '${packageJson.name}'
+import type {
+  RenderPdfSfcOptions,
+  RenderPdfTemplateOptions,
+} from '${packageJson.name}/test'
+
+const font: PdfFontDeclaration = {
+  family: 'Source Code Pro',
+  src: 'SourceCodePro-Regular.ttf',
+  fontWeight: 400,
+}
+const limits: PdfLimitsOptions = { maxPages: 2 }
+const remote: RemoteAssetOptions = {
+  allow: ['https://assets.example.com/pdf/'],
+}
+const templateOptions: RenderPdfTemplateOptions = { limits, remote }
+const sfcOptions: RenderPdfSfcOptions = { fonts: [font], limits, remote }
+
+const removedTemplateAssets: RenderPdfTemplateOptions = {
+  // @ts-expect-error Prepared asset maps are private registry inputs.
+  assets: {},
+}
+const removedTemplateFile: RenderPdfTemplateOptions = {
+  // @ts-expect-error Source attribution is inferred by the public helper.
+  file: 'pdfs/invoice.vue',
+}
+const removedTemplateFonts: RenderPdfTemplateOptions = {
+  // @ts-expect-error Embedded font descriptors are private build output.
+  fonts: [],
+}
+const removedTemplateKey: RenderPdfTemplateOptions = {
+  // @ts-expect-error Template attribution is inferred by the public helper.
+  key: 'invoice',
+}
+const removedSfcRoot: RenderPdfSfcOptions = {
+  // @ts-expect-error The application root is inferred from the SFC path.
+  rootDir: '.',
+}
+const removedSfcKey: RenderPdfSfcOptions = {
+  // @ts-expect-error The template key is inferred from the SFC path.
+  key: 'invoice',
+}
+
+void [
+  templateOptions,
+  sfcOptions,
+  removedTemplateAssets,
+  removedTemplateFile,
+  removedTemplateFonts,
+  removedTemplateKey,
+  removedSfcRoot,
+  removedSfcKey,
+]
+`)
+
   await Promise.all([
     copyFile(
       join(rootDir, 'test', 'fixtures', 'assets', 'sample.png'),

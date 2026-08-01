@@ -26,6 +26,8 @@ const requiredFiles = [
   'dist/runtime/renderer/index.js',
   'dist/runtime/server/index.js',
   'dist/runtime/shared/index.js',
+  'dist/test.d.mts',
+  'dist/test.mjs',
   'dist/types.d.mts',
   'package.json',
 ]
