@@ -12,7 +12,7 @@ import { createPdfTemplate } from '../src/runtime/server/registry'
 import * as layoutPasses from '../src/runtime/server/engine/layout-passes'
 import { PDF_DEFINITION_PROPERTY, type PdfDefinition } from '../src/runtime/shared/template'
 import { NuxtPdfError } from '../src/runtime/shared/errors'
-import { installPdfCanvasGlobals, parsePdf } from './utils/pdf'
+import { installPdfCanvasGlobals, parsePdf } from '../src/test/pdf'
 
 interface Section { id: string, title: string, lines: number }
 const SECTIONS: Section[] = [

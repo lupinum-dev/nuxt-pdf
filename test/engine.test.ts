@@ -2,7 +2,7 @@ import type { DocumentNode, SafeDocumentNode } from '@react-pdf/layout'
 import * as P from '@react-pdf/primitives'
 import { describe, expect, it } from 'vitest'
 import { renderDocument } from '../src/runtime/server/engine/render-document'
-import { parsePdf } from './utils/pdf'
+import { parsePdf } from '../src/test/pdf'
 
 const createDocument = (fontFamily = 'Helvetica'): DocumentNode => ({
   type: P.Document,

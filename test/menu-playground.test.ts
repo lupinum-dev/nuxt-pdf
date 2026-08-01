@@ -9,7 +9,7 @@ import {
   decodePngPage,
   getPdfOutline,
   rasterizePdf,
-} from './utils/pdf'
+} from '../src/test/pdf'
 
 // The real playground template, compiled and rendered through the shipped test
 // helper. Proves the showcase menu end-to-end from an authored SFC: two A5

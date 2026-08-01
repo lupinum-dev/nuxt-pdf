@@ -48,7 +48,7 @@ import {
   parsePdf,
   rasterizePdf,
   type ParsedPdf,
-} from '../utils/pdf'
+} from '../../src/test/pdf'
 
 // ---------------------------------------------------------------------------
 // Shared fixture-mounting harness (local to this file per corpus-wave rules).

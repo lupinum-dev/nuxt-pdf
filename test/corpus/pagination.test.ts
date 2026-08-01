@@ -27,7 +27,7 @@ import {
   parsePdf,
   rasterizePdf,
   type ParsedPdf,
-} from '../utils/pdf'
+} from '../../src/test/pdf'
 import {
   createReactWrapFalseDocument,
   VueWrapFalseDocument,

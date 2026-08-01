@@ -17,7 +17,7 @@ import {
   type MultiPassSource,
 } from '../src/runtime/server/engine/layout-passes'
 import { NuxtPdfError } from '../src/runtime/shared/errors'
-import { parsePdf } from './utils/pdf'
+import { parsePdf } from '../src/test/pdf'
 
 // A MultiPassSource backed by the live mounted Vue tree. `feed` re-patches the
 // tree in place through our renderer by updating a single reactive prop.

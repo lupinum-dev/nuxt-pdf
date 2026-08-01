@@ -7,7 +7,7 @@ import {
   comparePageImages,
   decodePngPage,
   rasterizePdf,
-} from './utils/pdf'
+} from '../src/test/pdf'
 
 const baselineDirectory = fileURLToPath(
   new URL('./fixtures/baselines/toc', import.meta.url),

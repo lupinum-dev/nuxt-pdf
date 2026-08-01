@@ -2,7 +2,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { renderPdfSfc } from '../src/test'
 import { sampleReport } from '../playground/shared/report'
-import { getPdfOutline } from './utils/pdf'
+import { getPdfOutline } from '../src/test/pdf'
 
 // The real playground template, compiled and rendered through the shipped test
 // helper. Proves the public helper follows the production SFC and registry path:

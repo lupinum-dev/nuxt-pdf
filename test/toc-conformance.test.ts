@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { DestinationPageMap } from '../src/runtime/server/engine/layout-passes'
 import { renderTocDocument, tocSections } from './fixtures/toc-document'
-import { parsePdf } from './utils/pdf'
+import { parsePdf } from '../src/test/pdf'
 
 // A realistic multi-section report: a table of contents with dotted leaders and
 // internal links, section id targets (one section long enough to span pages so

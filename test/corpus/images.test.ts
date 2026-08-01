@@ -26,7 +26,7 @@ import {
   hasPdfHeader,
   parsePdf,
   rasterizePdf,
-} from '../utils/pdf'
+} from '../../src/test/pdf'
 import {
   createReactFixedHeaderDocument,
   createReactObjectFitDocument,

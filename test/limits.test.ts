@@ -18,7 +18,7 @@ import {
   normalizePdfLimits,
 } from '../src/runtime/server/render-limits'
 import { PDF_DEFINITION_PROPERTY } from '../src/runtime/shared/template'
-import { parsePdf } from './utils/pdf'
+import { parsePdf } from '../src/test/pdf'
 
 const asTemplate = (component: Component): Component =>
   Object.assign(component, { [PDF_DEFINITION_PROPERTY]: {} })

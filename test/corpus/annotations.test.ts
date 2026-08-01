@@ -22,7 +22,7 @@ import {
   VueMetadataDocument,
   VuePageSetupDocument,
 } from '../fixtures/corpus/annotations-vue'
-import { hasPdfHeader, installPdfCanvasGlobals, parsePdf } from '../utils/pdf'
+import { hasPdfHeader, installPdfCanvasGlobals, parsePdf } from '../../src/test/pdf'
 
 // --- local render helpers (this wave may only add files; no shared helper edits) ---
 
@@ -43,7 +43,7 @@ const renderVue = async (component: Component): Promise<Uint8Array> => {
   }
 }
 
-// --- local pdfjs inspection (utils/pdf.ts exposes text/links but not info,
+// --- local pdfjs inspection (src/test/pdf.ts exposes text/links but not info,
 //     MediaBox, page layout, or note contents, so read them here directly) ---
 
 let pdfJsPromise: Promise<typeof import('pdfjs-dist/legacy/build/pdf.mjs')> | undefined

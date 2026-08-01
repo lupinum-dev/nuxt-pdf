@@ -27,7 +27,7 @@ import {
   type PdfDefinition,
   type PdfTemplate,
 } from '../src/runtime/shared/template'
-import { installPdfCanvasGlobals } from './utils/pdf'
+import { installPdfCanvasGlobals } from '../src/test/pdf'
 
 vi.mock('#pdf', () => ({ pdfPreview: {} }))
 

@@ -46,7 +46,7 @@ import {
   type PdfStyle,
   type PdfTextInstance,
 } from '../src/runtime/renderer/types'
-import { rasterizePdf } from './utils/pdf'
+import { rasterizePdf } from '../src/test/pdf'
 
 type Item = {
   id: string

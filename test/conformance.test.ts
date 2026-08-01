@@ -28,7 +28,7 @@ import {
   hasPdfHeader,
   parsePdf,
   rasterizePdf,
-} from './utils/pdf'
+} from '../src/test/pdf'
 
 const fontPath = fileURLToPath(new URL(
   './fixtures/assets/Roboto-Regular.ttf',

@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import { $fetch, fetch as nuxtFetch, setup } from '@nuxt/test-utils/e2e'
 import { describe, expect, it } from 'vitest'
-import { parsePdf } from './utils/pdf'
+import { parsePdf } from '../src/test/pdf'
 
 describe('Nuxt PDF development workflow', async () => {
   await setup({

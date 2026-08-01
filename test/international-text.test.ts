@@ -5,8 +5,8 @@ import { defineComponent, h } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { bundlePdfFonts } from '../src/build/fonts'
 import { PdfDocument, PdfPage, PdfText } from '../src/runtime/components'
-import { renderPreparedPdfTemplate } from '../src/test-utils/render-template'
-import { comparePdfSnapshot } from '../src/test-utils/snapshot'
+import { renderPreparedPdfTemplate } from '../src/test/render-template'
+import { comparePdfSnapshot } from '../src/test/snapshot'
 
 const internationalRoot = resolve('test/fixtures/fonts/international')
 const baselineRoot = resolve('test/fixtures/baselines/international-text')

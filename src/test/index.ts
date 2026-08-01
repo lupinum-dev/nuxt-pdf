@@ -9,7 +9,7 @@ export {
   parsePdf,
   rasterizePdf,
   toPdfBytes,
-} from '../test-utils/pdf'
+} from './pdf'
 export type {
   ParsedPdf,
   ParsedPdfLink,
@@ -19,30 +19,30 @@ export type {
   PdfOutlineItem,
   PdfPageImage,
   RasterizePdfOptions,
-} from '../test-utils/pdf'
+} from './pdf'
 
 export {
   expectPdf,
   PdfAssertionError,
-} from '../test-utils/expect'
+} from './expect'
 export type {
   LinkQuery,
   OutlineShape,
   PdfExpectation,
   ToContainTextOptions,
-} from '../test-utils/expect'
+} from './expect'
 
-export { renderPdfTemplate } from '../test-utils/render-template'
+export { renderPdfTemplate } from './render-template'
 export type {
   RenderPdfTemplateOptions,
   RenderedPdfTemplate,
-} from '../test-utils/render-template'
+} from './render-template'
 
-export { loadPdfSfc, renderPdfSfc } from '../test-utils/render-sfc'
-export type { RenderPdfSfcOptions } from '../test-utils/render-sfc'
+export { loadPdfSfc, renderPdfSfc } from './render-sfc'
+export type { RenderPdfSfcOptions } from './render-sfc'
 
-export { comparePdfSnapshot } from '../test-utils/snapshot'
+export { comparePdfSnapshot } from './snapshot'
 export type {
   ComparePdfSnapshotOptions,
   PdfSnapshotResult,
-} from '../test-utils/snapshot'
+} from './snapshot'
