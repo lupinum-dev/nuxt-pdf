@@ -7,7 +7,7 @@ import type { Component } from 'vue'
 import { discoverPdfImageFiles } from '../build/discover-templates'
 import { bundlePdfFonts } from '../build/fonts'
 import { compilePdfSfc } from '../build/pdf-sfc-plugin'
-import type { PdfFontDeclaration } from '../runtime/server/fonts'
+import type { PdfFontDeclaration } from '../runtime/fonts'
 import { loadPdfImageAsset } from '../runtime/server/assets/resolve-asset'
 import { resolvePdfRenderLimits } from '../runtime/server/engine/limits'
 import {

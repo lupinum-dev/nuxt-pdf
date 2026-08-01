@@ -31,7 +31,7 @@ import {
 import { mountPdfComponent } from '../src/runtime/renderer'
 import { bundlePdfFonts } from '../src/build/fonts'
 import { renderDocument } from '../src/runtime/server/engine/render-document'
-import { createPdfFontStore } from '../src/runtime/server/fonts'
+import { createPdfFontStore } from '../src/runtime/server/engine/fonts'
 import { createReactSvgDocument } from './fixtures/react-svg'
 import { VueSvgDocument } from './fixtures/vue-svg'
 import {

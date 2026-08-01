@@ -3,7 +3,7 @@ import { createPdfTemplate } from '../runtime/server/registry'
 import type { PdfImageAssetMap } from '../runtime/server/assets/resolve-asset'
 import type { RemoteAssetPolicy } from '../runtime/server/assets/remote'
 import type { PdfRenderLimits } from '../runtime/server/engine/limits'
-import type { BundledPdfFontDescriptor } from '../runtime/server/fonts'
+import type { BundledPdfFontDescriptor } from '../runtime/fonts'
 import {
   PDF_DEFINITION_PROPERTY,
   type PdfDefinition,

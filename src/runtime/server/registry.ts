@@ -27,10 +27,8 @@ import {
   type PdfRenderLimits,
   resolvePdfRenderLimits,
 } from './engine/limits'
-import {
-  createPdfFontStore,
-  type BundledPdfFontDescriptor,
-} from './fonts'
+import type { BundledPdfFontDescriptor } from '../fonts'
+import { createPdfFontStore } from './engine/fonts'
 import { createPdfRenderResult } from './result'
 
 export type { PdfRenderDiagnostics } from '../shared/template'

@@ -281,7 +281,7 @@ describe('multi-pass TOC layout — non-convergence', () => {
 
     // Manually drive a few passes to record the oscillation the loop detects.
     const { layoutPdfTree } = await import('../src/runtime/server/engine/render-document')
-    const { createPdfFontStore } = await import('../src/runtime/server/fonts')
+    const { createPdfFontStore } = await import('../src/runtime/server/engine/fonts')
     const fontStore = createPdfFontStore()
     let fed: DestinationPageMap = {}
     for (let i = 0; i < 4; i++) {

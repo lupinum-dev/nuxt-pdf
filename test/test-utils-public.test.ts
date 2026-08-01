@@ -12,7 +12,7 @@ import {
   PdfText,
   PdfView,
 } from '../src/runtime/components'
-import type { BundledPdfFontDescriptor } from '../src/runtime/server/fonts'
+import type { BundledPdfFontDescriptor } from '../src/runtime/fonts'
 // Import through the shipped public entry so the test exercises exactly what
 // users get from `@lupinum/nuxt-pdf/test`.
 import {

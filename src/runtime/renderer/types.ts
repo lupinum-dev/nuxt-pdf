@@ -1,3 +1,5 @@
+import type { PdfFontStyle, PdfFontWeight } from '../fonts'
+
 export const PDF_PRIMITIVES = {
   Document: 'DOCUMENT',
   Page: 'PAGE',
@@ -72,23 +74,6 @@ export type PdfJustifyContent
     | 'space-between'
     | 'space-around'
     | 'space-evenly'
-export type PdfFontStyle = 'normal' | 'italic' | 'oblique'
-export type PdfFontWeight
-  = | number
-    | 'thin'
-    | 'hairline'
-    | 'ultralight'
-    | 'extralight'
-    | 'light'
-    | 'normal'
-    | 'medium'
-    | 'semibold'
-    | 'demibold'
-    | 'bold'
-    | 'ultrabold'
-    | 'extrabold'
-    | 'heavy'
-    | 'black'
 export type PdfTextAlign = 'left' | 'right' | 'center' | 'justify'
 export type PdfTextDecoration
   = | 'none'

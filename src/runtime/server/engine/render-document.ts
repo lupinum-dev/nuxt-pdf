@@ -12,7 +12,7 @@ import renderPDF from '@react-pdf/render'
 import {
   createPdfFontStore,
   type PdfFontStore,
-} from '../fonts'
+} from './fonts'
 import {
   NuxtPdfError,
   PDF_ERROR_CODES,

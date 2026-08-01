@@ -32,7 +32,14 @@ import {
   normalizePdfLimits,
   type PdfLimitsOptions,
 } from './runtime/server/engine/limits'
-import type { PdfFontDeclaration } from './runtime/server/fonts'
+import type { PdfFontDeclaration } from './runtime/fonts'
+
+export type {
+  PdfFontDeclaration,
+  PdfFontStyle,
+  PdfFontWeight,
+  PdfFontWeightName,
+} from './runtime/fonts'
 
 export type {
   PdfLength,

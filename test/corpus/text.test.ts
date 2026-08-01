@@ -17,7 +17,7 @@ import type { Component } from 'vue'
 import { mountPdfComponent } from '../../src/runtime/renderer'
 import { bundlePdfFonts } from '../../src/build/fonts'
 import { renderDocument } from '../../src/runtime/server/engine/render-document'
-import { createPdfFontStore, type PdfFontStore } from '../../src/runtime/server/fonts'
+import { createPdfFontStore, type PdfFontStore } from '../../src/runtime/server/engine/fonts'
 import {
   VueAlignDoc,
   VueDiacriticsDoc,

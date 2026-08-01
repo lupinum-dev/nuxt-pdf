@@ -33,7 +33,7 @@ import {
   DEFAULT_PDF_RENDER_LIMITS,
 } from '../src/runtime/server/engine/limits'
 import { renderDocument } from '../src/runtime/server/engine/render-document'
-import { createPdfFontStore } from '../src/runtime/server/fonts'
+import { createPdfFontStore } from '../src/runtime/server/engine/fonts'
 import {
   PDF_PRIMITIVES,
   type PdfDocumentNode,

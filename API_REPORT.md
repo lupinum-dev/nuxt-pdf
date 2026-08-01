@@ -10,6 +10,8 @@ canonical sources.
 Source: `dist/types.d.mts`
 
 ```ts
+export { type PdfFontDeclaration, type PdfFontStyle, type PdfFontWeight, type PdfFontWeightName } from '../dist/runtime/fonts.js'
+
 export { type PdfLength, type PdfLengthOrPercentage, type PdfPercentage, type PdfStyle, type PdfStyleEntry, type PdfStyleValue } from '../dist/runtime/renderer/types.js'
 
 export { type PdfBaseProps, type PdfBookmark, type PdfCircleProps, type PdfClipPathProps, type PdfDefsProps, type PdfDocumentProps, type PdfEllipseProps, type PdfGProps, type PdfImageProps, type PdfImageSource, type PdfLineProps, type PdfLinearGradientProps, type PdfLinkProps, type PdfNoteProps, type PdfPageDimension, type PdfPageProps, type PdfPageSize, type PdfPageSizeName, type PdfPageUnit, type PdfPathProps, type PdfPolygonProps, type PdfPolylineProps, type PdfRadialGradientProps, type PdfRectProps, type PdfStopProps, type PdfSvgLength, type PdfSvgNumber, type PdfSvgPresentationProps, type PdfSvgProps, type PdfSvgTransform, type PdfSvgTransformOperation, type PdfTextProps, type PdfTspanProps, type PdfViewProps } from '../dist/runtime/components/index.js'
@@ -27,7 +29,8 @@ Source: `dist/module.d.mts`
 import * as _nuxt_schema from '@nuxt/schema';
 import { RemoteAssetOptions } from '../dist/runtime/server/assets/remote.js';
 import { PdfLimitsOptions } from '../dist/runtime/server/engine/limits.js';
-import { PdfFontDeclaration } from '../dist/runtime/server/fonts.js';
+import { PdfFontDeclaration } from '../dist/runtime/fonts.js';
+export { PdfFontDeclaration, PdfFontStyle, PdfFontWeight, PdfFontWeightName } from '../dist/runtime/fonts.js';
 export { PdfLength, PdfLengthOrPercentage, PdfPercentage, PdfStyle, PdfStyleEntry, PdfStyleValue } from '../dist/runtime/renderer/types.js';
 export { PdfBaseProps, PdfBookmark, PdfCircleProps, PdfClipPathProps, PdfDefsProps, PdfDocumentProps, PdfEllipseProps, PdfGProps, PdfImageProps, PdfImageSource, PdfLineProps, PdfLinearGradientProps, PdfLinkProps, PdfNoteProps, PdfPageDimension, PdfPageProps, PdfPageSize, PdfPageSizeName, PdfPageUnit, PdfPathProps, PdfPolygonProps, PdfPolylineProps, PdfRadialGradientProps, PdfRectProps, PdfStopProps, PdfSvgLength, PdfSvgNumber, PdfSvgPresentationProps, PdfSvgProps, PdfSvgTransform, PdfSvgTransformOperation, PdfTextProps, PdfTspanProps, PdfViewProps } from '../dist/runtime/components/index.js';
 
@@ -57,7 +60,7 @@ import { Component } from 'vue';
 import { PdfImageAssetMap } from '../dist/runtime/server/assets/resolve-asset.js';
 import { RemoteAssetPolicy } from '../dist/runtime/server/assets/remote.js';
 import { PdfRenderLimits } from '../dist/runtime/server/engine/limits.js';
-import { BundledPdfFontDescriptor, PdfFontDeclaration } from '../dist/runtime/server/fonts.js';
+import { BundledPdfFontDescriptor, PdfFontDeclaration } from '../dist/runtime/fonts.js';
 
 /** Raw PDF (or PNG) bytes accepted by the low-level readers. */
 type PdfData = ArrayBuffer | Uint8Array;
