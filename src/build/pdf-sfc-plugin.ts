@@ -13,6 +13,7 @@ import {
   type SFCScriptBlock,
 } from '@vue/compiler-sfc'
 import { transform as transformWithEsbuild } from 'esbuild'
+import { PDF_DEFINITION_PROPERTY } from '../runtime/shared/template'
 
 export type PdfSfcKind = 'component' | 'template'
 
@@ -68,7 +69,6 @@ export class PdfSfcCompileError extends Error {
 }
 
 const COMPONENT_VARIABLE = '__nuxtPdfComponent'
-const METADATA_PROPERTY = '__nuxtPdf'
 const VIRTUAL_PREFIX = '\0nuxt-pdf:sfc:'
 const VIRTUAL_SUFFIX = '.mjs'
 const METADATA_KEYS = new Set([
@@ -252,7 +252,7 @@ export async function compilePdfSfc(
     composablesImport,
   )
   const metadataCode = kind === 'template'
-    ? `${COMPONENT_VARIABLE}.${METADATA_PROPERTY} = ${metadata.expression}\n`
+    ? `${COMPONENT_VARIABLE}.${PDF_DEFINITION_PROPERTY} = ${metadata.expression}\n`
     : ''
   const loader = scriptLoader(cleaned)
 
