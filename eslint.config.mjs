@@ -48,4 +48,15 @@ export default createConfigForNuxt({
         }],
       },
     },
+    {
+      files: ['playground/**/*.{ts,vue}'],
+      rules: {
+        'no-restricted-imports': ['error', {
+          patterns: [{
+            group: ['**/src/**'],
+            message: 'Playground examples must use consumer-supported package and Nuxt APIs.',
+          }],
+        }],
+      },
+    },
   )
