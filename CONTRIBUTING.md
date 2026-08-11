@@ -15,7 +15,7 @@ pnpm test
 ```
 
 Before submitting a change, run the scoped tests and lint for the files you
-touched. Release-boundary changes also require `pnpm verify`.
+touched. Release-boundary changes also require `pnpm release:verify`.
 
 ## Change policy
 

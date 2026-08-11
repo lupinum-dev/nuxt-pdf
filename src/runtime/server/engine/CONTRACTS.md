@@ -53,7 +53,8 @@ appears.
      behavior is unchanged.
 
 **Gates** — every one must pass, no exceptions:
-`pnpm lint`, `pnpm test`, `pnpm test:types` (the release gate is `pnpm verify`).
+`pnpm lint`, `pnpm test`, and `pnpm typecheck` (the release gate is
+`pnpm release:verify`).
 
 **Raster baselines** — a changed raster diff is *expected* upgrade evidence, not
 an automatic failure. Inspect each failing baseline visually and classify:

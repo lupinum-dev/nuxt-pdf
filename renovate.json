@@ -1,0 +1,38 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "automerge": false,
+  "minimumReleaseAge": "3 days",
+  "schedule": [
+    "before 05:00 on Monday"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "packageRules": [
+    {
+      "description": "Update the Ginko documentation stack together",
+      "matchPackageNames": [
+        "@lupinum/ginko-content",
+        "@lupinum/ginko-docs"
+      ],
+      "groupName": "ginko documentation stack"
+    },
+    {
+      "description": "Keep GitHub Actions immutable",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "pinDigests": true
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": [
+      "security"
+    ]
+  }
+}

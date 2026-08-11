@@ -7,7 +7,7 @@ corpus. It does not claim full React PDF API or test-suite compatibility.
 
 | Layer | 0.3.0 boundary |
 |---|---|
-| Node.js | `^22.12.0`, `^24.11.0`, or `>=26.0.0` |
+| Node.js | `^22.14.0`, `^24.0.0`, or `^26.0.0` |
 | Nuxt | `^4.4.8` |
 | Vue | `^3.5.0` |
 | React PDF reference | commit `d41a8207fb06a56e60fcb53ac0e18ce27e7d32d6` |
@@ -486,7 +486,7 @@ failure messages, in `test/test-utils-public.test.ts`.
 Run the complete repository gate with:
 
 ```bash
-pnpm verify
+pnpm check
 ```
 
 The most direct compatibility evidence is in `test/conformance.test.ts`.

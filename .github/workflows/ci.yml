@@ -27,17 +27,19 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 24.11.1
-      - run: npm install --global pnpm@10.34.5
+          node-version: 24.18.0
+      - run: npm install --global pnpm@11.21.0
       - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: .pnpm-store
           key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       - run: pnpm install --frozen-lockfile --store-dir "$PNPM_STORE_DIR"
       - run: pnpm lint
-      - run: pnpm test:types
+      - run: pnpm typecheck
       - run: pnpm test:docs
         env:
           NODE_OPTIONS: --max-old-space-size=4096
@@ -52,13 +54,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: [22.12.0, 24.11.1, 26.x]
+        node: [22.14.0, 24.18.0, 26.x]
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: ${{ matrix.node }}
-      - run: npm install --global pnpm@10.34.5
+      - run: npm install --global pnpm@11.21.0
       - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: .pnpm-store
@@ -74,7 +78,9 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-      - run: npm install --global pnpm@10.34.5
+        with:
+          persist-credentials: false
+      - run: npm install --global pnpm@11.21.0
       - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: .pnpm-store
@@ -107,10 +113,12 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 24.11.1
-      - run: npm install --global pnpm@10.34.5
+          node-version: 24.18.0
+      - run: npm install --global pnpm@11.21.0
       - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: .pnpm-store
@@ -127,10 +135,12 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 24.11.1
-      - run: npm install --global pnpm@10.34.5
+          node-version: 24.18.0
+      - run: npm install --global pnpm@11.21.0
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:prepare
       - run: pnpm exec vitest run test/assets.test.ts test/build.test.ts test/fonts.test.ts test/layers.test.ts test/pdf-sfc-plugin.test.ts
@@ -141,10 +151,12 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 24.11.1
-      - run: npm install --global pnpm@10.34.5
+          node-version: 24.18.0
+      - run: npm install --global pnpm@11.21.0
       - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: .pnpm-store
@@ -175,10 +187,12 @@ jobs:
             canvas: ^0.1.97
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 24.11.1
-      - run: npm install --global pnpm@10.34.5
+          node-version: 24.18.0
+      - run: npm install --global pnpm@11.21.0
       - run: pnpm install --frozen-lockfile
       - name: Select supported dependency boundary
         run: >-
@@ -187,7 +201,7 @@ jobs:
           vue@${{ matrix.vue }}
           pdfjs-dist@${{ matrix.pdfjs }}
           @napi-rs/canvas@${{ matrix.canvas }}
-      - run: pnpm test:types
+      - run: pnpm typecheck
       - run: pnpm test:production
 
   stress:
@@ -197,10 +211,12 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 24.11.1
-      - run: npm install --global pnpm@10.34.5
+          node-version: 24.18.0
+      - run: npm install --global pnpm@11.21.0
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec vitest run test/isolation-stress.test.ts
       - run: NUXT_PDF_PERF_GATE=1 pnpm test:performance

@@ -7,16 +7,16 @@ export default {
   ginkoDocs: {
     site: {
       url: site.url,
-      name: { en: "Nuxt PDF" },
+      name: { en: site.name },
       description: {
-        en: "Author server-rendered PDFs as ordinary Vue components in Nuxt.",
+        en: site.description,
       },
       logo: { light: "/logo.svg", dark: "/logo-dark.svg" },
       docsSidebarSwitcher: "tabs",
     },
-    social: { github: "https://github.com/Mat4m0/nuxt-pdf" },
+    social: { github: site.repository, discord: site.discord },
     repository: {
-      url: "https://github.com/Mat4m0/nuxt-pdf",
+      url: site.repository,
       branch: "main",
       contentDirectory: "docs/content",
     },
@@ -32,7 +32,7 @@ export default {
       },
       secondary: {
         label: { en: "View on GitHub" },
-        to: { en: "https://github.com/Mat4m0/nuxt-pdf" },
+        to: { en: site.repository },
       },
       hero: {
         media: {
