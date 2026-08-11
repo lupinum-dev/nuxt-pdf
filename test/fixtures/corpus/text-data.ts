@@ -54,8 +54,8 @@ export const hyphenationStyles = {
 /**
  * Six short words that fit on two lines at zero letterSpacing inside a 150pt
  * column. Positive letterSpacing widens every glyph advance and pushes the
- * text onto more lines; wordSpacing (inert in the textkit layout pipeline)
- * must leave the line count unchanged.
+ * text onto more lines. The separate wordSpacing fixture proves that the
+ * deliberately unsupported no-op property is rejected at the public boundary.
  */
 export const spacingText = 'alpha beta gamma delta epsilon zeta'
 

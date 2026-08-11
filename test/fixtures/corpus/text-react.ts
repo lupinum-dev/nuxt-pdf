@@ -70,7 +70,6 @@ export const reactSpacingDoc = () => doc(column(
   [
     h(Text, { key: 'tight', style: spacingStyles.tight }, spacingText),
     h(Text, { key: 'wide', style: spacingStyles.wide }, spacingText),
-    h(Text, { key: 'word', style: spacingStyles.wordSpaced }, spacingText),
   ],
 ))
 
