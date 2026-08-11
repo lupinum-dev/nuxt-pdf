@@ -1,5 +1,5 @@
 import { readdir } from 'node:fs/promises'
-import { isAbsolute, join, posix, resolve } from 'node:path'
+import { isAbsolute, join, posix, relative, resolve } from 'node:path'
 
 const EXCLUDED_ROOT_DIRECTORIES = new Set(['assets', 'components', 'fonts'])
 
@@ -29,6 +29,40 @@ export type PdfImageFile = {
   key: string
   rootDir: string
   layerIndex: number
+}
+
+export type PdfWatchAction = 'ignore' | 'refresh' | 'restart'
+
+const PDF_STRUCTURE_EVENTS = new Set(['add', 'addDir', 'unlink', 'unlinkDir'])
+
+export const classifyPdfWatchEvent = (
+  event: string,
+  absolutePath: string,
+  layers: readonly PdfTemplateLayer[],
+  isIgnored?: (path: string) => boolean,
+): PdfWatchAction => {
+  if (isIgnored?.(absolutePath)) return 'ignore'
+
+  for (const layer of layers) {
+    const pdfsDir = join(resolve(layer.rootDir), 'pdfs')
+    const pathWithinPdfs = relative(pdfsDir, absolutePath)
+    if (
+      pathWithinPdfs.startsWith('..')
+      || isAbsolute(pathWithinPdfs)
+    ) {
+      continue
+    }
+
+    if (PDF_STRUCTURE_EVENTS.has(event)) return 'restart'
+    if (event !== 'change') return 'ignore'
+
+    const [rootDirectory] = pathWithinPdfs.split(/[\\/]/)
+    return rootDirectory === 'assets' || rootDirectory === 'fonts'
+      ? 'restart'
+      : 'refresh'
+  }
+
+  return 'ignore'
 }
 
 const compareText = (left: string, right: string): number => {

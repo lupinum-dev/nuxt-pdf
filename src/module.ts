@@ -15,6 +15,7 @@ import {
   discoverPdfComponentFiles,
   discoverPdfImageFiles,
   discoverPdfTemplates,
+  classifyPdfWatchEvent,
   type PdfTemplateLayer,
 } from './build/discover-templates'
 import { bundlePdfFonts } from './build/fonts'
@@ -293,11 +294,22 @@ export default defineNuxtModule<ModuleOptions>({
       nuxt.hook('vite:serverCreated', (viteServer, environment) => {
         if (environment.isClient) clientViteServer = viteServer
       })
-      nuxt.hook('builder:watch', (_event, path) => {
+      nuxt.hook('builder:watch', async (event, path) => {
         const absolutePath = isAbsolute(path)
           ? path
-          : resolvePath(nuxt.options.rootDir, path)
-        if (!pdfSfcFiles.has(absolutePath)) return
+          : resolvePath(nuxt.options.srcDir, path)
+        const action = classifyPdfWatchEvent(
+          event,
+          absolutePath,
+          layers,
+          isIgnored,
+        )
+        if (action === 'restart') {
+          await nuxt.callHook('restart')
+          return
+        }
+        if (action !== 'refresh') return
+
         clientViteServer?.ws.send({
           type: 'custom',
           event: 'nuxt-pdf:update',

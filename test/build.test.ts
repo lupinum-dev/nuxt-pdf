@@ -6,6 +6,7 @@ import {
   discoverPdfComponentFiles,
   discoverPdfImageFiles,
   discoverPdfTemplates,
+  classifyPdfWatchEvent,
   normalizePdfTemplateCandidates,
   templateKeyFromRelativePath,
   type PdfTemplate,
@@ -52,6 +53,28 @@ afterEach(async () => {
 })
 
 describe('PDF template discovery', () => {
+  it('restarts for discovery/resource changes and refreshes source edits', () => {
+    const rootDir = '/project'
+    const layers = [{ name: 'project', rootDir }]
+
+    expect(classifyPdfWatchEvent('change', '/project/pdfs/invoice.vue', layers))
+      .toBe('refresh')
+    expect(classifyPdfWatchEvent('change', '/project/pdfs/invoice.preview.ts', layers))
+      .toBe('refresh')
+    expect(classifyPdfWatchEvent('add', '/project/pdfs/new.vue', layers))
+      .toBe('restart')
+    expect(classifyPdfWatchEvent('unlink', '/project/pdfs/old.vue', layers))
+      .toBe('restart')
+    expect(classifyPdfWatchEvent('change', '/project/pdfs/assets/logo.png', layers))
+      .toBe('restart')
+    expect(classifyPdfWatchEvent('change', '/project/pdfs/fonts/body.ttf', layers))
+      .toBe('restart')
+    expect(classifyPdfWatchEvent('change', '/project/pdfs/private.vue', layers,
+      file => file.endsWith('private.vue'))).toBe('ignore')
+    expect(classifyPdfWatchEvent('change', '/project/pdfs-other/invoice.vue', layers))
+      .toBe('ignore')
+  })
+
   it('normalizes slash template keys from relative paths', () => {
     expect(templateKeyFromRelativePath('reports\\monthly.vue')).toBe(
       'reports/monthly',
