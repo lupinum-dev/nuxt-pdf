@@ -48,12 +48,12 @@
     "node": "^22.14.0 || ^24.0.0 || ^26.0.0"
   },
   "scripts": {
-    "prepack": "nuxt-module-build build",
+    "prepack": "pnpm build",
     "prepublishOnly": "node scripts/block-source-publish.mjs",
     "dev": "npm run dev:prepare && nuxt dev playground",
     "dev:build": "nuxt build playground",
     "dev:prepare": "nuxt-module-build build --stub && nuxt-module-build prepare && nuxt prepare playground",
-    "build": "nuxt-module-build build",
+    "build": "nuxt prepare && nuxt-module-build build",
     "api:write": "node scripts/check-api-report.mjs --write",
     "docs:build": "pnpm --dir docs build",
     "docs:dev": "pnpm --dir docs dev",
