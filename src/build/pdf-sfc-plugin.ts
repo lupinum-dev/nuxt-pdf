@@ -98,6 +98,15 @@ type AstNode = {
   type: string
 }
 
+type TemplateAstNode = {
+  children?: TemplateAstNode[]
+  loc?: AstLocation | null
+  name?: string
+  props?: TemplateAstNode[]
+  tag?: string
+  type: number
+}
+
 type MacroCall = {
   argument?: AstNode
   block: SFCScriptBlock
@@ -237,6 +246,8 @@ export async function compilePdfSfc(
 
   assertSupportedBlocks(original, filename)
   assertTemplate(original, filename)
+  assertSynchronousSetup(original, filename)
+  assertSupportedTemplate(original, filename)
 
   const metadata = extractMetadata(
     source,
@@ -326,6 +337,65 @@ function assertTemplate(descriptor: SFCDescriptor, filename: string): void {
     1,
     'A PDF component must contain a <template> block.',
   )
+}
+
+const FUNCTION_NODE_TYPES = new Set([
+  'ArrowFunctionExpression',
+  'ClassMethod',
+  'ClassPrivateMethod',
+  'FunctionDeclaration',
+  'FunctionExpression',
+  'ObjectMethod',
+])
+
+function assertSynchronousSetup(
+  descriptor: SFCDescriptor,
+  filename: string,
+): void {
+  const block = descriptor.scriptSetup
+  if (!block) return
+
+  const program = parseScriptProgram(block, filename)
+  walkAst(program, [], (node, ancestors) => {
+    const isTopLevelAwait = node.type === 'AwaitExpression'
+      || (node.type === 'ForOfStatement' && node.await === true)
+    if (!isTopLevelAwait) return
+    if (ancestors.some(parent => FUNCTION_NODE_TYPES.has(parent.type))) return
+
+    throw errorAtNode(
+      filename,
+      block,
+      node,
+      'Top-level await is not supported in PDF templates. Load request data before render(props) and pass it through typed props.',
+    )
+  })
+}
+
+function assertSupportedTemplate(
+  descriptor: SFCDescriptor,
+  filename: string,
+): void {
+  const block = descriptor.template
+  const ast = block?.ast as unknown as TemplateAstNode | undefined
+  if (!block || !ast) return
+
+  walkTemplateAst(ast, (node) => {
+    if (node.type === 1 && node.tag?.toLowerCase() === 'teleport') {
+      throw errorAtTemplateNode(
+        filename,
+        node,
+        'Teleport is not supported in PDF templates because the PDF renderer has no external host target.',
+      )
+    }
+
+    if (node.type === 7 && node.name === 'show') {
+      throw errorAtTemplateNode(
+        filename,
+        node,
+        'v-show is not supported in PDF templates. Use v-if; PDF styles are not browser CSS.',
+      )
+    }
+  })
 }
 
 function extractMetadata(
@@ -438,21 +508,7 @@ function findMacroCalls(
 ): MacroCall[] {
   if (!block) return []
 
-  const plugins: Array<'jsx' | 'typescript'> = []
-  if (block.lang === 'ts' || block.lang === 'tsx') plugins.push('typescript')
-  if (block.lang === 'jsx' || block.lang === 'tsx') plugins.push('jsx')
-
-  let program: AstNode
-
-  try {
-    program = babelParse(block.content, {
-      plugins,
-      sourceType: 'module',
-    }).program as unknown as AstNode
-  }
-  catch (error) {
-    throw normalizeScriptParseError(error, filename, block)
-  }
+  const program = parseScriptProgram(block, filename)
 
   const calls: MacroCall[] = []
 
@@ -478,6 +534,25 @@ function findMacroCalls(
   })
 
   return calls
+}
+
+function parseScriptProgram(
+  block: SFCScriptBlock,
+  filename: string,
+): AstNode {
+  const plugins: Array<'jsx' | 'typescript'> = []
+  if (block.lang === 'ts' || block.lang === 'tsx') plugins.push('typescript')
+  if (block.lang === 'jsx' || block.lang === 'tsx') plugins.push('jsx')
+
+  try {
+    return babelParse(block.content, {
+      plugins,
+      sourceType: 'module',
+    }).program as unknown as AstNode
+  }
+  catch (error) {
+    throw normalizeScriptParseError(error, filename, block)
+  }
 }
 
 function assertMetadataHoistable(
@@ -773,6 +848,15 @@ function walkAst(
   }
 }
 
+function walkTemplateAst(
+  node: TemplateAstNode,
+  visit: (node: TemplateAstNode) => void,
+): void {
+  visit(node)
+  for (const child of node.props ?? []) walkTemplateAst(child, visit)
+  for (const child of node.children ?? []) walkTemplateAst(child, visit)
+}
+
 function asAstNode(value: unknown): AstNode | undefined {
   return typeof value === 'object'
     && value !== null
@@ -829,6 +913,19 @@ function errorAtBlock(
     filename,
     block.loc.start.line,
     block.loc.start.column,
+    message,
+  )
+}
+
+function errorAtTemplateNode(
+  filename: string,
+  node: TemplateAstNode,
+  message: string,
+): PdfSfcCompileError {
+  return new PdfSfcCompileError(
+    filename,
+    node.loc?.start.line ?? 1,
+    node.loc?.start.column ?? 1,
     message,
   )
 }

@@ -348,6 +348,28 @@ definePdf({})
     await expect(compilePdfSfc(source, file, 'template')).rejects.toThrow(message)
   })
 
+  it.each([
+    {
+      filename: 'async-setup.vue',
+      source: `<script setup>\ndefinePdf({})\nconst data = await Promise.resolve('late')\n</script>\n<template><PdfDocument><PdfPage><PdfText>{{ data }}</PdfText></PdfPage></PdfDocument></template>`,
+      message: 'async-setup.vue:3:14 Top-level await is not supported in PDF templates.',
+    },
+    {
+      filename: 'v-show.vue',
+      source: `<script setup>\ndefinePdf({})\n</script>\n<template><PdfDocument><PdfPage><PdfText v-show="false">Hidden</PdfText></PdfPage></PdfDocument></template>`,
+      message: 'v-show.vue:4:42 v-show is not supported in PDF templates.',
+    },
+    {
+      filename: 'teleport.vue',
+      source: `<script setup>\ndefinePdf({})\n</script>\n<template><PdfDocument><PdfPage><Teleport to="body"><PdfText>Lost</PdfText></Teleport></PdfPage></PdfDocument></template>`,
+      message: 'teleport.vue:4:33 Teleport is not supported in PDF templates',
+    },
+  ])('rejects unsupported Vue execution in $filename', async ({ filename, source, message }) => {
+    const file = resolve(`test/fixtures/pdf-sfc/${filename}`)
+
+    await expect(compilePdfSfc(source, file, 'template')).rejects.toThrow(message)
+  })
+
   it('exposes structured compiler errors', async () => {
     const filename = resolve('test/fixtures/pdf-sfc/missing.vue')
 

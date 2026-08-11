@@ -1,5 +1,9 @@
 import { NuxtPdfError, PDF_ERROR_CODES } from '../shared/errors'
-import { PDF_PRIMITIVES } from '../authoring'
+import {
+  PDF_PRIMITIVES,
+  type PdfStyle,
+  type PdfStyleValue,
+} from '../authoring'
 import { PDF_PAGE_SIZE_NAMES } from '../components'
 import {
   PDF_PRIMITIVE_NAMES,
@@ -13,6 +17,89 @@ const RESERVED_DESTINATION_IDS = new Set([
   'constructor',
   'prototype',
 ])
+
+const exactStyleKeys = <const Keys extends readonly (keyof PdfStyle)[]>(
+  keys: Keys & (
+    Exclude<keyof PdfStyle, Keys[number]> extends never
+      ? unknown
+      : { readonly __missingStyles: Exclude<keyof PdfStyle, Keys[number]> }
+  ),
+): ReadonlySet<keyof PdfStyle> => new Set(keys)
+
+const PDF_STYLE_KEYS = exactStyleKeys([
+  'alignItems',
+  'backgroundColor',
+  'borderBottomColor',
+  'borderBottomLeftRadius',
+  'borderBottomRightRadius',
+  'borderBottomStyle',
+  'borderBottomWidth',
+  'borderColor',
+  'borderLeftColor',
+  'borderLeftStyle',
+  'borderLeftWidth',
+  'borderRadius',
+  'borderRightColor',
+  'borderRightStyle',
+  'borderRightWidth',
+  'borderStyle',
+  'borderTopColor',
+  'borderTopLeftRadius',
+  'borderTopRightRadius',
+  'borderTopStyle',
+  'borderTopWidth',
+  'borderWidth',
+  'bottom',
+  'color',
+  'flex',
+  'flexBasis',
+  'flexDirection',
+  'flexGrow',
+  'flexShrink',
+  'flexWrap',
+  'fontFamily',
+  'fontSize',
+  'fontStyle',
+  'fontWeight',
+  'gap',
+  'height',
+  'justifyContent',
+  'left',
+  'letterSpacing',
+  'lineHeight',
+  'margin',
+  'marginBottom',
+  'marginHorizontal',
+  'marginLeft',
+  'marginRight',
+  'marginTop',
+  'marginVertical',
+  'maxHeight',
+  'maxLines',
+  'maxWidth',
+  'minHeight',
+  'minWidth',
+  'objectFit',
+  'opacity',
+  'padding',
+  'paddingBottom',
+  'paddingHorizontal',
+  'paddingLeft',
+  'paddingRight',
+  'paddingTop',
+  'paddingVertical',
+  'position',
+  'right',
+  'textAlign',
+  'textDecoration',
+  'textDecorationColor',
+  'textDecorationStyle',
+  'textOverflow',
+  'textTransform',
+  'top',
+  'transform',
+  'width',
+] as const)
 
 const DESTINATION_TYPES = new Set<PdfElementType>([
   PDF_PRIMITIVES.Page,
@@ -259,6 +346,25 @@ const validateScalarInvariants = (node: PdfElementNode): void => {
   }
 }
 
+const validateStyle = (style: PdfStyleValue): void => {
+  if (Array.isArray(style)) {
+    for (const entry of style) {
+      if (entry !== false && entry != null) validateStyle(entry as PdfStyleValue)
+    }
+    return
+  }
+
+  if (typeof style !== 'object' || style === null) {
+    treeInvalid('PDF styles must be an object or a nested array of style objects.')
+  }
+
+  for (const key of Object.keys(style)) {
+    if (!PDF_STYLE_KEYS.has(key as keyof PdfStyle)) {
+      treeInvalid(`Unsupported PDF style "${key}".`)
+    }
+  }
+}
+
 const validateTextContext = (
   node: PdfElementNode,
   insideSvg: boolean,
@@ -364,6 +470,7 @@ export const validatePdfDocumentTree = (document: PdfDocumentNode): void => {
     validatePage(node)
     validateLinkAndImageSources(node)
     validateScalarInvariants(node)
+    validateStyle(node.style)
     validateTextContext(node, insideSvg)
 
     if (node.type === PDF_PRIMITIVES.Svg) validateSvgDefinitions(node)

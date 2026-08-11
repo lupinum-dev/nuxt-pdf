@@ -1,12 +1,15 @@
 import {
   Fragment,
+  defineAsyncComponent,
   defineComponent,
   h,
   nextTick,
   onUnmounted,
   ref,
   resolveComponent,
+  vShow,
   watchEffect,
+  withDirectives,
   type Component,
   type PropType,
   type VNodeChild,
@@ -405,6 +408,58 @@ describe('Vue PDF host renderer', () => {
     await expect(mountPdfComponent(Fixture)).rejects.toThrow(
       'private component failure',
     )
+  })
+
+  it.each([
+    {
+      label: 'async setup',
+      component: defineComponent({
+        async setup() {
+          await Promise.resolve()
+          return () => h(PdfText, null, () => 'Late setup content')
+        },
+      }),
+    },
+    {
+      label: 'an async component',
+      component: defineAsyncComponent(async () => {
+        await Promise.resolve()
+        return defineComponent(() => () =>
+          h(PdfText, null, () => 'Late component content'),
+        )
+      }),
+    },
+  ])('rejects $label instead of omitting its content', async ({ component }) => {
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, null, {
+          default: () => h(component),
+        }),
+      }),
+    )
+
+    await expect(mountPdfComponent(Fixture)).rejects.toMatchObject({
+      code: 'PDF_TEMPLATE_INVALID',
+      message: expect.stringContaining('Async setup and async components'),
+    })
+  })
+
+  it('rejects DOM directives that mutate undeclared PDF styles', async () => {
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, null, {
+          default: () => withDirectives(
+            h(PdfText, null, () => 'Hidden content'),
+            [[vShow, false]],
+          ),
+        }),
+      }),
+    )
+
+    await expect(mountPdfComponent(Fixture)).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message: 'Unsupported PDF style "display".',
+    })
   })
 
   it('ignores formatting whitespace outside text containers', async () => {

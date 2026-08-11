@@ -2,6 +2,7 @@ import {
   createRenderer,
   createVNode,
   defineComponent,
+  getCurrentInstance,
   nextTick,
   reactive,
   shallowRef,
@@ -84,6 +85,9 @@ export type MountedPdfComponent = {
   unmount(): void
 }
 
+const ASYNC_AUTHORING_ERROR
+  = 'Async setup and async components are not supported in PDF templates. Load request data before render(props) and pass it through typed props.'
+
 const requireDocument = (root: PdfRoot): PdfDocumentNode => {
   if (root.document?.type !== PDF_PRIMITIVES.Document) {
     throw new NuxtPdfError(
@@ -128,11 +132,35 @@ export const mountPdfComponent = async (
   })
 
   const app = renderer.createApp(RootComponent)
+  app.mixin({
+    beforeCreate() {
+      const type = getCurrentInstance()?.type
+      if (typeof type !== 'object' || type === null) return
+
+      const candidate = type as Record<string, unknown>
+      const setup = candidate.setup
+      if (
+        '__asyncLoader' in candidate
+        || (typeof setup === 'function' && setup.constructor.name === 'AsyncFunction')
+      ) {
+        recordRenderError(new NuxtPdfError(
+          PDF_ERROR_CODES.TemplateInvalid,
+          ASYNC_AUTHORING_ERROR,
+        ))
+      }
+    },
+  })
   // A PDF is an all-or-nothing artifact. Vue's default production behavior logs
   // component errors and continues rendering, which can otherwise return a
   // successful document with missing content.
   app.config.errorHandler = recordRenderError
   app.config.throwUnhandledErrorInProduction = true
+  app.config.warnHandler = message => recordRenderError(new NuxtPdfError(
+    PDF_ERROR_CODES.TemplateInvalid,
+    message.includes('async setup()')
+      ? ASYNC_AUTHORING_ERROR
+      : `Vue reported an invalid PDF authoring pattern: ${message}`,
+  ))
 
   for (const [name, primitive] of Object.entries(PDF_COMPONENTS)) {
     app.component(name, primitive)
