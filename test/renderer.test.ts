@@ -4,7 +4,12 @@ import {
   defineComponent,
   h,
   nextTick,
+  onBeforeMount,
+  onBeforeUnmount,
+  onMounted,
+  onServerPrefetch,
   onUnmounted,
+  onUpdated,
   ref,
   resolveComponent,
   vShow,
@@ -77,6 +82,44 @@ afterEach(() => {
 })
 
 describe('Vue PDF host renderer', () => {
+  it('uses runtime-core lifecycle semantics in Node', async () => {
+    const events: string[] = []
+    const value = ref('first')
+    const Fixture = defineComponent({
+      setup() {
+        onBeforeMount(() => events.push('beforeMount'))
+        onMounted(() => events.push('mounted'))
+        onUpdated(() => events.push('updated'))
+        onBeforeUnmount(() => events.push('beforeUnmount'))
+        onUnmounted(() => events.push('unmounted'))
+        onServerPrefetch(() => {
+          events.push('serverPrefetch')
+        })
+        return () => {
+          const text = value.value
+          return h(PdfDocument, null, {
+            default: () => h(PdfPage, null, {
+              default: () => h(PdfText, null, () => text),
+            }),
+          })
+        }
+      },
+    })
+
+    const mounted = await mountPdfComponent(Fixture)
+    value.value = 'second'
+    await nextTick()
+    mounted.unmount()
+
+    expect(events).toEqual([
+      'beforeMount',
+      'mounted',
+      'updated',
+      'beforeUnmount',
+      'unmounted',
+    ])
+  })
+
   it('resolves PDF primitives in the custom renderer app context', async () => {
     const Fixture = defineComponent({
       setup() {
