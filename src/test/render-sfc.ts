@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer'
 import { existsSync } from 'node:fs'
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { basename, dirname, join, relative, resolve } from 'node:path'
@@ -62,17 +63,24 @@ const sfcCompilerPlugin = (
       external: true,
       path,
     }))
-    build.onLoad({ filter: /\.vue$/ }, async ({ path }) => ({
-      contents: (await compilePdfSfc(
+    build.onLoad({ filter: /\.vue$/ }, async ({ path }) => {
+      const result = await compilePdfSfc(
         await readFile(path, 'utf8'),
         path,
         path === entry ? 'template' : 'component',
         true,
         composablesImport,
-      )).code,
-      loader: 'js',
-      resolveDir: dirname(path),
-    }))
+      )
+      const sourceMap = result.map
+        ? `\n//# sourceMappingURL=data:application/json;base64,${Buffer.from(JSON.stringify(result.map)).toString('base64')}`
+        : ''
+
+      return {
+        contents: result.code + sourceMap,
+        loader: 'js',
+        resolveDir: dirname(path),
+      }
+    })
   },
 })
 

@@ -6,6 +6,7 @@ import {
   addServerTemplate,
   addTemplate,
   addTypeTemplate,
+  createIsIgnored,
   createResolver,
   defineNuxtModule,
   getLayerDirectories,
@@ -14,10 +15,12 @@ import {
   discoverPdfComponentFiles,
   discoverPdfImageFiles,
   discoverPdfTemplates,
+  classifyPdfWatchEvent,
   type PdfTemplateLayer,
 } from './build/discover-templates'
 import { bundlePdfFonts } from './build/fonts'
 import {
+  generatePdfPreviewConfig,
   generatePdfRegistryTypes,
   generatePdfRuntimeRegistry,
 } from './build/generate-registry'
@@ -120,17 +123,8 @@ const existingDirectories = async (directories: readonly string[]) => {
 }
 
 const generateAuthoringTypes = (
-  sharedImport: string,
   componentsImport: string,
-): string => `type NuxtPdfDefinition<Props extends object> = import(${quote(sharedImport)}).PdfDefinition<Props>
-
-declare global {
-  const definePdf: <Props extends object = Record<string, unknown>>(
-    definition: NuxtPdfDefinition<Props>,
-  ) => void
-}
-
-declare module 'vue' {
+): string => `declare module 'vue' {
   interface GlobalComponents {
     PdfDocument: typeof import(${quote(componentsImport)})['PdfDocument']
     PdfImage: typeof import(${quote(componentsImport)})['PdfImage']
@@ -165,7 +159,7 @@ export default defineNuxtModule<ModuleOptions>({
     name: 'nuxt-pdf',
     configKey: 'pdf',
     compatibility: {
-      nuxt: '>=4.4.8',
+      nuxt: '^4.4.8',
     },
   },
   defaults: {
@@ -177,6 +171,7 @@ export default defineNuxtModule<ModuleOptions>({
     const sharedImport = resolver.resolve('./runtime/shared/index')
     const componentsImport = resolver.resolve('./runtime/components/index')
     const composablesImport = resolver.resolve('./runtime/composables/index')
+    const definePdfImport = resolver.resolve('./runtime/define-pdf')
     const previewHandler = resolver.resolve('./runtime/server/preview')
     const layers: PdfTemplateLayer[] = getLayerDirectories(nuxt).map(
       (directories, index) => ({
@@ -184,11 +179,12 @@ export default defineNuxtModule<ModuleOptions>({
         name: index === 0 ? 'project' : `layer-${index}`,
       }),
     )
-    const templates = await discoverPdfTemplates(layers)
-    const componentFiles = await discoverPdfComponentFiles(layers)
+    const isIgnored = createIsIgnored(nuxt)
+    const templates = await discoverPdfTemplates(layers, isIgnored)
+    const componentFiles = await discoverPdfComponentFiles(layers, isIgnored)
     const limits = normalizePdfLimits(options.limits)
     const resolvedLimits = limits ?? DEFAULT_PDF_RENDER_LIMITS
-    const imageFiles = await discoverPdfImageFiles(layers)
+    const imageFiles = await discoverPdfImageFiles(layers, isIgnored)
     const assets = await Promise.all(imageFiles.map(image =>
       loadPdfImageAsset(image.key, {
         roots: [image.rootDir],
@@ -259,11 +255,15 @@ export default defineNuxtModule<ModuleOptions>({
       as: 'usePdfPageNumbers',
       from: composablesImport,
     })
+    addImports({
+      name: 'definePdf',
+      as: 'definePdf',
+      from: definePdfImport,
+    })
 
     addTypeTemplate({
       filename: 'types/nuxt-pdf-authoring.d.ts',
       getContents: () => generateAuthoringTypes(
-        sharedImport,
         componentsImport,
       ),
       write: true,
@@ -295,11 +295,22 @@ export default defineNuxtModule<ModuleOptions>({
       nuxt.hook('vite:serverCreated', (viteServer, environment) => {
         if (environment.isClient) clientViteServer = viteServer
       })
-      nuxt.hook('builder:watch', (_event, path) => {
+      nuxt.hook('builder:watch', async (event, path) => {
         const absolutePath = isAbsolute(path)
           ? path
-          : resolvePath(nuxt.options.rootDir, path)
-        if (!pdfSfcFiles.has(absolutePath)) return
+          : resolvePath(nuxt.options.srcDir, path)
+        const action = classifyPdfWatchEvent(
+          event,
+          absolutePath,
+          layers,
+          isIgnored,
+        )
+        if (action === 'restart') {
+          await nuxt.callHook('restart')
+          return
+        }
+        if (action !== 'refresh') return
+
         clientViteServer?.ws.send({
           type: 'custom',
           event: 'nuxt-pdf:update',
@@ -307,6 +318,13 @@ export default defineNuxtModule<ModuleOptions>({
         })
       })
 
+      addServerTemplate({
+        filename: '#pdf-preview-config',
+        getContents: () => generatePdfPreviewConfig(
+          nuxt.options.app.baseURL,
+          nuxt.options.app.buildAssetsDir,
+        ),
+      })
       addServerHandler({ route: '/_pdf', handler: previewHandler })
       addServerHandler({ route: '/_pdf/**', handler: previewHandler })
     }

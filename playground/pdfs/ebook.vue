@@ -77,9 +77,7 @@ const bodyStyle = {
   fontSize: 10.5,
   lineHeight: 1.62,
   marginBottom: 9,
-  orphans: 2,
   textAlign: 'left',
-  widows: 2,
 } as const
 
 const leadStyle = {
@@ -417,13 +415,15 @@ definePdf<EbookProps>({
         <!-- First paragraph carries the small-caps lead-in (letterSpacing, not a
              fake drop cap — the engine keeps the baseline). Kept on one line so
              no stray whitespace splits the lead-in from the body run. -->
-        <!-- eslint-disable-next-line vue/singleline-html-element-content-newline -->
-        <PdfText :style="bodyStyle"><PdfText :style="leadStyle">{{ chapter.lead.lead }}</PdfText>{{ chapter.lead.rest }}</PdfText>
+        <!-- eslint-disable-next-line vue/max-attributes-per-line, vue/singleline-html-element-content-newline -->
+        <PdfText :style="bodyStyle" :orphans="2" :widows="2"><PdfText :style="leadStyle">{{ chapter.lead.lead }}</PdfText>{{ chapter.lead.rest }}</PdfText>
 
         <PdfText
           v-for="(paragraph, index) in chapter.body"
           :key="index"
+          :orphans="2"
           :style="bodyStyle"
+          :widows="2"
         >
           {{ paragraph }}
         </PdfText>

@@ -61,8 +61,14 @@ export const VueSpacingDoc = defineComponent({
   setup: () => () => document(column(spacingStyles.column, [
     h(PdfText, { style: spacingStyles.tight }, () => spacingText),
     h(PdfText, { style: spacingStyles.wide }, () => spacingText),
-    h(PdfText, { style: spacingStyles.wordSpaced }, () => spacingText),
   ])),
+})
+
+export const VueUnsupportedWordSpacingDoc = defineComponent({
+  name: 'VueUnsupportedWordSpacingDoc',
+  setup: () => () => document(
+    h(PdfText, { style: spacingStyles.wordSpaced }, () => spacingText),
+  ),
 })
 
 export const VueAlignDoc = defineComponent({

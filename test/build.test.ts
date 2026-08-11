@@ -6,11 +6,13 @@ import {
   discoverPdfComponentFiles,
   discoverPdfImageFiles,
   discoverPdfTemplates,
+  classifyPdfWatchEvent,
   normalizePdfTemplateCandidates,
   templateKeyFromRelativePath,
   type PdfTemplate,
 } from '../src/build/discover-templates'
 import {
+  generatePdfPreviewConfig,
   generatePdfRegistryTypes,
   generatePdfRuntimeRegistry,
 } from '../src/build/generate-registry'
@@ -52,6 +54,28 @@ afterEach(async () => {
 })
 
 describe('PDF template discovery', () => {
+  it('restarts for discovery/resource changes and refreshes source edits', () => {
+    const rootDir = '/project'
+    const layers = [{ name: 'project', rootDir }]
+
+    expect(classifyPdfWatchEvent('change', '/project/pdfs/invoice.vue', layers))
+      .toBe('refresh')
+    expect(classifyPdfWatchEvent('change', '/project/pdfs/invoice.preview.ts', layers))
+      .toBe('refresh')
+    expect(classifyPdfWatchEvent('add', '/project/pdfs/new.vue', layers))
+      .toBe('restart')
+    expect(classifyPdfWatchEvent('unlink', '/project/pdfs/old.vue', layers))
+      .toBe('restart')
+    expect(classifyPdfWatchEvent('change', '/project/pdfs/assets/logo.png', layers))
+      .toBe('restart')
+    expect(classifyPdfWatchEvent('change', '/project/pdfs/fonts/body.ttf', layers))
+      .toBe('restart')
+    expect(classifyPdfWatchEvent('change', '/project/pdfs/private.vue', layers,
+      file => file.endsWith('private.vue'))).toBe('ignore')
+    expect(classifyPdfWatchEvent('change', '/project/pdfs-other/invoice.vue', layers))
+      .toBe('ignore')
+  })
+
   it('normalizes slash template keys from relative paths', () => {
     expect(templateKeyFromRelativePath('reports\\monthly.vue')).toBe(
       'reports/monthly',
@@ -80,6 +104,7 @@ describe('PDF template discovery', () => {
     const base = await createLayer('base', {
       'pdfs/invoice.vue': '<template>base</template>',
       'pdfs/certificate.vue': '<template />',
+      'pdfs/assets/brand/logo.png': 'base image',
     })
 
     const discovered = await discoverPdfTemplates([
@@ -121,6 +146,29 @@ describe('PDF template discovery', () => {
       layerIndex: 0,
       rootDir: join(project, 'pdfs/assets'),
     }])
+  })
+
+  it('applies Nuxt ignore decisions to templates, components, and assets', async () => {
+    const project = await createLayer('ignored', {
+      'pdfs/invoice.vue': '<template />',
+      'pdfs/private/secret.vue': '<template />',
+      'pdfs/components/Visible.vue': '<template />',
+      'pdfs/components/private/Secret.vue': '<template />',
+      'pdfs/assets/logo.png': 'visible',
+      'pdfs/assets/private/secret.png': 'ignored',
+    })
+    const ignorePrivate = (file: string) => file.split('/').includes('private')
+    const layers = [{ name: 'project', rootDir: project }]
+
+    await expect(discoverPdfTemplates(layers, ignorePrivate)).resolves.toEqual([
+      expect.objectContaining({ key: 'invoice' }),
+    ])
+    await expect(discoverPdfComponentFiles(layers, ignorePrivate)).resolves.toEqual([
+      join(project, 'pdfs/components/Visible.vue'),
+    ])
+    await expect(discoverPdfImageFiles(layers, ignorePrivate)).resolves.toEqual([
+      expect.objectContaining({ key: 'logo.png' }),
+    ])
   })
 
   it('fails on key collisions within a layer', () => {
@@ -167,6 +215,15 @@ describe('PDF template discovery', () => {
 })
 
 describe('PDF registry generation', () => {
+  it('derives the preview HMR client from Nuxt app and asset bases', () => {
+    expect(generatePdfPreviewConfig('/portal/', '/assets/')).toBe(
+      'export const hmrClientPath = "/portal/assets/@vite/client"\n',
+    )
+    expect(generatePdfPreviewConfig('./', '/_nuxt/')).toBe(
+      'export const hmrClientPath = "/_nuxt/@vite/client"\n',
+    )
+  })
+
   const templates = [
     template(
       'reports/monthly',
@@ -281,7 +338,10 @@ export { NuxtPdfError, PDF_ERROR_CODES } from "#pdf-runtime"
     const source = generatePdfRegistryTypes(templates, options)
 
     expect(source).toContain(
-      'import type { PdfRenderResult, PdfTemplate } from "#pdf-runtime"',
+      'import type { PdfComponentProps, PdfRenderResult, PdfTemplate } from "#pdf-runtime"',
+    )
+    expect(source).toContain(
+      'type PdfProps0 = PdfComponentProps<PdfComponent0>',
     )
     expect(source).toContain(
       'readonly "reports/monthly": PdfTemplate<PdfProps1>',

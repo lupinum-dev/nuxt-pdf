@@ -1,4 +1,10 @@
-import type { Component } from 'vue'
+import type {
+  AllowedComponentProps,
+  Component,
+  ComponentCustomProps,
+  FunctionalComponent,
+  VNodeProps,
+} from 'vue'
 
 export const PDF_DEFINITION_PROPERTY = '__nuxtPdf' as const
 
@@ -32,6 +38,16 @@ export type PdfComponent<Props extends object = Record<string, unknown>>
   = Component & {
     readonly [PDF_DEFINITION_PROPERTY]?: PdfDefinition<Props>
   }
+
+type VueFrameworkProps = VNodeProps & AllowedComponentProps & ComponentCustomProps
+
+/** Props authored by a component, excluding Vue's renderer-level vnode props. */
+export type PdfComponentProps<C extends Component>
+  = C extends abstract new (...args: never[]) => { $props: infer Props extends object }
+    ? Omit<Props, keyof VueFrameworkProps>
+    : C extends FunctionalComponent<infer Props extends object>
+      ? Props
+      : Record<string, unknown>
 
 export type PdfDisposition = 'attachment' | 'inline'
 

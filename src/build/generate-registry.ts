@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer'
+import { joinURL } from 'ufo'
 import type { RemoteAssetPolicy } from '../runtime/server/assets/remote'
 import type { PdfRenderLimits } from '../runtime/server/render-limits'
 import type { PdfTemplate } from './discover-templates'
@@ -31,6 +32,15 @@ const compareText = (left: string, right: string): number => {
 }
 
 const quote = (value: string): string => JSON.stringify(value)
+
+export const generatePdfPreviewConfig = (
+  baseURL: string,
+  buildAssetsDir: string,
+): string => `export const hmrClientPath = ${quote(joinURL(
+  baseURL.replace(/^\.\//, '/') || '/',
+  buildAssetsDir,
+  '@vite/client',
+))}\n`
 
 const importPath = (filePath: string): string =>
   filePath.replaceAll('\\', '/')
@@ -175,14 +185,14 @@ export const generatePdfRegistryTypes = (
   validateOptions(options)
   const ordered = orderedTemplates(templates)
   const lines = [
-    `import type { PdfRenderResult, PdfTemplate } from ${quote(options.runtimeImport)}`,
+    `import type { PdfComponentProps, PdfRenderResult, PdfTemplate } from ${quote(options.runtimeImport)}`,
   ]
 
   ordered.forEach((template, index) => {
     lines.push(
       '',
       `type PdfComponent${index} = typeof import(${quote(importPath(template.filePath))})['default']`,
-      `type PdfProps${index} = InstanceType<PdfComponent${index}>['$props']`,
+      `type PdfProps${index} = PdfComponentProps<PdfComponent${index}>`,
     )
   })
 

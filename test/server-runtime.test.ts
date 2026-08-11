@@ -30,6 +30,9 @@ import {
 import { installPdfCanvasGlobals } from '../src/test/pdf'
 
 vi.mock('#pdf', () => ({ pdfPreview: {} }))
+vi.mock('#pdf-preview-config', () => ({
+  hmrClientPath: '/_nuxt/@vite/client',
+}))
 
 type FixtureProps = {
   name: string
@@ -705,6 +708,21 @@ describe('development PDF preview', () => {
     expect(long).toMatch(/src="\/_pdf\/invoice\.pdf\?scenario=long&(amp;)?render=[^"&]+"/)
     expect(long).toContain('createHotContext(\'/_pdf\').on(\'nuxt-pdf:update\'')
     expect(long).toContain('location.reload()')
+  })
+
+  it('uses Nuxt\'s configured Vite client path for preview HMR', async () => {
+    const { template } = createPreviewTemplate({ sampleData: { id: 'sample' } })
+    const page = await renderPdfPreview(
+      { invoice: template },
+      {
+        path: 'invoice',
+        hmrClientPath: '/portal/assets/@vite/client',
+      },
+    )
+
+    expect(await page.text()).toContain(
+      'from "/portal/assets/@vite/client"',
+    )
   })
 
   it('offers distinct inline and download actions', async () => {

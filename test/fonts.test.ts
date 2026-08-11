@@ -25,6 +25,9 @@ const fixtureFont = resolve('test/fixtures/assets/Roboto-Regular.ttf')
 const fixtureOpenTypeFont = resolve(
   'node_modules/source-code-pro/OTF/SourceCodePro-Regular.otf',
 )
+const fixtureLayerFont = resolve(
+  'node_modules/source-code-pro/TTF/SourceCodePro-Regular.ttf',
+)
 const temporaryDirectories: string[] = []
 
 const createFontRoot = async (): Promise<string> => {
@@ -76,6 +79,23 @@ afterEach(async () => {
 })
 
 describe('local PDF fonts', () => {
+  it('resolves matching layer font paths from the project-first root order', async () => {
+    const projectRoot = await createFontRoot()
+    const baseRoot = await createFontRoot()
+    await copyFile(fixtureFont, join(projectRoot, 'Shared.ttf'))
+    await copyFile(fixtureLayerFont, join(baseRoot, 'Shared.ttf'))
+
+    const [descriptor] = await bundlePdfFonts([{
+      family: 'Layered Font',
+      src: 'Shared.ttf',
+    }], { fontRoots: [projectRoot, baseRoot] })
+    const projectBytes = await readFile(join(projectRoot, 'Shared.ttf'))
+
+    expect(Buffer.from(descriptor!.src.split(',')[1]!, 'base64')).toEqual(
+      projectBytes,
+    )
+  })
+
   it('embeds a validated TTF and renders without reading the source tree', async () => {
     const fontRoot = await createFontRoot()
     const fontPath = await installFixtureFont(fontRoot)

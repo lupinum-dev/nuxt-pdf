@@ -7,6 +7,9 @@ import {
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore -- Nuxt generates this development-only virtual module.
 import { pdfPreview } from '#pdf'
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore -- Nuxt generates this development-only virtual module.
+import { hmrClientPath } from '#pdf-preview-config'
 import { NuxtPdfError } from '../shared/errors'
 import type {
   PdfRenderDiagnostics,
@@ -535,5 +538,6 @@ export default defineEventHandler(async (event) => {
     scenario: typeof query.scenario === 'string' ? query.scenario : undefined,
     render: typeof query.render === 'string' ? query.render : undefined,
     download: query.download === '1',
+    hmrClientPath,
   })
 })

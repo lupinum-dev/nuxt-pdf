@@ -24,6 +24,7 @@ import {
   VueHyphenationDoc,
   VueInheritanceDoc,
   VueSpacingDoc,
+  VueUnsupportedWordSpacingDoc,
   VueTruncationDoc,
 } from '../fixtures/corpus/text-vue'
 import {
@@ -236,24 +237,18 @@ describe('text-behaviour conformance', () => {
     expect(vue.pages[0]!.rawText).toContain('Supercalifra-\ngilisticexpi-')
   }, 30_000)
 
-  // (3) letterSpacing changes wrapping; wordSpacing is inert in this pipeline.
-  it('letterSpacing widens wrapping while wordSpacing stays inert', async () => {
+  // (3) letterSpacing changes wrapping; inert wordSpacing is not public API.
+  it('letterSpacing widens wrapping and unsupported wordSpacing fails closed', async () => {
     const { vueLayout } = await renderPair(reactSpacingDoc(), VueSpacingDoc)
-    const [tight, wide, wordSpaced] = textNodeLines(vueLayout)
+    const [tight, wide] = textNodeLines(vueLayout)
 
     // letterSpacing enlarges every glyph advance, pushing the text onto more
     // lines than the zero-spacing baseline.
     expect(wide!.length).toBeGreaterThan(tight!.length)
 
-    // wordSpacing is inherited/accepted but never consumed by @react-pdf/layout
-    // + textkit (only pdfkit's own text layout reads it, which the render step
-    // bypasses). It must therefore produce byte-identical line geometry to the
-    // zero-spacing baseline: same line count, strings and advances.
-    expect(wordSpaced!.length).toBe(tight!.length)
-    expect(wordSpaced!.map(line => line.string)).toEqual(tight!.map(line => line.string))
-    wordSpaced!.forEach((line, index) => {
-      expect(line.xAdvance).toBeCloseTo(tight![index]!.xAdvance, 6)
-    })
+    await expect(renderVueResult(VueUnsupportedWordSpacingDoc)).rejects.toThrow(
+      'Unsupported PDF style "wordSpacing"',
+    )
   }, 30_000)
 
   // (4) textAlign left / center / right / justify.

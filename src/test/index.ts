@@ -34,6 +34,9 @@ export type {
 
 export { renderPdfTemplate } from './render-template'
 export type {
+  PdfComponentProps,
+} from '../runtime/shared/template'
+export type {
   RenderPdfTemplateOptions,
   RenderedPdfTemplate,
 } from './render-template'

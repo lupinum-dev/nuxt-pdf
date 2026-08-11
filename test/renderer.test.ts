@@ -1,12 +1,20 @@
 import {
   Fragment,
+  defineAsyncComponent,
   defineComponent,
   h,
   nextTick,
+  onBeforeMount,
+  onBeforeUnmount,
+  onMounted,
+  onServerPrefetch,
   onUnmounted,
+  onUpdated,
   ref,
   resolveComponent,
+  vShow,
   watchEffect,
+  withDirectives,
   type Component,
   type PropType,
   type VNodeChild,
@@ -74,6 +82,44 @@ afterEach(() => {
 })
 
 describe('Vue PDF host renderer', () => {
+  it('uses runtime-core lifecycle semantics in Node', async () => {
+    const events: string[] = []
+    const value = ref('first')
+    const Fixture = defineComponent({
+      setup() {
+        onBeforeMount(() => events.push('beforeMount'))
+        onMounted(() => events.push('mounted'))
+        onUpdated(() => events.push('updated'))
+        onBeforeUnmount(() => events.push('beforeUnmount'))
+        onUnmounted(() => events.push('unmounted'))
+        onServerPrefetch(() => {
+          events.push('serverPrefetch')
+        })
+        return () => {
+          const text = value.value
+          return h(PdfDocument, null, {
+            default: () => h(PdfPage, null, {
+              default: () => h(PdfText, null, () => text),
+            }),
+          })
+        }
+      },
+    })
+
+    const mounted = await mountPdfComponent(Fixture)
+    value.value = 'second'
+    await nextTick()
+    mounted.unmount()
+
+    expect(events).toEqual([
+      'beforeMount',
+      'mounted',
+      'updated',
+      'beforeUnmount',
+      'unmounted',
+    ])
+  })
+
   it('resolves PDF primitives in the custom renderer app context', async () => {
     const Fixture = defineComponent({
       setup() {
@@ -405,6 +451,58 @@ describe('Vue PDF host renderer', () => {
     await expect(mountPdfComponent(Fixture)).rejects.toThrow(
       'private component failure',
     )
+  })
+
+  it.each([
+    {
+      label: 'async setup',
+      component: defineComponent({
+        async setup() {
+          await Promise.resolve()
+          return () => h(PdfText, null, () => 'Late setup content')
+        },
+      }),
+    },
+    {
+      label: 'an async component',
+      component: defineAsyncComponent(async () => {
+        await Promise.resolve()
+        return defineComponent(() => () =>
+          h(PdfText, null, () => 'Late component content'),
+        )
+      }),
+    },
+  ])('rejects $label instead of omitting its content', async ({ component }) => {
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, null, {
+          default: () => h(component),
+        }),
+      }),
+    )
+
+    await expect(mountPdfComponent(Fixture)).rejects.toMatchObject({
+      code: 'PDF_TEMPLATE_INVALID',
+      message: expect.stringContaining('Async setup and async components'),
+    })
+  })
+
+  it('rejects DOM directives that mutate undeclared PDF styles', async () => {
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, null, {
+          default: () => withDirectives(
+            h(PdfText, null, () => 'Hidden content'),
+            [[vShow, false]],
+          ),
+        }),
+      }),
+    )
+
+    await expect(mountPdfComponent(Fixture)).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message: 'Unsupported PDF style "display".',
+    })
   })
 
   it('ignores formatting whitespace outside text containers', async () => {

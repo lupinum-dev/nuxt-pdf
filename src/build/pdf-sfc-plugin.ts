@@ -12,7 +12,9 @@ import {
   type SFCDescriptor,
   type SFCScriptBlock,
 } from '@vue/compiler-sfc'
+import remapping from '@jridgewell/remapping'
 import { transform as transformWithEsbuild } from 'esbuild'
+import { createUnimport, type Unimport } from 'unimport'
 import { PDF_DEFINITION_PROPERTY } from '../runtime/shared/template'
 
 export type PdfSfcKind = 'component' | 'template'
@@ -30,8 +32,7 @@ export type PdfSfcPluginOptions = {
   composablesImport?: string
 }
 
-// Auto-imported PDF composables the plugin injects on demand.
-const PDF_COMPOSABLES = ['usePdfPageNumbers'] as const
+const authoringImportContexts = new Map<string, Unimport>()
 
 export type PdfSfcTransformResult = {
   code: string
@@ -42,8 +43,15 @@ export type PdfSfcTransformResult = {
     sourceRoot?: string
     sources: string[]
     sourcesContent?: string[]
-    version: number
+    version: 3
   } | null
+}
+
+type PdfSourceMap = NonNullable<PdfSfcTransformResult['map']>
+
+type CompiledCode = {
+  code: string
+  map: PdfSourceMap | null
 }
 
 export type PdfSfcPlugin = {
@@ -96,6 +104,15 @@ type AstNode = {
   loc?: AstLocation | null
   start?: number | null
   type: string
+}
+
+type TemplateAstNode = {
+  children?: TemplateAstNode[]
+  loc?: AstLocation | null
+  name?: string
+  props?: TemplateAstNode[]
+  tag?: string
+  type: number
 }
 
 type MacroCall = {
@@ -233,22 +250,26 @@ export async function compilePdfSfc(
   isProduction = false,
   composablesImport?: string,
 ): Promise<PdfSfcTransformResult> {
-  const original = parsePdfSfc(source, filename)
+  const compilerFilename = normalizeCompilerPath(filename)
+  const original = parsePdfSfc(source, compilerFilename)
 
-  assertSupportedBlocks(original, filename)
-  assertTemplate(original, filename)
+  assertSupportedBlocks(original, compilerFilename)
+  assertTemplate(original, compilerFilename)
+  assertSynchronousSetup(original, compilerFilename)
+  assertSupportedTemplate(original, compilerFilename)
 
   const metadata = extractMetadata(
     source,
     original,
-    filename,
+    compilerFilename,
     kind,
     isProduction,
   )
-  const cleaned = parsePdfSfc(metadata.source, filename)
-  const componentCode = compileComponent(cleaned, filename, isProduction)
-  const composableImportCode = composableInjection(
-    componentCode,
+  const cleaned = parsePdfSfc(metadata.source, compilerFilename)
+  const component = compileComponent(cleaned, compilerFilename, isProduction)
+  const autoImportedComponent = await injectAuthoringImports(
+    component.code,
+    compilerFilename,
     composablesImport,
   )
   const metadataCode = kind === 'template'
@@ -258,30 +279,40 @@ export async function compilePdfSfc(
 
   try {
     const result = await transformWithEsbuild([
-      composableImportCode,
-      componentCode,
+      autoImportedComponent.code,
       metadataCode,
       `export default ${COMPONENT_VARIABLE}`,
     ].filter(Boolean).join('\n'), {
       charset: 'utf8',
       format: 'esm',
       loader,
-      sourcefile: filename,
+      sourcefile: compilerFilename,
       sourcemap: true,
       sourcesContent: true,
       target: 'es2022',
     })
 
-    return {
-      code: result.code,
-      map: result.map
-        ? JSON.parse(result.map) as PdfSfcTransformResult['map']
-        : null,
-    }
+    const esbuildMap = result.map
+      ? JSON.parse(result.map) as PdfSourceMap
+      : null
+    const map = esbuildMap && autoImportedComponent.map && component.map
+      ? remapping(
+        [esbuildMap, autoImportedComponent.map, component.map],
+        () => null,
+      ) as unknown as PdfSourceMap
+      : null
+
+    if (map) map.sourcesContent = map.sources.map(() => source)
+
+    return { code: result.code, map }
   }
   catch (error) {
-    throw normalizeBuildError(error, filename)
+    throw normalizeBuildError(error, compilerFilename)
   }
+}
+
+function normalizeCompilerPath(path: string): string {
+  return path.replaceAll('\\', '/')
 }
 
 function parsePdfSfc(source: string, filename: string): SFCDescriptor {
@@ -326,6 +357,65 @@ function assertTemplate(descriptor: SFCDescriptor, filename: string): void {
     1,
     'A PDF component must contain a <template> block.',
   )
+}
+
+const FUNCTION_NODE_TYPES = new Set([
+  'ArrowFunctionExpression',
+  'ClassMethod',
+  'ClassPrivateMethod',
+  'FunctionDeclaration',
+  'FunctionExpression',
+  'ObjectMethod',
+])
+
+function assertSynchronousSetup(
+  descriptor: SFCDescriptor,
+  filename: string,
+): void {
+  const block = descriptor.scriptSetup
+  if (!block) return
+
+  const program = parseScriptProgram(block, filename)
+  walkAst(program, [], (node, ancestors) => {
+    const isTopLevelAwait = node.type === 'AwaitExpression'
+      || (node.type === 'ForOfStatement' && node.await === true)
+    if (!isTopLevelAwait) return
+    if (ancestors.some(parent => FUNCTION_NODE_TYPES.has(parent.type))) return
+
+    throw errorAtNode(
+      filename,
+      block,
+      node,
+      'Top-level await is not supported in PDF templates. Load request data before render(props) and pass it through typed props.',
+    )
+  })
+}
+
+function assertSupportedTemplate(
+  descriptor: SFCDescriptor,
+  filename: string,
+): void {
+  const block = descriptor.template
+  const ast = block?.ast as unknown as TemplateAstNode | undefined
+  if (!block || !ast) return
+
+  walkTemplateAst(ast, (node) => {
+    if (node.type === 1 && node.tag?.toLowerCase() === 'teleport') {
+      throw errorAtTemplateNode(
+        filename,
+        node,
+        'Teleport is not supported in PDF templates because the PDF renderer has no external host target.',
+      )
+    }
+
+    if (node.type === 7 && node.name === 'show') {
+      throw errorAtTemplateNode(
+        filename,
+        node,
+        'v-show is not supported in PDF templates. Use v-if; PDF styles are not browser CSS.',
+      )
+    }
+  })
 }
 
 function extractMetadata(
@@ -438,21 +528,7 @@ function findMacroCalls(
 ): MacroCall[] {
   if (!block) return []
 
-  const plugins: Array<'jsx' | 'typescript'> = []
-  if (block.lang === 'ts' || block.lang === 'tsx') plugins.push('typescript')
-  if (block.lang === 'jsx' || block.lang === 'tsx') plugins.push('jsx')
-
-  let program: AstNode
-
-  try {
-    program = babelParse(block.content, {
-      plugins,
-      sourceType: 'module',
-    }).program as unknown as AstNode
-  }
-  catch (error) {
-    throw normalizeScriptParseError(error, filename, block)
-  }
+  const program = parseScriptProgram(block, filename)
 
   const calls: MacroCall[] = []
 
@@ -478,6 +554,25 @@ function findMacroCalls(
   })
 
   return calls
+}
+
+function parseScriptProgram(
+  block: SFCScriptBlock,
+  filename: string,
+): AstNode {
+  const plugins: Array<'jsx' | 'typescript'> = []
+  if (block.lang === 'ts' || block.lang === 'tsx') plugins.push('typescript')
+  if (block.lang === 'jsx' || block.lang === 'tsx') plugins.push('jsx')
+
+  try {
+    return babelParse(block.content, {
+      plugins,
+      sourceType: 'module',
+    }).program as unknown as AstNode
+  }
+  catch (error) {
+    throw normalizeScriptParseError(error, filename, block)
+  }
 }
 
 function assertMetadataHoistable(
@@ -647,10 +742,10 @@ function compileComponent(
   descriptor: SFCDescriptor,
   filename: string,
   isProduction: boolean,
-): string {
+): CompiledCode {
   if (descriptor.scriptSetup) {
     try {
-      return compileScript(descriptor, {
+      const result = compileScript(descriptor, {
         genDefaultAs: COMPONENT_VARIABLE,
         id: 'nuxt-pdf',
         inlineTemplate: true,
@@ -662,7 +757,13 @@ function compileComponent(
           ssr: false,
           transformAssetUrls: false,
         },
-      }).content
+      })
+      return {
+        code: result.content,
+        map: result.map
+          ? JSON.parse(JSON.stringify(result.map)) as PdfSourceMap
+          : null,
+      }
     }
     catch (error) {
       throw normalizeCompilerError(error, filename)
@@ -703,32 +804,48 @@ function compileComponent(
     throw normalizeCompilerError(template.errors[0], filename)
   }
 
-  return [
-    scriptCode,
-    template.code,
-    `${COMPONENT_VARIABLE}.render = render`,
-  ].join('\n')
+  return {
+    code: [
+      scriptCode,
+      template.code,
+      `${COMPONENT_VARIABLE}.render = render`,
+    ].join('\n'),
+    // The separately compiled script and template do not share one generated
+    // coordinate space. Returning no map is safer than publishing a false one.
+    map: null,
+  }
 }
 
-// Build an import statement for the auto-imported PDF composables a compiled
-// component references but does not already import. Returns `''` when there is
-// nothing to inject or no import path is configured.
-function composableInjection(
+async function injectAuthoringImports(
   componentCode: string,
+  filename: string,
   composablesImport?: string,
-): string {
-  if (!composablesImport) return ''
+): Promise<CompiledCode> {
+  const normalizedComposablesImport = composablesImport
+    ? normalizeCompilerPath(composablesImport)
+    : undefined
+  const key = normalizedComposablesImport ?? ''
+  let context = authoringImportContexts.get(key)
 
-  const needed = PDF_COMPOSABLES.filter((name) => {
-    const used = new RegExp(`\\b${name}\\b`).test(componentCode)
-    const imported = new RegExp(`import\\s*\\{[^}]*\\b${name}\\b[^}]*\\}`)
-      .test(componentCode)
-    return used && !imported
-  })
+  if (!context) {
+    context = createUnimport({
+      imports: normalizedComposablesImport
+        ? [{ from: normalizedComposablesImport, name: 'usePdfPageNumbers' }]
+        : [],
+      presets: ['vue'],
+    })
+    authoringImportContexts.set(key, context)
+  }
 
-  if (needed.length === 0) return ''
-
-  return `import { ${needed.join(', ')} } from ${JSON.stringify(composablesImport)}`
+  const result = await context.injectImports(componentCode, filename)
+  return {
+    code: result.s.toString(),
+    map: JSON.parse(result.s.generateMap({
+      hires: true,
+      includeContent: true,
+      source: filename,
+    }).toString()) as PdfSourceMap,
+  }
 }
 
 function scriptLoader(descriptor: SFCDescriptor): 'js' | 'jsx' | 'ts' | 'tsx' {
@@ -771,6 +888,15 @@ function walkAst(
     const child = asAstNode(value)
     if (child) walkAst(child, [...ancestors, node], visit)
   }
+}
+
+function walkTemplateAst(
+  node: TemplateAstNode,
+  visit: (node: TemplateAstNode) => void,
+): void {
+  visit(node)
+  for (const child of node.props ?? []) walkTemplateAst(child, visit)
+  for (const child of node.children ?? []) walkTemplateAst(child, visit)
 }
 
 function asAstNode(value: unknown): AstNode | undefined {
@@ -829,6 +955,19 @@ function errorAtBlock(
     filename,
     block.loc.start.line,
     block.loc.start.column,
+    message,
+  )
+}
+
+function errorAtTemplateNode(
+  filename: string,
+  node: TemplateAstNode,
+  message: string,
+): PdfSfcCompileError {
+  return new PdfSfcCompileError(
+    filename,
+    node.loc?.start.line ?? 1,
+    node.loc?.start.column ?? 1,
     message,
   )
 }

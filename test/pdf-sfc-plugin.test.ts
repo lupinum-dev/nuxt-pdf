@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { originalPositionFor, TraceMap } from '@jridgewell/trace-mapping'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
   compilePdfSfc,
@@ -20,6 +21,8 @@ const invoiceFile = join(fixturesDirectory, 'InvoiceDocument.vue')
 const lineItemFile = join(fixturesDirectory, 'LineItem.vue')
 const invoiceDataFile = join(fixturesDirectory, 'invoice-data.ts')
 
+const compilerPath = (path: string): string => path.replaceAll('\\', '/')
+
 let temporaryDirectory: string
 
 beforeAll(async () => {
@@ -36,13 +39,37 @@ describe('PDF SFC compiler', () => {
     const result = await compilePdfSfc(source, invoiceFile, 'template')
 
     expect(result.map).toMatchObject({
-      sources: [invoiceFile],
+      sources: [compilerPath(invoiceFile)],
+      sourcesContent: [source],
+    })
+    const markerOffset = result.code.indexOf('const props')
+    const beforeMarker = result.code.slice(0, markerOffset)
+    const generatedLine = beforeMarker.split('\n').length
+    const generatedColumn = beforeMarker.length - beforeMarker.lastIndexOf('\n') - 1
+    expect(originalPositionFor(new TraceMap(result.map!), {
+      line: generatedLine,
+      column: generatedColumn,
+    })).toMatchObject({
+      line: 11,
+      source: compilerPath(invoiceFile),
     })
     expect(result.code).toContain('__nuxtPdf')
     expect(result.code).not.toMatch(/\bdefinePdf\s*\(/)
     expect(result.code).toContain('createVNode')
     expect(result.code).not.toContain('ssrRenderComponent')
     expect(result.code).not.toContain('ssrRenderSlot')
+  })
+
+  it('returns no map when separate script and template maps cannot be composed honestly', async () => {
+    const source = `<script>export default { name: 'ClassicPdf' }</script>
+<template><PdfDocument /></template>`
+    const result = await compilePdfSfc(
+      source,
+      resolve(fixturesDirectory, 'classic.vue'),
+      'component',
+    )
+
+    expect(result.map).toBeNull()
   })
 
   it('preserves executable metadata after erasing the macro', async () => {
@@ -199,8 +226,8 @@ definePdf({})
     mounted.unmount()
   })
 
-  it('injects the auto-imported composable only when used and not already imported', async () => {
-    const composables = resolve('src/runtime/composables/index')
+  it('injects scope-aware Vue and PDF authoring imports', async () => {
+    const composables = compilerPath(resolve('src/runtime/composables/index'))
     const importLine = `import { usePdfPageNumbers } from ${JSON.stringify(composables)}`
     const usesFile = resolve('test/fixtures/pdf-sfc/uses-composable.vue')
     const importsFile = resolve('test/fixtures/pdf-sfc/imports-composable.vue')
@@ -208,11 +235,15 @@ definePdf({})
 
     const uses = `<script setup lang="ts">
 definePdf({})
+const count = ref(1)
+const doubled = computed(() => count.value * 2)
 const pages = usePdfPageNumbers()
 </script>
-<template><PdfDocument><PdfPage><PdfText>{{ pages.a ?? '' }}</PdfText></PdfPage></PdfDocument></template>`
+<template><PdfDocument><PdfPage><PdfText>{{ doubled }} {{ pages.a ?? '' }}</PdfText></PdfPage></PdfDocument></template>`
     const injected = await compilePdfSfc(uses, usesFile, 'template', false, composables)
     expect(injected.code).toContain(importLine)
+    expect(injected.code).toMatch(/import \{[^}]*\bref\b[^}]*\} from "vue"/)
+    expect(injected.code).toMatch(/import \{[^}]*\bcomputed\b[^}]*\} from "vue"/)
 
     // Already imported by the author: no duplicate injection.
     const alreadyImported = `<script setup lang="ts">
@@ -231,6 +262,21 @@ definePdf({})
 <template><PdfDocument><PdfPage><PdfText>Hi</PdfText></PdfPage></PdfDocument></template>`
     const untouched = await compilePdfSfc(plain, plainFile, 'template', false, composables)
     expect(untouched.code).not.toContain('usePdfPageNumbers')
+
+    const shadowed = `<script setup lang="ts">
+definePdf({})
+const ref = (value: number) => value
+const count = ref(1)
+</script>
+<template><PdfDocument><PdfPage><PdfText>{{ count }}</PdfText></PdfPage></PdfDocument></template>`
+    const shadowedResult = await compilePdfSfc(
+      shadowed,
+      resolve('test/fixtures/pdf-sfc/shadowed.vue'),
+      'template',
+      false,
+      composables,
+    )
+    expect(shadowedResult.code).not.toMatch(/import \{[^}]*\bref\b[^}]*\} from "vue"/)
   })
 
   it('compiles discovered components with typed props and slots but no metadata', async () => {
@@ -348,6 +394,28 @@ definePdf({})
     await expect(compilePdfSfc(source, file, 'template')).rejects.toThrow(message)
   })
 
+  it.each([
+    {
+      filename: 'async-setup.vue',
+      source: `<script setup>\ndefinePdf({})\nconst data = await Promise.resolve('late')\n</script>\n<template><PdfDocument><PdfPage><PdfText>{{ data }}</PdfText></PdfPage></PdfDocument></template>`,
+      message: 'async-setup.vue:3:14 Top-level await is not supported in PDF templates.',
+    },
+    {
+      filename: 'v-show.vue',
+      source: `<script setup>\ndefinePdf({})\n</script>\n<template><PdfDocument><PdfPage><PdfText v-show="false">Hidden</PdfText></PdfPage></PdfDocument></template>`,
+      message: 'v-show.vue:4:42 v-show is not supported in PDF templates.',
+    },
+    {
+      filename: 'teleport.vue',
+      source: `<script setup>\ndefinePdf({})\n</script>\n<template><PdfDocument><PdfPage><Teleport to="body"><PdfText>Lost</PdfText></Teleport></PdfPage></PdfDocument></template>`,
+      message: 'teleport.vue:4:33 Teleport is not supported in PDF templates',
+    },
+  ])('rejects unsupported Vue execution in $filename', async ({ filename, source, message }) => {
+    const file = resolve(`test/fixtures/pdf-sfc/${filename}`)
+
+    await expect(compilePdfSfc(source, file, 'template')).rejects.toThrow(message)
+  })
+
   it('exposes structured compiler errors', async () => {
     const filename = resolve('test/fixtures/pdf-sfc/missing.vue')
 
@@ -359,7 +427,7 @@ definePdf({})
       expect(error).toBeInstanceOf(PdfSfcCompileError)
       expect(error).toMatchObject({
         column: 1,
-        filename,
+        filename: compilerPath(filename),
         line: 1,
       })
     }
