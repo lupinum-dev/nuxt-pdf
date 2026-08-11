@@ -191,8 +191,10 @@ procedures.
 
 - Read the [documentation](https://nuxt-pdf.lupinum.com).
 - Join the [Lupinum OSS Discord](https://discord.gg/RPH6SeA36N).
-- Open a [GitHub issue](https://github.com/lupinum-dev/nuxt-pdf/issues) for a
-  reproducible defect.
+- Open a [bug report](https://github.com/lupinum-dev/nuxt-pdf/issues/new?template=bug.yml)
+  for a reproducible defect.
+- Open a [feature request](https://github.com/lupinum-dev/nuxt-pdf/issues/new?template=feature.yml)
+  before you plan a larger change.
 - Follow [SECURITY.md](./SECURITY.md) for a private vulnerability report.
 
 ## License

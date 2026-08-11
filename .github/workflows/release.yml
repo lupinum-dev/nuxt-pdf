@@ -68,26 +68,6 @@ jobs:
       - name: Verify the inert release evidence
         working-directory: release-artifacts
         run: sha256sum --check SHA256SUMS
-      - name: Read package metadata without running package code
-        id: package
-        working-directory: release-artifacts
-        run: |
-          mapfile -t tarballs < <(find . -maxdepth 1 -type f -name '*.tgz' -print)
-          test "${#tarballs[@]}" -eq 1
-          package_name="$(tar -xOf "${tarballs[0]}" package/package.json | node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => process.stdout.write(JSON.parse(input).name))")"
-          package_version="$(tar -xOf "${tarballs[0]}" package/package.json | node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => process.stdout.write(JSON.parse(input).version))")"
-          test "$package_name" = '@lupinum/nuxt-pdf'
-          if [[ "$package_version" == *-* ]]; then
-            dist_tag="${package_version#*-}"
-            dist_tag="${dist_tag%%.*}"
-            [[ "$dist_tag" =~ ^[a-z][a-z0-9-]*$ ]]
-            test "$dist_tag" != latest
-          else
-            dist_tag=latest
-          fi
-          printf 'tarball=%s\n' "${tarballs[0]}" >> "$GITHUB_OUTPUT"
-          printf 'version=%s\n' "$package_version" >> "$GITHUB_OUTPUT"
-          printf 'dist-tag=%s\n' "$dist_tag" >> "$GITHUB_OUTPUT"
       - name: Require a hardened npm client
         run: |
           npm_version="$(npm --version)"
@@ -97,4 +77,25 @@ jobs:
           test "$npm_major" -gt 11 || { test "$npm_major" -eq 11 && test "$npm_minor" -ge 15; }
       - name: Stage with npm trusted publishing
         working-directory: release-artifacts
-        run: npm stage publish "${{ steps.package.outputs.tarball }}" --provenance --access public --tag "${{ steps.package.outputs['dist-tag'] }}" --ignore-scripts
+        run: |
+          mapfile -t tarballs < <(find . -maxdepth 1 -type f -name '*.tgz' -print)
+          test "${#tarballs[@]}" -eq 1
+
+          package_name="$(tar -xOf "${tarballs[0]}" package/package.json | node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => process.stdout.write(JSON.parse(input).name))")"
+          package_version="$(tar -xOf "${tarballs[0]}" package/package.json | node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => process.stdout.write(JSON.parse(input).version))")"
+          test "$package_name" = '@lupinum/nuxt-pdf'
+          [[ "$package_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+([.-][a-zA-Z0-9]+)*)?$ ]]
+
+          tarball="./lupinum-nuxt-pdf-${package_version}.tgz"
+          test "${tarballs[0]}" = "$tarball"
+
+          if [[ "$package_version" == *-* ]]; then
+            dist_tag="${package_version#*-}"
+            dist_tag="${dist_tag%%.*}"
+            [[ "$dist_tag" =~ ^[a-z][a-z0-9-]*$ ]]
+            test "$dist_tag" != latest
+          else
+            dist_tag=latest
+          fi
+
+          npm stage publish "$tarball" --provenance --access public --tag "$dist_tag" --ignore-scripts

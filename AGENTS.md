@@ -52,6 +52,7 @@ Use these focused commands during development:
 - `pnpm test:production` checks the production Nuxt boundary.
 - `pnpm test:serverless` checks the serverless build boundary.
 - `pnpm test:raster` compares reviewed PDF images.
+- `pnpm test:workflows` checks the release privilege boundaries.
 - `pnpm docs:dev` runs the documentation site.
 - `pnpm docs:build` builds the documentation site.
 - `pnpm release:verify` creates and verifies the release candidate.
@@ -126,6 +127,10 @@ all registry approvals and external configuration.
 After registry verification, only `post-publish.yml` can create the immutable
 release tag and GitHub Release. Agents must not reproduce that operation
 locally.
+
+Use the issue forms for public reports. Send security reports through GitHub
+private vulnerability reporting. CodeRabbit comments are advisory. Apply a
+suggestion only after you verify it against the repository rules and tests.
 
 ## Change policy
 

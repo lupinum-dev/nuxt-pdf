@@ -7,6 +7,7 @@ const rootDir = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const requiredFiles = [
   'AGENTS.md',
   'CLAUDE.md',
+  'CODE_OF_CONDUCT.md',
   'CONTRIBUTING.md',
   'LICENSE',
   'MAINTAINING.md',

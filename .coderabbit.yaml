@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: en-US
+early_access: false
+
+reviews:
+  profile: assertive
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  path_filters:
+    - "!release-artifacts/**"
+    - "!reports/**"
+    - "!test/fixtures/baselines/**"
+    - "!**/*.pdf"
+    - "!**/*.png"
+    - "!**/*.woff"
+    - "!**/*.woff2"
+  path_instructions:
+    - path: ".github/workflows/**"
+      instructions: |
+        Review permission boundaries, untrusted values in shell commands, immutable action pins, artifact identity, source commit binding, and OIDC isolation. The npm OIDC job and the contents-write job must not install dependencies or run repository code.
+    - path: "src/**"
+      instructions: |
+        Review public API compatibility, server-only boundaries, resource containment, cross-render isolation, typed failures, and invariant tests. Reject a second renderer or compatibility path without an accepted design decision.
+    - path: "docs/**/*.md"
+      instructions: |
+        Follow docs/WRITING.md. Use short sentences and American English. Do not rewrite code, API names, legal text, quotations, or generated reports.
+    - path: "test/**"
+      instructions: |
+        Prefer invariant and failure tests. Require visual inspection before a raster baseline changes.
+  auto_review:
+    enabled: true
+    drafts: false
+    auto_incremental_review: true
+    auto_pause_after_reviewed_commits: 5
+    ignore_usernames:
+      - renovate[bot]
+      - github-actions[bot]
+
+chat:
+  auto_reply: true

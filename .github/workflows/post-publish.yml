@@ -3,24 +3,22 @@ name: post-publish smoke
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: Exact published version to verify
-        required: true
-        type: string
-      sha256:
-        description: SHA-256 of the approved package tarball
+      release_run_id:
+        description: Successful release workflow run ID that staged this version
         required: true
         type: string
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
-  group: post-publish-${{ inputs.version }}
+  group: post-publish-${{ inputs.release_run_id }}
   cancel-in-progress: false
 
 jobs:
   smoke:
+    name: Verify the published package
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
@@ -28,8 +26,25 @@ jobs:
         env:
           RELEASE_REF: ${{ github.ref }}
         run: test "$RELEASE_REF" = refs/heads/main
+      - name: Verify the release workflow run
+        id: release-run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_RUN_ID: ${{ inputs.release_run_id }}
+        run: |
+          [[ "$RELEASE_RUN_ID" =~ ^[0-9]+$ ]]
+          run_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RELEASE_RUN_ID")"
+          test "$(jq -r '.event' <<< "$run_json")" = workflow_dispatch
+          test "$(jq -r '.head_branch' <<< "$run_json")" = main
+          test "$(jq -r '.conclusion' <<< "$run_json")" = success
+          workflow_path="$(jq -r '.path' <<< "$run_json")"
+          [[ "$workflow_path" == '.github/workflows/release.yml' || "$workflow_path" == '.github/workflows/release.yml@'* ]]
+          release_sha="$(jq -r '.head_sha' <<< "$run_json")"
+          [[ "$release_sha" =~ ^[a-f0-9]{40}$ ]]
+          printf 'release-sha=%s\n' "$release_sha" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          ref: ${{ steps.release-run.outputs.release-sha }}
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
@@ -37,27 +52,49 @@ jobs:
           registry-url: https://registry.npmjs.org
       - run: npm install --global pnpm@11.21.0
       - run: pnpm install --frozen-lockfile
-      - name: Download the immutable registry artifact
+      - name: Download the approved release evidence
         env:
-          EXPECTED_SHA256: ${{ inputs.sha256 }}
-          VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_RUN_ID: ${{ inputs.release_run_id }}
+        run: gh run download "$RELEASE_RUN_ID" --repo "$GITHUB_REPOSITORY" --name npm-release-evidence --dir release-artifacts
+      - name: Verify the immutable registry artifact
+        id: package
         run: |
-          [[ "$EXPECTED_SHA256" =~ ^[a-f0-9]{64}$ ]]
-          mkdir -p registry-artifact
-          npm pack "@lupinum/nuxt-pdf@${VERSION}" --ignore-scripts --pack-destination registry-artifact
-          tarball="registry-artifact/lupinum-nuxt-pdf-${VERSION}.tgz"
-          test "$(sha256sum "$tarball" | cut -d ' ' -f 1)" = "$EXPECTED_SHA256"
+          cd release-artifacts
+          sha256sum --check SHA256SUMS
+          mapfile -t tarballs < <(find . -maxdepth 1 -type f -name '*.tgz' -print)
+          test "${#tarballs[@]}" -eq 1
+
+          package_name="$(tar -xOf "${tarballs[0]}" package/package.json | node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => process.stdout.write(JSON.parse(input).name))")"
+          version="$(tar -xOf "${tarballs[0]}" package/package.json | node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => process.stdout.write(JSON.parse(input).version))")"
+          test "$package_name" = '@lupinum/nuxt-pdf'
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+([.-][a-zA-Z0-9]+)*)?$ ]]
+          expected_tarball="./lupinum-nuxt-pdf-${version}.tgz"
+          test "${tarballs[0]}" = "$expected_tarball"
+          expected_sha256="$(sha256sum "$expected_tarball" | cut -d ' ' -f 1)"
+
+          mkdir -p ../registry-artifact
+          npm pack "@lupinum/nuxt-pdf@${version}" --ignore-scripts --pack-destination ../registry-artifact
+          registry_tarball="../registry-artifact/lupinum-nuxt-pdf-${version}.tgz"
+          test "$(sha256sum "$registry_tarball" | cut -d ' ' -f 1)" = "$expected_sha256"
+          mv "$registry_tarball" ../registry-artifact/package.tgz
+          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
       - name: Render through npm and pnpm consumers
         env:
-          NUXT_PDF_TARBALL: ${{ github.workspace }}/registry-artifact/lupinum-nuxt-pdf-${{ inputs.version }}.tgz
+          NUXT_PDF_TARBALL: ${{ github.workspace }}/registry-artifact/package.tgz
         run: node scripts/test-package-quickstart.mjs
-      - name: Prepare GitHub release notes
+      - name: Prepare GitHub release metadata
         env:
-          VERSION: ${{ inputs.version }}
-        run: node scripts/write-release-notes.mjs "$VERSION" release-metadata/notes.md
+          RELEASE_SHA: ${{ steps.release-run.outputs.release-sha }}
+          VERSION: ${{ steps.package.outputs.version }}
+        run: |
+          mkdir -p release-metadata
+          node scripts/write-release-notes.mjs "$VERSION" release-metadata/notes.md
+          printf '%s\n' "$VERSION" > release-metadata/version
+          printf '%s\n' "$RELEASE_SHA" > release-metadata/source-sha
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: github-release-metadata-${{ inputs.version }}
+          name: github-release-metadata-${{ inputs.release_run_id }}
           path: release-metadata
           if-no-files-found: error
           retention-days: 1
@@ -66,38 +103,81 @@ jobs:
     name: Create immutable GitHub release
     needs: smoke
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     permissions:
+      actions: read
       contents: write
     steps:
+      - name: Verify the release workflow run
+        id: release-run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_RUN_ID: ${{ inputs.release_run_id }}
+        run: |
+          [[ "$RELEASE_RUN_ID" =~ ^[0-9]+$ ]]
+          run_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RELEASE_RUN_ID")"
+          test "$(jq -r '.event' <<< "$run_json")" = workflow_dispatch
+          test "$(jq -r '.head_branch' <<< "$run_json")" = main
+          test "$(jq -r '.conclusion' <<< "$run_json")" = success
+          workflow_path="$(jq -r '.path' <<< "$run_json")"
+          [[ "$workflow_path" == '.github/workflows/release.yml' || "$workflow_path" == '.github/workflows/release.yml@'* ]]
+          release_sha="$(jq -r '.head_sha' <<< "$run_json")"
+          [[ "$release_sha" =~ ^[a-f0-9]{40}$ ]]
+          printf 'release-sha=%s\n' "$release_sha" >> "$GITHUB_OUTPUT"
+      - name: Download the approved release evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_RUN_ID: ${{ inputs.release_run_id }}
+        run: gh run download "$RELEASE_RUN_ID" --repo "$GITHUB_REPOSITORY" --name npm-release-evidence --dir release-artifacts
       - uses: actions/download-artifact@018cc2cfed7d10b7e69b5a2f4e35f8240c7fc5a3 # v6
         with:
-          name: github-release-metadata-${{ inputs.version }}
+          name: github-release-metadata-${{ inputs.release_run_id }}
           path: release-metadata
       - name: Create the tag and GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_SHA: ${{ github.sha }}
-          VERSION: ${{ inputs.version }}
+          RELEASE_SHA: ${{ steps.release-run.outputs.release-sha }}
         run: |
-          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]
           [[ "$RELEASE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          test "$(cat release-metadata/source-sha)" = "$RELEASE_SHA"
           test -s release-metadata/notes.md
 
-          tag="v${VERSION}"
-          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "GitHub Release $tag already exists."
-            exit 1
+          cd release-artifacts
+          sha256sum --check SHA256SUMS
+          mapfile -t tarballs < <(find . -maxdepth 1 -type f -name '*.tgz' -print)
+          test "${#tarballs[@]}" -eq 1
+          package_name="$(tar -xOf "${tarballs[0]}" package/package.json | node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => process.stdout.write(JSON.parse(input).name))")"
+          version="$(tar -xOf "${tarballs[0]}" package/package.json | node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => process.stdout.write(JSON.parse(input).version))")"
+          test "$package_name" = '@lupinum/nuxt-pdf'
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+([.-][a-zA-Z0-9]+)*)?$ ]]
+          test "${tarballs[0]}" = "./lupinum-nuxt-pdf-${version}.tgz"
+          test "$(cat ../release-metadata/version)" = "$version"
+          cd ..
+
+          tag="v${version}"
+          tag_json="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" 2>/dev/null || true)"
+          if [[ -n "$tag_json" ]]; then
+            test "$(jq -r '.object.type' <<< "$tag_json")" = commit
+            test "$(jq -r '.object.sha' <<< "$tag_json")" = "$RELEASE_SHA"
+          else
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$tag" -f sha="$RELEASE_SHA" >/dev/null
+          fi
+
+          release_json="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" 2>/dev/null || true)"
+          if [[ -n "$release_json" ]]; then
+            test "$(jq -r '.tag_name' <<< "$release_json")" = "$tag"
+            echo "GitHub Release $tag already exists at the verified source commit."
+            exit 0
           fi
 
           args=(
             "$tag"
             --repo "$GITHUB_REPOSITORY"
-            --target "$RELEASE_SHA"
+            --verify-tag
             --title "$tag"
             --notes-file release-metadata/notes.md
           )
-          if [[ "$VERSION" == *-* ]]; then
+          if [[ "$version" == *-* ]]; then
             args+=(--prerelease)
           else
             args+=(--latest)

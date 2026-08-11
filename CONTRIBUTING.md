@@ -16,6 +16,11 @@ We are most likely to accept:
 Open an issue before you start a feature, a breaking change, or a large
 refactor. This step helps you prevent work that the project cannot accept.
 
+Use the bug form for a reproducible defect. Use the feature form to describe
+the user problem before you propose an implementation. Ask usage questions in
+the [Lupinum OSS Discord](https://discord.gg/RPH6SeA36N). Follow
+[SECURITY.md](./SECURITY.md) for a private vulnerability report.
+
 ## Prepare the repository
 
 Use the Node and pnpm versions in `package.json`.
@@ -52,6 +57,9 @@ uses the squash commit title to generate its changelog.
 
 Use a descriptive `<type>/<short-description>` branch name. Do not include an
 AI tool, model, vendor, or username in the branch name.
+
+Complete the pull request template. CodeRabbit can add advisory review
+comments. A maintainer decides which comments require a change.
 
 ## Versioning
 

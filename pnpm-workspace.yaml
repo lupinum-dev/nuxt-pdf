@@ -9,7 +9,7 @@ blockExoticSubdeps: true
 storeDir: .pnpm-store
 
 overrides:
-  # Remove when ipx and nuxt-og-image accept the patched sharp minor.
+  # Review by 2026-09-01. Remove when ipx and nuxt-og-image accept sharp 0.35.
   sharp: 0.35.3
 
 allowBuilds:
