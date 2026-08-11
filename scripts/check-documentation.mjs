@@ -63,6 +63,10 @@ for (const file of trackedFiles.filter(file => file.endsWith('.md') && !excluded
     if (!/^title: .+$/mu.test(frontmatter[1]) || !/^description: .+$/mu.test(frontmatter[1])) {
       errors.push(`${file}: frontmatter needs a title and description.`)
     }
+    const titleLine = frontmatter[1].split('\n').find(line => line.startsWith('title:'))
+    if (titleLine?.includes('#') && !/^title: ['"]/u.test(titleLine)) {
+      errors.push(`${file}: quote a title that contains # so YAML does not treat it as a comment.`)
+    }
     if (/^# /mu.test(content.slice(frontmatter[0].length))) {
       errors.push(`${file}: the page title comes from frontmatter; remove body-level H1 headings.`)
     }

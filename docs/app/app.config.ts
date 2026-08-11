@@ -24,7 +24,7 @@ export default {
       eyebrow: { en: "Nuxt module · external alpha" },
       title: { en: "PDFs authored as Vue components." },
       description: {
-        en: "Nuxt PDF renders documents on the server from ordinary Vue SFCs. It uses Vue for authoring and React PDF's framework-neutral layout and serialization engine for rendering — React itself is never a production dependency.",
+        en: "Nuxt PDF renders documents on the server from ordinary Vue SFCs. It uses Vue for authoring. React PDF's framework-neutral engine provides layout and serialization. React is not a production dependency.",
       },
       primary: {
         label: { en: "Get started" },
