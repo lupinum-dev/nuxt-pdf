@@ -53,6 +53,14 @@ describe('Nuxt PDF production boundary', () => {
     expect(viewerBody).not.toContain('<iframe')
   })
 
+  it('rejects component failures instead of returning a partial PDF', async () => {
+    const response = await nuxtFetch('/api/production-error')
+
+    expect(response.status).toBe(500)
+    expect(response.headers.get('content-type')).toContain('application/json')
+    expect(await response.json()).toEqual({ code: 'PDF_RENDER_ERROR' })
+  })
+
   it('keeps React PDF engine packages out of the client bundle', async () => {
     const outputDirectory = nuxt.ctx.nuxt?.options.nitro.output?.dir
     expect(outputDirectory).toBeTruthy()
