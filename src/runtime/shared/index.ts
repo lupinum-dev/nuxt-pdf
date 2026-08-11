@@ -11,6 +11,7 @@ export {
 } from './template'
 export type {
   PdfComponent,
+  PdfComponentProps,
   PdfDefinition,
   PdfDisposition,
   PdfMetadataValue,

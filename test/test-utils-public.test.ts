@@ -62,6 +62,14 @@ function verifyPublicOptionTypes(): void {
   void templateOptions
   void sfcOptions
 
+  // @ts-expect-error Props are inferred from the component, so required props stay required.
+  void renderPdfTemplate(InvoiceDoc, {})
+  void renderPdfTemplate(InvoiceDoc, {
+    customer: 'Acme Corp',
+    // @ts-expect-error Vue vnode props are not accepted as authored template props.
+    class: 'not-a-template-prop',
+  })
+
   void renderPdfTemplate(InvoiceDoc, { customer: 'Acme Corp' }, {
     // @ts-expect-error Prepared asset maps are registry internals, not user configuration.
     assets: {},

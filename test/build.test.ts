@@ -281,7 +281,10 @@ export { NuxtPdfError, PDF_ERROR_CODES } from "#pdf-runtime"
     const source = generatePdfRegistryTypes(templates, options)
 
     expect(source).toContain(
-      'import type { PdfRenderResult, PdfTemplate } from "#pdf-runtime"',
+      'import type { PdfComponentProps, PdfRenderResult, PdfTemplate } from "#pdf-runtime"',
+    )
+    expect(source).toContain(
+      'type PdfProps0 = PdfComponentProps<PdfComponent0>',
     )
     expect(source).toContain(
       'readonly "reports/monthly": PdfTemplate<PdfProps1>',

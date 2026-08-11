@@ -175,14 +175,14 @@ export const generatePdfRegistryTypes = (
   validateOptions(options)
   const ordered = orderedTemplates(templates)
   const lines = [
-    `import type { PdfRenderResult, PdfTemplate } from ${quote(options.runtimeImport)}`,
+    `import type { PdfComponentProps, PdfRenderResult, PdfTemplate } from ${quote(options.runtimeImport)}`,
   ]
 
   ordered.forEach((template, index) => {
     lines.push(
       '',
       `type PdfComponent${index} = typeof import(${quote(importPath(template.filePath))})['default']`,
-      `type PdfProps${index} = InstanceType<PdfComponent${index}>['$props']`,
+      `type PdfProps${index} = PdfComponentProps<PdfComponent${index}>`,
     )
   })
 

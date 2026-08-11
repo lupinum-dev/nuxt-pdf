@@ -8,6 +8,7 @@ import {
 import { normalizePdfLimits } from '../runtime/server/render-limits'
 import {
   PDF_DEFINITION_PROPERTY,
+  type PdfComponentProps,
   type PdfDefinition,
   type PdfRenderResult,
 } from '../runtime/shared/template'
@@ -102,9 +103,9 @@ export async function renderPreparedPdfTemplate<Props extends object>(
  * resolution, font registration, single- or multi-pass layout — without booting
  * Nuxt, then parse the bytes so a test can assert against them immediately.
  */
-export async function renderPdfTemplate<Props extends object>(
-  component: Component,
-  props: Props,
+export async function renderPdfTemplate<C extends Component>(
+  component: C,
+  props: PdfComponentProps<C>,
   options: RenderPdfTemplateOptions = {},
 ): Promise<RenderedPdfTemplate> {
   assertRenderOptionKeys(

@@ -15,6 +15,22 @@ void pdf.invoice.render({
   number: 'INV-TYPED',
 })
 
+void pdf.invoice.render({
+  customer: 'Ada',
+  lines,
+  number: 'INV-TYPED',
+  // @ts-expect-error Vue vnode props are not part of a PDF template's authored API.
+  class: 'not-a-template-prop',
+})
+
+void pdf.invoice.render({
+  customer: 'Ada',
+  lines,
+  number: 'INV-TYPED',
+  // @ts-expect-error Vue lifecycle vnode hooks are renderer internals, not template props.
+  onVnodeMounted: () => {},
+})
+
 void renderPdf('invoice', {
   customer: 'Ada',
   lines,

@@ -17,5 +17,6 @@ export type {
 export type {
   PdfRenderDiagnostics,
   PdfRenderResult,
+  PdfComponentProps,
   PdfTemplate,
 } from '../shared/template'
