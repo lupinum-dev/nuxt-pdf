@@ -1,39 +1,58 @@
 # Contributing
 
-Nuxt PDF has one Vue authoring tree and one React PDF engine pipeline. Changes
-should simplify that path, preserve server-only rendering, and prove behavior
-with semantic or visual evidence.
+## Read this first
 
-## Development
+Nuxt PDF currently accepts limited contributions. You can open an issue or a
+pull request, but Lupinum OG can close or defer work that does not fit the
+current product direction.
 
-Use the Node and pnpm versions declared in `package.json`, then run:
+We are most likely to accept:
 
-```sh
+- Small bug fixes.
+- Reliability and performance fixes.
+- Focused documentation corrections.
+- Maintenance that reduces complexity.
+
+Open an issue before you start a feature, a breaking change, or a large
+refactor. This step helps you prevent work that the project cannot accept.
+
+## Prepare the repository
+
+Use the Node and pnpm versions in `package.json`.
+
+```bash
 pnpm install --frozen-lockfile
 pnpm dev:prepare
 pnpm test
 ```
 
-Before submitting a change, run the scoped tests and lint for the files you
-touched. Release-boundary changes also require `pnpm release:verify`.
+Run `pnpm check` before you submit a pull request. Run
+`pnpm release:verify` when you change package metadata, exports, release
+scripts, or release workflows.
 
-## Change policy
+## Keep the change focused
 
-- Add tests for invariants and failure behavior, not only successful output.
-- Update `CONTRACTS.md`, `CONFORMANCE.md`, and public docs when a contract moves.
-- Do not add compatibility aliases, a second document schema, backend adapters,
-  HTML printing, generic tables, or a second layout engine.
-- Do not update raster baselines without visually reviewing every changed page.
-- Keep fixtures free of customer data, credentials, private URLs, and licensed
-  fonts that cannot be redistributed.
+- Put one concern in each pull request.
+- Explain what changed and why it is necessary.
+- Add tests for invariants and failure behavior.
+- Update public documentation when user behavior changes.
+- Add before-and-after images for a visual change.
+- Add a short video for motion or interaction changes.
+- Do not update raster baselines until you inspect every changed page.
+- Keep fixtures free of customer data, credentials, private URLs, and
+  restricted fonts.
 
-Commits use a focused conventional prefix such as `fix(runtime):`,
+Do not add a second document schema, a second layout engine, HTML printing,
+generic adapters, or compatibility aliases without an accepted design issue.
+
+Use a focused conventional commit prefix, for example `fix(runtime):`,
 `feat(test):`, `docs:`, or `ci:`.
 
-## Versioning and deprecation
+## Versioning
 
-Published releases follow semantic versioning. Before 1.0, documented breaking
-changes are allowed in a minor release and are recorded in the changelog. From
-1.0 onward, removals require a major release. Deprecations must name the direct
-replacement and an intended removal version; greenfield compatibility shims are
-not accepted.
+Nuxt PDF follows semantic versioning. Before version 1.0, a minor release can
+contain a documented breaking change. After version 1.0, a breaking change
+requires a major release.
+
+A deprecation must identify the replacement and the planned removal version.
+Greenfield compatibility shims are not accepted.

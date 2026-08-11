@@ -29,7 +29,7 @@ appears.
    `npm view <pkg> dist-tags` for each of `@react-pdf/layout`, `render`, `font`,
    `pdfkit`, `primitives`. Compare each `latest` tag against the pins table
    above. Ignore `beta`/`reactpdf`/other pre-release tags. If no `latest`
-   exceeds its pin, record that fact and stop — the pins hold.
+   exceeds its pin, record that fact and stop. The pins hold.
 2. On branch `drill/engine-bump`, bump all five pins together (keep
    `@react-pdf/renderer` aligned with `render`), then `pnpm install`. Bisect
    per-package only if the combined bump fails.
@@ -37,11 +37,11 @@ appears.
    - `pnpm lint`
    - `pnpm test` (including the paired conformance fixtures and raster
      baselines)
-   - `pnpm test:types`
+   - `pnpm typecheck`
 4. Re-verify each documented contract below against the new engine source in the
    read-only reference checkout (`react-pdf/`). Update the **Reference commit**
    and this file for any wording that changed. The contracts most likely to
-   drift silently — verify these by reading source, not by trusting green tests:
+   drift silently. Verify these contracts by reading the source:
    - Layout contract: `layoutDocument(document, fontStore)` still forwards
      `fontStore` as the second argument.
    - Dynamic text contract: dynamic-node detection still keys on the `render`
@@ -52,30 +52,30 @@ appears.
    - Named destination contract: `setDestination` / `NameTree` last-write-wins
      behavior is unchanged.
 
-**Gates** — every one must pass, no exceptions:
+**Gates:** Every gate must pass:
 `pnpm lint`, `pnpm test`, and `pnpm typecheck` (the release gate is
 `pnpm release:verify`).
 
-**Raster baselines** — a changed raster diff is *expected* upgrade evidence, not
+**Raster baselines:** A changed raster diff is *expected* upgrade evidence, not
 an automatic failure. Inspect each failing baseline visually and classify:
-- *benign drift* (sub-pixel antialiasing, identical layout) → re-bless the
+- *benign drift* (sub-pixel antialiasing, identical layout): update the
   baseline and note it in the merge commit;
-- *rendering regression* (moved/missing/reflowed content) → treat as a failed
+- *rendering regression* (moved, missing, or reflowed content): treat it as a failed
   gate.
 
 **Decision rule**
 
-- All gates green and every contract re-verified → **merge** the bump to `main`
+- If all gates pass and every contract is verified, **merge** the bump to `main`
   with the updated pins table, Reference commit, and CONFORMANCE.md version
   table.
-- Any gate red, or a fix that is not small and obviously correct → **revert**
+- If a gate fails or the fix is not small, **revert**
   (delete the branch), keep the pins, and record in this file precisely *what*
   broke and *which contract caught it*. A revert with a recorded cause is a
   successful drill.
 
 **Drill log**
 
-- **2026-07-21** — All five `latest` dist-tags equalled the current pins
+- **2026-07-21:** All five `latest` dist-tags equaled the current pins
   (`layout` 4.6.1, `render` 4.5.1, `font` 4.0.8, `pdfkit` 5.1.1, `primitives`
   4.3.0). Only pre-release `2.0.0-beta.*` tags and pdfkit's legacy `reactpdf`
   0.8.5 were newer, and neither is a stable upgrade. No bump. Pins hold.
@@ -147,14 +147,14 @@ the next layout. Layout itself still must treat the admitted tree as immutable
 input.
 
 The multi-pass loop (`layout-passes.ts`, used to resolve table-of-contents page
-numbers) lays out the **same mounted tree repeatedly** — once per fixed-point
-pass — without cloning it. That is only sound because `layoutDocument` treats its
+numbers) lays out the **same mounted tree repeatedly**, once per fixed-point
+pass, without cloning it. This works because `layoutDocument` treats its
 input as immutable for every node it re-parents:
 
 - **Every pipeline step rebuilds nodes with `Object.assign`, never in place.**
   `layoutDocument` is `asyncCompose(...)` (`layout/src/index.ts:20-38`), which
   applies steps right-to-left. Each step maps children into a fresh array and
-  returns `Object.assign({}, node, { … })` — e.g. `resolveStyles.ts:49,53`,
+  returns `Object.assign({}, node, { updated properties })`. See `resolveStyles.ts:49,53`,
   `resolveOrigins.ts:13`, `resolveZIndex`, `resolveDimensions.ts:229,235`. The
   first structural step to touch a node's descendants (`resolveStyles`, executed
   5th) deep-copies the whole subtree, so pagination, dimensions, and text layout
@@ -180,11 +180,11 @@ input as immutable for every node it re-parents:
   whose ancestry-shift fixture fails without the reset.
 
 Because the mounted tree is otherwise untouched, the loop feeds each pass's
-`id → page` map back through a reactive prop and our renderer **re-patches the
+destination-page map back through a reactive prop, and our renderer **re-patches the
 same node objects in place** (node identity is asserted stable across passes in
 `test/toc-multipass.test.ts`); no per-pass re-mount and no structural clone are
-required. Convergence is a fixed point — the map a layout *produces* equals the
-map it was laid out *with* — reached in **2 passes** for an ordinary document.
+required. Convergence is a fixed point. The map that a layout *produces* equals
+the map that it used. An ordinary document reaches this state in **2 passes**.
 Non-convergence (a TOC entry whose size depends on the number it prints) is
 capped at `maxPasses` (default 5) and raises `PDF_LIMIT_EXCEEDED`.
 
@@ -206,13 +206,13 @@ section's **first** page, because a table-of-contents entry names where a sectio
 *begins*. Two seams enforce this, both in `render-document.ts`:
 
 - `extractDestinationPages` is **first-writer-wins** over the ordered page list
-  (`layout.children`), so the `id → page` map the multi-pass loop feeds back (and
+  (`layout.children`), so the destination-page map that the multi-pass loop feeds back (and
   the printed TOC number) is the earliest page an id appears on.
 - `serializePdfLayout` runs `anchorDestinationsAtFirstPage`, which walks the
   final pages in order and deletes `props.id` from every fragment of an
   already-seen id **before** painting, so the single surviving `setDestination`
-  call — and therefore the NameTree entry the click jumps to — targets the first
-  fragment. This runs for the single-pass and multi-pass paths alike, mutating
+  call targets the first fragment. The NameTree entry for a click has the same target.
+  This runs for the single-pass and multi-pass paths alike and mutates
   only the derived, disposable layout.
 
 The printed TOC number and the jump target thus share one source of truth.
@@ -226,7 +226,25 @@ Layout detects a dynamic node when the `render` key exists in its props. The Vue
 
 During pagination, layout invokes dynamic callbacks first with `pageNumber`, and later with final page and subpage totals. Its internal instance converter accepts scalar strings and numbers but assumes React-shaped objects for element results. Nuxt PDF 0.1 exposes only synchronous dynamic text callbacks returning scalar text. Vue VNodes are not supported as dynamic callback results.
 
-**Dynamic lineHeight shield.** Before layout, `renderDocument` gives every dynamic `TEXT` node (a `render` function in its props) its own `lineHeight: ''` on the disposable mounted tree (`normalizeDynamicTextLineHeight`, replacing the `node.style` reference, never mutating the shared object). This works around an upstream non-idempotency: `lineHeight` is the only inherited property whose stylesheet transform is not a fixed point — `transformLineHeight` returns `lineHeight * fontSize` for any unitless/absolute number (`@react-pdf/stylesheet` `src/resolve/text.ts:48-67`), and pagination re-resolves dynamic nodes' already-resolved styles multiple times (`@react-pdf/layout` `resolvePagination.ts` relayout paths → `resolveStyles.ts:62-71`). Each pass re-multiplies the absolute value by `fontSize`, exploding the dynamic line box off-page. `''` is the unique value short-circuited by `transformLineHeight` (`text.ts:53 if (value === '') return value`), and `resolveInheritance`'s own-over-inherited merge (`resolveInheritance.ts:53-64`) lets the node's own `''` override the compounding ancestor value; textkit then uses the font-derived line height. This is a deliberate divergence from `@react-pdf/renderer` 4.5.1, which has the identical bug and instead drops such footers entirely. Static text is unaffected (its `lines` are frozen after the first layout) and keeps inherited `lineHeight`.
+**Dynamic lineHeight shield.** Before layout, `renderDocument` gives every dynamic
+`TEXT` node its own `lineHeight: ''` on the disposable mounted tree. A dynamic
+node has a `render` function in its props. `normalizeDynamicTextLineHeight`
+replaces the `node.style` reference and does not mutate the shared object.
+
+This behavior works around an upstream non-idempotency. `lineHeight` is the only
+inherited property whose stylesheet transform is not a fixed point.
+`transformLineHeight` returns `lineHeight * fontSize` for any unitless or absolute
+number. See `@react-pdf/stylesheet` at `src/resolve/text.ts:48-67`. Pagination
+resolves the styles of dynamic nodes more than once. See `@react-pdf/layout`,
+`resolvePagination.ts`, and `resolveStyles.ts:62-71`. Each pass multiplies the
+absolute value by `fontSize` again. The dynamic line box can then leave the page.
+
+The value `''` stops `transformLineHeight`. See `text.ts:53`. The inheritance
+merge lets the node's own `''` override the changing ancestor value. See
+`resolveInheritance.ts:53-64`. Textkit then uses the font-derived line height.
+This behavior differs from `@react-pdf/renderer` 4.5.1, which has the same defect
+and drops these footers. Static text is not affected because its lines are fixed
+after the first layout. Static text keeps its inherited `lineHeight`.
 
 Protected by callback and page-number conformance tests, plus a geometry-equality test asserting the dynamic footer matches the static equivalent while body text keeps its inherited `lineHeight`. Expanding dynamic results requires a new explicit layout seam or an upstream change; it must not be implemented with a React-shaped compatibility object.
 
@@ -239,7 +257,7 @@ engine code is involved beyond the pinned `@react-pdf/layout` and
 - **Svg is a self-contained flex leaf.** `resolveDimensions` gives an `SVG` node
   a Yoga measure function derived from its `viewBox` aspect ratio
   (`layout/src/svg/measureSvg.ts`), so it lays out like an `Image` in normal
-  page flow, and `renderNode` does not recurse into svg children — `renderSvg`
+  page flow. `renderNode` does not recurse into SVG children. `renderSvg`
   walks the subtree itself (`render/src/primitives/renderNode.ts`). Therefore
   `SVG` is a valid child of `PAGE`/`VIEW` even though the upstream
   `layout/src/types/{view,page}.ts` child unions omit `SvgNode`. That omission
@@ -306,10 +324,10 @@ Font resolution runs *inside* the layout pipeline (`resolveAssets` calls
 `fontStore.load`), so a missing family throws during `layoutDocument`. Nuxt PDF
 surfaces this as a single `PDF_LAYOUT_ERROR` carrying React PDF's own exact
 message (`Font family not registered: <family>` / `Could not resolve font for
-<family>, fontWeight …`). Font failures are deliberately **not** sub-classified
+<family>, fontWeight <weight>`). Font failures are deliberately **not** sub-classified
 into a separate error code: `@react-pdf/font` throws a plain `Error` with no
 machine-readable signal, and the only way to isolate the font sub-stage would be
-to walk the tree and call `fontStore.getFont` per descriptor — duplicating the
+to walk the tree and call `fontStore.getFont` per descriptor. This would duplicate the
 `resolveAssets` traversal this file forbids. The precise family is already named
 in the preserved message, so no re-classification is needed.
 

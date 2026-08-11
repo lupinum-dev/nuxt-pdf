@@ -2,18 +2,43 @@
 
 ## Supported versions
 
-Security fixes are provided for the latest published minor release. Before
-1.0, fixes may include hard cutovers when keeping an unsafe compatibility path
-would weaken the resource or server-only boundary.
+Lupinum OG provides security fixes for the latest published minor release.
+Before version 1.0, a security fix can include a hard cut when a compatibility
+path would keep an unsafe behavior.
 
-## Reporting a vulnerability
+## Report a vulnerability
 
-Use GitHub's private vulnerability reporting for this repository. Do not open a
-public issue containing an exploit, customer document content, private URLs, or
-filesystem paths. Include the affected version, runtime, minimal reproduction,
-and expected impact. Maintainers will acknowledge a complete report within five
-business days and coordinate disclosure after a fix is available.
+Use GitHub private vulnerability reporting for this repository. If that
+channel is not available, send the report to [info@lupinum.com](mailto:info@lupinum.com).
 
-Nuxt PDF treats preview-data leakage, server/client boundary violations,
-cross-render contamination, resource-policy bypasses, and silent document
-content loss as security-sensitive defects.
+Do not put an exploit, customer document, private URL, credential, or local
+filesystem path in a public issue.
+
+Include:
+
+- The affected version.
+- The Node and Nuxt versions.
+- A minimal reproduction.
+- The expected security impact.
+- Any known mitigation.
+
+Lupinum OG will acknowledge a complete report within five business days. We
+will coordinate disclosure after a fix is available.
+
+Treat these defects as security-sensitive:
+
+- Preview data enters a production artifact.
+- Server-only code enters a client bundle.
+- One render can read data from another render.
+- A resource bypasses its path, type, size, or remote-host policy.
+- A render silently loses document content.
+- A release artifact differs from the artifact that maintainers approved.
+
+## Publication security
+
+The release workflow uses npm trusted publishing with stage-only permission.
+It does not use a long-lived npm publication token. A maintainer must inspect
+and approve each npm stage with WebAuthn or another permitted second factor.
+
+Agents and normal CI jobs must not publish packages, approve npm stages, move
+dist-tags, or create release tags.

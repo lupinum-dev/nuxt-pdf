@@ -1,8 +1,8 @@
 # Reviewed raster baselines
 
 Every committed PNG below this directory is a reviewed page-level visual
-contract. The owning tests also check page text, links, page count, and — where
-React PDF is a valid oracle — React/Vue raster parity; raw PDF bytes are
+contract. The owning tests also check page text, links, and page count. When
+React PDF is a valid oracle, the tests check React/Vue raster parity. Raw PDF bytes are
 intentionally not snapshotted.
 
 Regenerate a baseline only for an intentional layout change, review every

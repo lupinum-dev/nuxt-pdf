@@ -1,37 +1,52 @@
-# Nuxt PDF
+<p align="center">
+  <img src="docs/public/logo.svg" width="128" alt="Nuxt PDF">
+</p>
 
-Author server-rendered PDFs as ordinary Vue components inside a Nuxt
-application. Nuxt PDF uses Vue for authoring and the framework-neutral React
-PDF layout, font, and serialization packages for rendering; React itself is
-not a production dependency.
+<h1 align="center">Nuxt PDF</h1>
 
-The current release is an external alpha: still one Nuxt module, one document
-tree, and one Node server renderer, with a contract that has widened from
-0.1.0's core layout
-primitives to SVG drawing, a multi-pass table of contents, internal links,
-bookmarks, opt-in remote resources, shipped testing utilities, and enforced
-render limits — each backed by an executable fixture. See
-[CONFORMANCE.md](./CONFORMANCE.md) for the exact evidence and limitations behind
-the compatibility claim.
+<p align="center">
+  Author and render PDFs with Vue components in Nuxt.
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/@lupinum/nuxt-pdf"><img src="https://img.shields.io/npm/v/@lupinum/nuxt-pdf?color=315d3b" alt="npm version"></a>
+  <a href="https://github.com/lupinum-dev/nuxt-pdf/actions/workflows/ci.yml"><img src="https://github.com/lupinum-dev/nuxt-pdf/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-315d3b" alt="MIT license"></a>
+</p>
+
+> [!IMPORTANT]
+> Nuxt PDF is an external alpha. Its tested behavior is stable within each
+> release, but a minor release can contain documented breaking changes before
+> version 1.0.
+
+Nuxt PDF discovers Vue Single File Components in `pdfs/`. It renders these
+components on the Node server through a PDF layout engine. The client bundle
+does not contain the renderer or document templates.
+
+Use Nuxt PDF for structured documents such as invoices, reports,
+certificates, tickets, and labels.
+
+Do not use Nuxt PDF to print an existing web page, display an existing PDF, or
+edit and sign an existing PDF.
 
 ## Requirements
 
-- Node.js `^22.12.0`, `^24.11.0`, or `^26.0.0`
+- Node.js `^22.14.0`, `^24.0.0`, or `^26.0.0`
 - Nuxt `^4.4.8`
 - Vue `^3.5.0`
 
-Nuxt 3, Node 20, browser rendering, and edge rendering are not claimed by the
-current alpha.
+Nuxt 3, Node 20, browser rendering, and edge rendering are outside the current
+support boundary.
 
-## Ten-minute quickstart
+## Install
 
-Install the module in an existing Nuxt 4 application:
+Install the module in a Nuxt 4 application:
 
 ```bash
 pnpm add @lupinum/nuxt-pdf
 ```
 
-Add it to `nuxt.config.ts`:
+Add the module to `nuxt.config.ts`:
 
 ```ts
 export default defineNuxtConfig({
@@ -39,7 +54,9 @@ export default defineNuxtConfig({
 })
 ```
 
-Create `pdfs/invoice.vue` at the project root:
+## Render a document
+
+Create `pdfs/invoice.vue`:
 
 ```vue
 <script setup lang="ts">
@@ -56,7 +73,6 @@ const props = defineProps<InvoiceProps>()
 definePdf<InvoiceProps>({
   title: ({ invoice }) => `Invoice ${invoice.number}`,
   filename: ({ invoice }) => `invoice-${invoice.number}.pdf`,
-  language: 'en-GB',
   sampleData: {
     invoice: {
       customer: 'Ada Lovelace',
@@ -69,10 +85,7 @@ definePdf<InvoiceProps>({
 
 <template>
   <PdfDocument>
-    <PdfPage
-      size="A4"
-      :style="{ color: '#17201b', fontSize: 11, padding: 48 }"
-    >
+    <PdfPage size="A4" :style="{ fontSize: 11, padding: 48 }">
       <PdfText :style="{ fontSize: 24, marginBottom: 24 }">
         Invoice {{ props.invoice.number }}
       </PdfText>
@@ -80,18 +93,6 @@ definePdf<InvoiceProps>({
       <PdfText :style="{ marginTop: 12 }">
         Total: {{ props.invoice.total }}
       </PdfText>
-      <PdfText
-        fixed
-        :style="{
-          bottom: 24,
-          color: '#68736b',
-          fontSize: 8,
-          position: 'absolute',
-          right: 48,
-        }"
-        :render="({ pageNumber, totalPages }) =>
-          `Page ${pageNumber} of ${totalPages}`"
-      />
     </PdfPage>
   </PdfDocument>
 </template>
@@ -115,343 +116,88 @@ export default defineEventHandler(async () => {
 })
 ```
 
-Start Nuxt and open:
+Start Nuxt. Open these development routes:
 
-- `http://localhost:3000/_pdf` for the template index;
-- `http://localhost:3000/_pdf/invoice` for the browser preview; or
-- `http://localhost:3000/api/invoice` for the production-style route.
+- `/_pdf` lists the discovered templates.
+- `/_pdf/invoice` shows the document preview.
+- `/api/invoice` returns the production-style PDF response.
 
-The `/_pdf` routes are registered only in development. Restart `nuxt dev`, or
-run `nuxt prepare`, after first enabling the module so Nuxt writes the typed
-`#pdf` registry.
-
-## Development preview
-
-`/_pdf` is where you live while building a document. The index lists every
-template as a card with its source file, scenario count, and quick links to the
-preview and the raw PDF. Each viewer page:
-
-- offers the sample data and every named scenario as tabs that swap the embedded
-  PDF, with the active one highlighted (an unknown `?scenario=` still 404s with
-  the available names);
-- renders a diagnostics strip for that render — duration, output size, page
-  count, layout passes, and registered font faces;
-- shows a content-free error summary when a render fails while retaining the
-  previous successful PDF with an explicit stale marker;
-- provides separate refresh, inline raw-PDF, and download actions; and
-- automatically reloads after a PDF SFC changes while preserving the active
-  scenario in the current URL.
-
-The preview is server-rendered HTML with a tiny Vite development-event listener
-and is absent from production builds. It calls the template's public
-`render(props)` once and embeds that exact completed result; there is no
-preview-specific render path.
+Restart `nuxt dev` after you first enable the module. This action generates
+the typed `#pdf` registry.
 
 ## Authoring model
 
-PDF templates live in `pdfs/**/*.vue`. `pdfs/components`, `pdfs/assets`, and
-`pdfs/fonts` are reserved supporting directories and are not registered as
-documents.
+PDF templates use typed props, interpolation, `v-if`, keyed `v-for`, slots,
+and local Vue components. Nuxt PDF provides document, page, text, image, link,
+note, and SVG primitives.
 
-The alpha exposes seven thin primitives:
+Templates run in an isolated Vue application on the Node server. They do not
+inherit Nuxt plugins, app-level provides, browser globals, or DOM components.
+Load request data before the render and pass it through typed props.
 
-- `PdfDocument`
-- `PdfPage`
-- `PdfView`
-- `PdfText`
-- `PdfImage`
-- `PdfLink`
-- `PdfNote`
+Nuxt PDF supports local images and fonts. Remote images are disabled until an
+operator configures an explicit HTTPS allowlist.
 
-Composition is normal Vue: use typed props, interpolation, `v-if`, keyed
-`v-for`, local components, and slots. Styles use Nuxt PDF's framework-owned,
-typed `PdfStyle` contract, not browser CSS or the upstream React PDF type
-surface. Invalid nesting, DOM-only attributes, unknown props, and props used on
-the wrong primitive fail early with `PDF_TREE_INVALID`.
+Read the [documentation](https://nuxt-pdf.lupinum.com) for authoring, assets,
+links, bookmarks, tables of contents, testing, and the complete API reference.
+Read [CONFORMANCE.md](./CONFORMANCE.md) for the exact tested behavior and known
+limitations.
 
-### Execution model
+## Test a document
 
-PDF templates run only in Node inside a fresh Vue runtime-core application.
-This is a custom renderer, not Vue SSR: mount, update, and unmount hooks run on
-the server, `onServerPrefetch` is not used, and browser globals are unavailable.
-Load request data before calling `pdf.<template>.render(props)` and pass it as
-typed props.
-
-Vue APIs such as `ref` and `computed`, plus `usePdfPageNumbers`, are
-scope-aware auto-imports. Nuxt app composables, plugins, app-level provides,
-global DOM components, and directives are not inherited by the isolated PDF
-app. Explicit local imports and provide/inject within the PDF tree work as
-usual. Async setup, top-level `await`, `defineAsyncComponent`, `Teleport`, and
-`v-show` are unsupported; use synchronous components, `v-if`, and ordinary
-local composition instead.
-
-`definePdf` accepts render metadata plus development-only preview data:
-
-```ts
-definePdf<Props>({
-  title: props => `Report ${props.id}`,
-  filename: props => `report-${props.id}.pdf`,
-  language: 'en-GB',
-  sampleData: { id: 'sample' },
-  scenarios: {
-    long: { id: 'long-report' },
-  },
-})
-```
-
-A scenario is available at `/_pdf/report?scenario=long`. Unknown scenarios
-return a 404 with the available names. `sampleData` and `scenarios` live in an
-internal development sidecar; the production SFC transform structurally omits
-their expressions, and the public template handle never exposes them. Like
-Vue's hoisted compiler macros, `definePdf()` metadata can use inline values or
-imports, but not variables declared locally in `<script setup>`. Keep imported
-preview-fixture modules side-effect-free so production bundlers can remove them.
-
-## Table of contents, links, and bookmarks
-
-Give any primitive an `id` to make it a named destination, and link to it with
-`<PdfLink src="#id">`. To print the page a destination lands on, call the
-auto-imported `usePdfPageNumbers()` composable — it returns a readonly, reactive
-map from `id` to its 1-based page:
-
-```vue
-<script setup lang="ts">
-const pageNumbers = usePdfPageNumbers()
-</script>
-
-<template>
-  <PdfLink :src="`#${section.id}`">
-    {{ section.title }} … {{ pageNumbers[section.id] ?? '' }}
-  </PdfLink>
-</template>
-```
-
-Reading the composable turns on a multi-pass layout (internal `#` links alone
-stay single-pass — they resolve by name): the document is laid out repeatedly, feeding the resolved page
-numbers back in, until they stabilize — an ordinary table of contents settles in
-two passes. On the first pass the numbers are `undefined`, so keep a fallback.
-Numbers and links always resolve to the page a section **starts** on, even when
-the section spans pages. A document whose layout depends on the numbers it prints
-fails with `PDF_LIMIT_EXCEEDED`; raise the cap with `definePdf({ maxPasses })`.
-
-Add a `bookmark` (`"Title"` or `{ title, expanded }`) to any primitive to build
-the PDF outline; nesting follows the component tree. `playground/pdfs/report.vue`
-demonstrates the whole feature.
-
-## Typed server registry
-
-Nuxt generates an inspectable `#pdf` module from the discovered templates.
-Property access and literal template names infer each SFC's props:
-
-```ts
-import { pdf, renderPdf } from '#pdf'
-
-await pdf.invoice.render({ invoice })
-await renderPdf('invoice', { invoice })
-```
-
-Each public template is exactly `{ key, resolveMetadata(props), render(props) }`.
-The registry is server-only: do not import `#pdf` from client code. In
-production, neither the engine nor template SFCs enter the client bundle, and
-preview data is absent from the Nitro server artifact too.
-
-The completed result carries the exact frozen `metadata` resolved for that
-render alongside its frozen `diagnostics`; preview and application code consume
-the same facts without evaluating metadata a second time.
-
-Runtime strings require the explicit unknown-props escape hatch:
-
-```ts
-await renderPdf(templateName, untypedProps, { unsafe: true })
-```
-
-That marker does not validate the props; it only makes the loss of static
-typing visible at the call site. Unknown template names still fail with
-`PDF_TEMPLATE_NOT_FOUND`.
-
-One completed render result owns immutable bytes and can be converted without
-rendering the document again:
-
-```ts
-const result = await pdf.invoice.render({ invoice })
-
-await result.toUint8Array()
-await result.toBuffer()
-result.diagnostics // duration, bytes, pages, passes, registered faces
-await result.response({
-  disposition: 'inline',
-  filename: 'invoice.pdf',
-})
-```
-
-`response()` always sets `content-type`, the exact `content-length`, and a
-sanitized `content-disposition`. With no template filename or response override,
-it safely downloads as `document.pdf`. Diagnostics contain measurements
-only — never document content, props, or resource URLs.
-
-## Local images and fonts
-
-Place PNG or JPEG files in `pdfs/assets` and reference the path relative to
-that directory:
-
-```vue
-<PdfImage
-  src="brand/logo.png"
-  :style="{ height: 40, objectFit: 'contain', width: 120 }"
-/>
-```
-
-Place TTF or OTF files in `pdfs/fonts` and register them in `nuxt.config.ts`:
-
-```ts
-export default defineNuxtConfig({
-  modules: ['@lupinum/nuxt-pdf'],
-  pdf: {
-    fonts: [{
-      family: 'Invoice Sans',
-      src: 'InvoiceSans-Regular.ttf',
-      fontWeight: 400,
-      fontStyle: 'normal',
-    }],
-  },
-})
-```
-
-Then use the family in a PDF style object:
-
-```vue
-<PdfPage :style="{ fontFamily: 'Invoice Sans' }">
-```
-
-Resources are signature-checked, size-checked, realpath-contained, and
-embedded into the server build. Absolute paths, traversal, symlink escapes,
-and runtime filesystem fallbacks are rejected. Remote URLs fail closed unless
-you opt in with an explicit `pdf.remote.allow` allowlist (see below).
-
-## Remote images (opt-in)
-
-Remote fetching is off by default. Configure an `https`-only allowlist to let
-the module — never the engine — fetch and embed allowlisted resources:
-
-```ts
-export default defineNuxtConfig({
-  modules: ['@lupinum/nuxt-pdf'],
-  pdf: {
-    remote: {
-      allow: ['https://assets.example.com/pdf/'],
-    },
-  },
-})
-```
-
-Each entry is an exact `https://host/path/` prefix. Wildcards, credentials,
-fragments, and prefixes without a trailing slash are rejected. The allowlist is
-re-checked on every redirect hop; byte, pixel, fan-out, concurrency, and output
-caps come from `pdf.limits`; and fetches are credential-less `GET`s bounded by
-the render deadline. Remote images are deduplicated only within one render.
-Fonts must be local build inputs. See
-[CONFORMANCE.md](./CONFORMANCE.md) for the full tested boundary.
-
-## Testing your PDFs
-
-The same utilities this package is tested with ship as `@lupinum/nuxt-pdf/test`,
-so you can assert against your own templates with a real render — no Nuxt boot,
-no snapshot guesswork. The parser and rasterizer load `pdfjs-dist` and
-`@napi-rs/canvas` lazily; install them as dev dependencies of your project:
+Install the optional test dependencies:
 
 ```bash
 pnpm add -D pdfjs-dist @napi-rs/canvas
 ```
 
-`renderPdfTemplate` mounts a component through the real pipeline (asset
-resolution, font registration, single- or multi-pass layout) and returns the
-bytes alongside a parsed document. `expectPdf` gives runner-agnostic assertions
-that throw a `PdfAssertionError` with an actionable message on failure:
+Render the real template in a test:
 
 ```ts
-import { describe, it } from 'vitest'
 import { expectPdf, renderPdfSfc } from '@lupinum/nuxt-pdf/test'
 
-describe('invoice.vue', () => {
-  it('renders the typed invoice data', async () => {
-    const { parsed } = await renderPdfSfc('./pdfs/invoice.vue', {
-      invoice: {
-        customer: 'Acme Corp',
-        number: 'INV-001',
-        total: 'EUR 1,250.00',
-      },
-    })
-
-    expectPdf(parsed)
-      .toHavePageCount(1)
-      .toContainText('Invoice INV-001', { page: 1 })
-      .toContainText('Acme Corp', { page: 1 })
-  })
-})
-```
-
-`parsePdf` also accepts a `PdfRenderResult` straight from the server registry —
-`await parsePdf(await pdf.invoice.render(props))` — so route tests read naturally.
-
-`renderPdfSfc('./pdfs/invoice.vue', props, { fonts })` compiles the real template
-and nested child SFCs, discovers local images, and admits local fonts through the
-same validated path as a Nuxt production build.
-
-For pixel-level regressions, `comparePdfSnapshot` follows a reviewed-baseline
-policy: it writes per-page PNG baselines into a directory when
-`UPDATE_PDF_BASELINES=1` (or `{ update: true }`) is set, and otherwise compares
-each page against them within a pixel threshold.
-
-```ts
-import { comparePdfSnapshot, renderPdfSfc } from '@lupinum/nuxt-pdf/test'
-
-const { bytes } = await renderPdfSfc('./pdfs/invoice.vue', {
+const { parsed } = await renderPdfSfc('./pdfs/invoice.vue', {
   invoice: {
-    customer: 'Acme Corp',
+    customer: 'Ada Lovelace',
     number: 'INV-001',
     total: 'EUR 1,250.00',
   },
 })
-await comparePdfSnapshot(bytes, './test/baselines/invoice')
+
+expectPdf(parsed)
+  .toHavePageCount(1)
+  .toContainText('Invoice INV-001')
 ```
 
-Failures produce expected, actual, and diff PNGs for every changed page plus
-machine-readable metrics under `reports/pdf-snapshots`. `parsePdf` also exposes
-normalized page dimensions and text-run geometry for tolerant layout checks.
+The test entry can also inspect links, bookmarks, page geometry, and raster
+baselines.
 
-## Alpha boundary
-
-Nuxt PDF is currently designed for invoices, reports, certificates, tickets,
-and similar server-generated documents. The release does not include a table
-engine, CSS compiler, HTML printing, DevTools studio, browser renderer,
-deterministic PDF bytes, forms, signing, tagged PDF, or an independent layout
-engine.
-
-Dynamic text callbacks are synchronous and must return a string or number.
-Dynamic text always renders with font-default line spacing: any `lineHeight`
-reaching it — inherited or its own — is neutralized rather than rejected,
-because the pinned upstream layout engine produces invalid geometry for that
-combination (upstream React PDF silently drops such footers; Nuxt PDF renders
-them correctly).
-
-For the complete tested behavior and exact lower-engine versions, read
-[CONFORMANCE.md](./CONFORMANCE.md) and
-[CONTRACTS.md](./src/runtime/server/engine/CONTRACTS.md).
-
-## Development
+## Develop Nuxt PDF
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 pnpm dev
-pnpm verify
+pnpm check
 ```
 
-`pnpm verify` is the release gate: lint, types, dependency boundaries, unit and
-conformance tests, Nuxt development and production fixtures, package build,
-playground production build, raster baselines, tarball contents, and the fresh
-application smoke test.
+Use `pnpm docs:dev` to run the documentation site. Use
+`pnpm release:verify` only for release preparation.
+
+Read [CONTRIBUTING.md](./CONTRIBUTING.md) before you open a pull request.
+Maintainers use [MAINTAINING.md](./MAINTAINING.md) for release and recovery
+procedures.
+
+## Support and security
+
+- Read the [documentation](https://nuxt-pdf.lupinum.com).
+- Join the [Lupinum OSS Discord](https://discord.gg/RPH6SeA36N).
+- Open a [GitHub issue](https://github.com/lupinum-dev/nuxt-pdf/issues) for a
+  reproducible defect.
+- Follow [SECURITY.md](./SECURITY.md) for a private vulnerability report.
 
 ## License
 
-MIT. React PDF-derived fixture attribution and bundled test-font notices are
-recorded in [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).
+[MIT](./LICENSE) © Lupinum OG and contributors.
+
+Third-party attributions are in
+[THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).

@@ -5,9 +5,9 @@ import site from "./site.json" with { type: "json" };
 // pipeline; this app owns only its identity, landing copy, and Markdown.
 export default defineNuxtConfig({
   extends: ["@lupinum/ginko-docs"],
-  site: { url: site.url },
+  site: { defaultLocale: "en-US", url: site.url },
   i18n: {
     baseUrl: site.url,
-    locales: [{ code: "en", language: "en-GB", name: "English" }],
+    locales: [{ code: "en", language: "en-US", name: "English" }],
   },
 });

@@ -41,7 +41,7 @@ text updates, primitive resolution, rejection of invalid roots, and fail-closed
 rejection of non-whitespace orphan text without echoing its content.
 
 Dynamic text (page-number footers) renders at correct page-bottom geometry even
-when a `lineHeight` reaches it — inherited from `PdfPage` or nested `PdfView`
+when a `lineHeight` reaches it from `PdfPage` or a nested `PdfView`
 chains, given as a percentage, or set on the dynamic node itself. This is a
 deliberate divergence from upstream React PDF, which drops such footers, so it
 is verified by Vue-only engine tests (`test/engine.test.ts`) against the
@@ -104,7 +104,7 @@ A themed corpus under `test/corpus/` renders each fixture through both React PDF
 (`renderToBuffer`) and the Vue renderer from one shared, renderer-agnostic data
 module, so any divergence is the renderer boundary. Claims are proven by
 extracted text, per-page marker positions, laid-out box geometry, annotation and
-catalog reads, and — for genuinely visual claims — React/Vue raster parity plus
+catalog reads and, for visual claims, React/Vue raster parity plus
 reviewed baselines.
 
 **Pagination** (`test/corpus/pagination.test.ts`):
@@ -119,7 +119,7 @@ reviewed baselines.
 - a `fixed` header and footer repeat on every page of a multi-page flow while the
   body advances; and
 - dynamic page-number footers (`{ pageNumber, totalPages }`) are correct on every
-  page of a wrapped flow — proven against a page-count-derived computed oracle
+  page of a wrapped flow. A page-count-derived computed oracle proves this claim
   because React PDF diverges on dynamic-text line spacing (see the kernel note).
 
 **Text** (`test/corpus/text.test.ts`):
@@ -131,7 +131,7 @@ reviewed baselines.
 - `textAlign` left/center/right shifts line origins and `justify` fills interior
   lines while the last line keeps its natural advance (raster parity);
 - nested style inheritance and inline `fontFamily` switching resolve the correct
-  embedded font per run and inherit colour across wraps (raster parity);
+  embedded font per run and inherit color across wraps (raster parity);
 - German umlauts, eszett, and Latin-extended diacritics round-trip through text
   extraction; and
 - `maxLines` with `textOverflow: 'ellipsis'` clamps to the line count and appends
@@ -173,7 +173,7 @@ keys, unsupported units/values, and invalid style-array entries; runtime props
 remain independently closed because Vue fallthrough attrs can escape static
 checking.
 
-- flexbox — `row`/`column` direction, `flexGrow`, `flexBasis`+`flexShrink`,
+- flexbox with `row` or `column` direction, `flexGrow`, `flexBasis` and `flexShrink`,
   `justifyContent: space-between`, `alignItems: center`, and `gap`;
 - percent width/height against page and nested parent boxes;
 - resolved margin/padding/border on every edge and border-box offset;
@@ -224,7 +224,7 @@ The 0.3.0 tests verify:
   completed result rather than re-evaluating metadata or using a second preview
   renderer;
 - a closed public `PdfTemplate` handle containing exactly `key`,
-  `resolveMetadata(props)`, and `render(props)` — never the compile-time
+  `resolveMetadata(props)`, and `render(props)`. It never contains the compile-time
   definition, sample data, scenarios, source path, or a preview render method;
 - `definePdf` title/language precedence over `PdfDocument` fallback props,
   including reapplication after every page-number feed in a multi-pass render;
@@ -234,7 +234,7 @@ The 0.3.0 tests verify:
 - template attribution on failure: every error surfaced from a template's
   `render()` is a `NuxtPdfError` carrying `templateKey`; development renders
   also carry `templateFile` and a message prefixed with the source file
-  (`pdfs/…`), while production deliberately omits that preview-only path. Invalid
+  (under `pdfs/`), while production omits that preview-only path. Invalid
   nesting fails with `PDF_TREE_INVALID`; it never returns a partial document or
   downgrades the failure to a warning. Font-resolution failures surface as a single
   `PDF_LAYOUT_ERROR` (font resolution is a layout sub-stage) whose message
@@ -260,26 +260,26 @@ The 0.3.0 tests verify:
 Nuxt PDF resolves table-of-contents page numbers with a multi-pass layout loop
 and exposes it through one composable and existing props. The tested boundary:
 
-- **`usePdfPageNumbers()`** — an auto-imported composable returning a readonly,
+- **`usePdfPageNumbers()`** is an auto-imported composable that returns a readonly,
   reactive `Record<string, number | undefined>` mapping each destination `id` to
   the 1-based page it finally lands on. On the first pass every entry is
   `undefined`, so templates must tolerate a missing number. The composable is
   auto-injected into a PDF SFC that uses it (verified by compiling the real
   `playground/pdfs/report.vue` and by inject/skip unit tests).
 - **Activation gate.** The multi-pass loop runs only when a template calls
-  `usePdfPageNumbers()` during mount — the only feature that consumes resolved
+  `usePdfPageNumbers()` during mount. It is the only feature that consumes resolved
   page numbers. Internal `#id` links do **not** activate it: a named destination
-  resolves by name in a single pass. Every other document — links included —
+  resolves by name in a single pass. Every other document, including a document with links,
   renders through the single-pass path at no added cost, verified by a spy
   asserting the multi-pass entry point is not called for a plain document nor for
   a link-only document whose destination still resolves. Calling
   `usePdfPageNumbers()` outside a PDF render throws instead of returning a map
   that could be mistaken for first-pass state.
 - **Convergence.** The loop is a fixed point: it re-lays-out the same mounted
-  tree, feeding each pass's `id → page` map back through the composable, until the
+  tree, feeding each pass's destination-page map back through the composable, until the
   map it produces equals the map it was laid out with. After every feed the live
-  tree is re-admitted — tree limits, metadata reapplication, and image/resource
-  policy run again against that exact tree — so conditional content introduced by
+  tree is re-admitted. Tree limits, metadata reapplication, and image/resource
+  policy run again against that exact tree. Therefore, conditional content introduced by
   page numbers cannot bypass admission. An ordinary document converges in two
   passes. A document whose layout depends on the numbers it prints (a TOC entry
   whose height changes with its page number) never converges and, after
@@ -291,7 +291,7 @@ and exposes it through one composable and existing props. The tested boundary:
   node that spans a page boundary, both the printed number and the jump target
   resolve to the section's **first** page (a deliberate divergence from React PDF,
   whose last-writer-wins destination table points at the last page). This holds on
-  both render paths — verified by page-spanning regression fixtures asserting the
+  both render paths. Page-spanning regression fixtures verify the
   printed number and the pdfjs destination independently, through the multi-pass
   loop and through the single-pass path. The anchoring is copy-on-write, so a
   `fixed` node repeated on every page (which pagination represents as one shared
@@ -303,12 +303,12 @@ and exposes it through one composable and existing props. The tested boundary:
   `PDF_TREE_INVALID` before layout. A `PdfDocument` without at least one
   `PdfPage` likewise fails closed.
 - **Bookmarks (outline).** The upstream `bookmark` prop (a string or
-  `{ title, expanded, … }`) on `PdfPage`/`PdfView`/`PdfText`/`PdfImage` builds a
+  `{ title, expanded }`) on `PdfPage`, `PdfView`, `PdfText`, or `PdfImage` builds a
   nested PDF outline. Verified paired against React PDF via pdfjs `getOutline`
-  (React PDF is the oracle for the bookmark→outline mechanics), and combined with
+  (React PDF is the oracle for the bookmark-to-outline mechanics), and combined with
   the multi-pass loop: two independent renders produce an identical outline, and
   the loop resets each pass's authored `bookmark` so the in-place resolution
-  `resolveBookmarks` performs cannot accumulate a stale hierarchy — a fixture
+  `resolveBookmarks` performs cannot accumulate a stale hierarchy. A fixture
   whose bookmark ancestry shifts across passes fails without the reset, and the
   snapshot is merged before every pass, so a bookmark that first appears mid-loop
   (behind a resolved page number) is captured with its authored value too.
@@ -337,7 +337,7 @@ or filesystem sandbox claim.
 Remote fetching is off by default: with `pdf.remote` absent the module performs
 zero network I/O and every URL image source fails closed. Remote fonts are
 unconditionally rejected. When an operator configures `pdf.remote.allow`, the
-module — never React PDF's engine — fetches allowlisted images and converts them
+module fetches allowlisted images and converts them
 to bytes before layout. The tested boundary guarantees:
 
 - Allowlist entries are exact `https://host/path/` prefixes. `http://`, wildcard
@@ -402,21 +402,21 @@ builds the basic fixture with `NITRO_PRESET=vercel`): the build succeeds, the
 React PDF engine lands in the server function bundle, the `.vercel/output`
 serverless structure is emitted, and no React renderer runtime leaks into the
 bundle. This claims exactly that it **builds** under the vercel preset;
-execution is verified on node-server (`test/production.test.ts`) — the Vercel
+execution is verified on node-server (`test/production.test.ts`). The Vercel
 runtime is not executed locally.
 
 ### Testing utilities
 
 The verification helpers this suite runs on ship as `@lupinum/nuxt-pdf/test`.
 They live in `src/test/`; repository tests import that canonical implementation
-directly and the package bundles it as the public test entry — there is one
+directly, and the package bundles it as the public test entry. There is one
 parser, not two. Claimed:
 
 - `parsePdf` accepts PDF bytes or a `PdfRenderResult` and returns page text,
   page count, flattened link annotations (named destination or external URL),
   and the outline via pdfjs;
 - `expectPdf` runner-agnostic assertions (`toHavePageCount`, `toContainText`,
-  `toHaveLink`, `toHaveOutline`) that throw a `PdfAssertionError` — no vitest or
+  `toHaveLink`, `toHaveOutline`) that throw a `PdfAssertionError` without a Vitest or
   jest dependency;
 - `renderPdfTemplate`, which renders a Vue PDF component through the real
   registry pipeline (assets, fonts, single- or multi-pass layout) without Nuxt,
@@ -467,10 +467,10 @@ failure messages, in `test/test-utils-public.test.ts`.
   (these fail closed with `PDF_LIMIT_EXCEEDED`, they are not made to converge).
 - Tagged PDF, PDF/UA, archival, or other accessibility/compliance profiles.
 - PDF encryption. Password and permission props are not exposed without a
-  conformance fixture proving their behaviour.
+  conformance fixture proving their behavior.
 - Deterministic PDF bytes across operating systems or PDF viewers.
 - Hard render cancellation. The `pdf.limits.timeoutMs` budget is polled between
-  engine stages and passes — upstream layout is not abortable mid-step — so a
+  engine stages and passes. Upstream layout is not abortable during a step, so a
   single engine stage can overshoot it; it is a checked deadline, not mid-step
   cancellation. The thirteen `pdf.limits` fields themselves are claimed above
   under "Render limits".
