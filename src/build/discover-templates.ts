@@ -142,6 +142,7 @@ export const normalizePdfTemplateCandidates = (
 type FindFilesOptions = {
   excludedRootDirectories?: ReadonlySet<string>
   include: (filename: string) => boolean
+  isIgnored?: (absolutePath: string) => boolean
 }
 
 const findFiles = async (
@@ -164,6 +165,7 @@ const findFiles = async (
   const files: string[] = []
 
   for (const entry of entries) {
+    const absolutePath = join(directory, entry.name)
     const relativePath = relativeDirectory
       ? posix.join(relativeDirectory, entry.name)
       : entry.name
@@ -175,6 +177,8 @@ const findFiles = async (
     ) {
       continue
     }
+
+    if (options.isIgnored?.(absolutePath)) continue
 
     if (entry.isDirectory()) {
       files.push(...await findFiles(
@@ -206,13 +210,14 @@ const PDF_IMAGE_FILES: FindFilesOptions = {
 
 export const discoverPdfTemplates = async (
   layers: readonly PdfTemplateLayer[],
+  isIgnored?: (absolutePath: string) => boolean,
 ): Promise<PdfTemplate[]> => {
   const candidates: PdfTemplateCandidate[] = []
 
   for (const [layerIndex, layer] of layers.entries()) {
     const rootDir = resolve(layer.rootDir)
     const pdfsDir = join(rootDir, 'pdfs')
-    const files = await findFiles(pdfsDir, VUE_FILES)
+    const files = await findFiles(pdfsDir, { ...VUE_FILES, isIgnored })
 
     for (const relativePath of files) {
       candidates.push({
@@ -229,13 +234,17 @@ export const discoverPdfTemplates = async (
 
 export const discoverPdfComponentFiles = async (
   layers: readonly PdfTemplateLayer[],
+  isIgnored?: (absolutePath: string) => boolean,
 ): Promise<string[]> => {
   const files = new Set<string>()
 
   for (const layer of layers) {
     const directory = join(resolve(layer.rootDir), 'pdfs', 'components')
 
-    for (const relativePath of await findFiles(directory, PDF_COMPONENT_FILES)) {
+    for (const relativePath of await findFiles(directory, {
+      ...PDF_COMPONENT_FILES,
+      isIgnored,
+    })) {
       files.add(join(directory, ...relativePath.split('/')))
     }
   }
@@ -245,13 +254,17 @@ export const discoverPdfComponentFiles = async (
 
 export const discoverPdfImageFiles = async (
   layers: readonly PdfTemplateLayer[],
+  isIgnored?: (absolutePath: string) => boolean,
 ): Promise<PdfImageFile[]> => {
   const files = new Map<string, PdfImageFile>()
 
   for (const [layerIndex, layer] of layers.entries()) {
     const rootDir = join(resolve(layer.rootDir), 'pdfs', 'assets')
 
-    for (const key of await findFiles(rootDir, PDF_IMAGE_FILES)) {
+    for (const key of await findFiles(rootDir, {
+      ...PDF_IMAGE_FILES,
+      isIgnored,
+    })) {
       if (!files.has(key)) {
         files.set(key, {
           filePath: join(rootDir, ...key.split('/')),

@@ -123,6 +123,29 @@ describe('PDF template discovery', () => {
     }])
   })
 
+  it('applies Nuxt ignore decisions to templates, components, and assets', async () => {
+    const project = await createLayer('ignored', {
+      'pdfs/invoice.vue': '<template />',
+      'pdfs/private/secret.vue': '<template />',
+      'pdfs/components/Visible.vue': '<template />',
+      'pdfs/components/private/Secret.vue': '<template />',
+      'pdfs/assets/logo.png': 'visible',
+      'pdfs/assets/private/secret.png': 'ignored',
+    })
+    const ignorePrivate = (file: string) => file.split('/').includes('private')
+    const layers = [{ name: 'project', rootDir: project }]
+
+    await expect(discoverPdfTemplates(layers, ignorePrivate)).resolves.toEqual([
+      expect.objectContaining({ key: 'invoice' }),
+    ])
+    await expect(discoverPdfComponentFiles(layers, ignorePrivate)).resolves.toEqual([
+      join(project, 'pdfs/components/Visible.vue'),
+    ])
+    await expect(discoverPdfImageFiles(layers, ignorePrivate)).resolves.toEqual([
+      expect.objectContaining({ key: 'logo.png' }),
+    ])
+  })
+
   it('fails on key collisions within a layer', () => {
     expect(() => normalizePdfTemplateCandidates([
       {

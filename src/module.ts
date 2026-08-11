@@ -6,6 +6,7 @@ import {
   addServerTemplate,
   addTemplate,
   addTypeTemplate,
+  createIsIgnored,
   createResolver,
   defineNuxtModule,
   getLayerDirectories,
@@ -176,11 +177,12 @@ export default defineNuxtModule<ModuleOptions>({
         name: index === 0 ? 'project' : `layer-${index}`,
       }),
     )
-    const templates = await discoverPdfTemplates(layers)
-    const componentFiles = await discoverPdfComponentFiles(layers)
+    const isIgnored = createIsIgnored(nuxt)
+    const templates = await discoverPdfTemplates(layers, isIgnored)
+    const componentFiles = await discoverPdfComponentFiles(layers, isIgnored)
     const limits = normalizePdfLimits(options.limits)
     const resolvedLimits = limits ?? DEFAULT_PDF_RENDER_LIMITS
-    const imageFiles = await discoverPdfImageFiles(layers)
+    const imageFiles = await discoverPdfImageFiles(layers, isIgnored)
     const assets = await Promise.all(imageFiles.map(image =>
       loadPdfImageAsset(image.key, {
         roots: [image.rootDir],
