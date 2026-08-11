@@ -16,7 +16,7 @@ the compatibility claim.
 
 ## Requirements
 
-- Node.js `^22.12.0`, `^24.11.0`, or `>=26.0.0`
+- Node.js `^22.12.0`, `^24.11.0`, or `^26.0.0`
 - Nuxt `^4.4.8`
 - Vue `^3.5.0`
 
@@ -168,6 +168,22 @@ Composition is normal Vue: use typed props, interpolation, `v-if`, keyed
 typed `PdfStyle` contract, not browser CSS or the upstream React PDF type
 surface. Invalid nesting, DOM-only attributes, unknown props, and props used on
 the wrong primitive fail early with `PDF_TREE_INVALID`.
+
+### Execution model
+
+PDF templates run only in Node inside a fresh Vue runtime-core application.
+This is a custom renderer, not Vue SSR: mount, update, and unmount hooks run on
+the server, `onServerPrefetch` is not used, and browser globals are unavailable.
+Load request data before calling `pdf.<template>.render(props)` and pass it as
+typed props.
+
+Vue APIs such as `ref` and `computed`, plus `usePdfPageNumbers`, are
+scope-aware auto-imports. Nuxt app composables, plugins, app-level provides,
+global DOM components, and directives are not inherited by the isolated PDF
+app. Explicit local imports and provide/inject within the PDF tree work as
+usual. Async setup, top-level `await`, `defineAsyncComponent`, `Teleport`, and
+`v-show` are unsupported; use synchronous components, `v-if`, and ordinary
+local composition instead.
 
 `definePdf` accepts render metadata plus development-only preview data:
 
@@ -354,19 +370,22 @@ that throw a `PdfAssertionError` with an actionable message on failure:
 
 ```ts
 import { describe, it } from 'vitest'
-import { expectPdf, renderPdfTemplate } from '@lupinum/nuxt-pdf/test'
-import Invoice from './pdfs/invoice.vue'
+import { expectPdf, renderPdfSfc } from '@lupinum/nuxt-pdf/test'
 
 describe('invoice.vue', () => {
-  it('renders the customer, a terms link, and an outline', async () => {
-    const { parsed } = await renderPdfTemplate(Invoice, { customer: 'Acme Corp' })
+  it('renders the typed invoice data', async () => {
+    const { parsed } = await renderPdfSfc('./pdfs/invoice.vue', {
+      invoice: {
+        customer: 'Acme Corp',
+        number: 'INV-001',
+        total: 'EUR 1,250.00',
+      },
+    })
 
     expectPdf(parsed)
-      .toHavePageCount(2)
-      .toContainText('Invoice for Acme Corp', { page: 1 })
-      .toHaveLink({ destination: 'terms', page: 1 })
-      .toHaveLink({ url: 'https://example.com/' })
-      .toHaveOutline([{ title: 'Terms' }])
+      .toHavePageCount(1)
+      .toContainText('Invoice INV-001', { page: 1 })
+      .toContainText('Acme Corp', { page: 1 })
   })
 })
 ```
@@ -384,9 +403,15 @@ policy: it writes per-page PNG baselines into a directory when
 each page against them within a pixel threshold.
 
 ```ts
-import { comparePdfSnapshot, renderPdfTemplate } from '@lupinum/nuxt-pdf/test'
+import { comparePdfSnapshot, renderPdfSfc } from '@lupinum/nuxt-pdf/test'
 
-const { bytes } = await renderPdfTemplate(Invoice, { customer: 'Acme Corp' })
+const { bytes } = await renderPdfSfc('./pdfs/invoice.vue', {
+  invoice: {
+    customer: 'Acme Corp',
+    number: 'INV-001',
+    total: 'EUR 1,250.00',
+  },
+})
 await comparePdfSnapshot(bytes, './test/baselines/invoice')
 ```
 
