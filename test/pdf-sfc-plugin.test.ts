@@ -21,6 +21,8 @@ const invoiceFile = join(fixturesDirectory, 'InvoiceDocument.vue')
 const lineItemFile = join(fixturesDirectory, 'LineItem.vue')
 const invoiceDataFile = join(fixturesDirectory, 'invoice-data.ts')
 
+const compilerPath = (path: string): string => path.replaceAll('\\', '/')
+
 let temporaryDirectory: string
 
 beforeAll(async () => {
@@ -37,7 +39,7 @@ describe('PDF SFC compiler', () => {
     const result = await compilePdfSfc(source, invoiceFile, 'template')
 
     expect(result.map).toMatchObject({
-      sources: [invoiceFile],
+      sources: [compilerPath(invoiceFile)],
       sourcesContent: [source],
     })
     const markerOffset = result.code.indexOf('const props')
@@ -49,7 +51,7 @@ describe('PDF SFC compiler', () => {
       column: generatedColumn,
     })).toMatchObject({
       line: 11,
-      source: invoiceFile,
+      source: compilerPath(invoiceFile),
     })
     expect(result.code).toContain('__nuxtPdf')
     expect(result.code).not.toMatch(/\bdefinePdf\s*\(/)
@@ -225,7 +227,7 @@ definePdf({})
   })
 
   it('injects scope-aware Vue and PDF authoring imports', async () => {
-    const composables = resolve('src/runtime/composables/index')
+    const composables = compilerPath(resolve('src/runtime/composables/index'))
     const importLine = `import { usePdfPageNumbers } from ${JSON.stringify(composables)}`
     const usesFile = resolve('test/fixtures/pdf-sfc/uses-composable.vue')
     const importsFile = resolve('test/fixtures/pdf-sfc/imports-composable.vue')

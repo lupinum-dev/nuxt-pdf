@@ -250,25 +250,26 @@ export async function compilePdfSfc(
   isProduction = false,
   composablesImport?: string,
 ): Promise<PdfSfcTransformResult> {
-  const original = parsePdfSfc(source, filename)
+  const compilerFilename = normalizeCompilerPath(filename)
+  const original = parsePdfSfc(source, compilerFilename)
 
-  assertSupportedBlocks(original, filename)
-  assertTemplate(original, filename)
-  assertSynchronousSetup(original, filename)
-  assertSupportedTemplate(original, filename)
+  assertSupportedBlocks(original, compilerFilename)
+  assertTemplate(original, compilerFilename)
+  assertSynchronousSetup(original, compilerFilename)
+  assertSupportedTemplate(original, compilerFilename)
 
   const metadata = extractMetadata(
     source,
     original,
-    filename,
+    compilerFilename,
     kind,
     isProduction,
   )
-  const cleaned = parsePdfSfc(metadata.source, filename)
-  const component = compileComponent(cleaned, filename, isProduction)
+  const cleaned = parsePdfSfc(metadata.source, compilerFilename)
+  const component = compileComponent(cleaned, compilerFilename, isProduction)
   const autoImportedComponent = await injectAuthoringImports(
     component.code,
-    filename,
+    compilerFilename,
     composablesImport,
   )
   const metadataCode = kind === 'template'
@@ -285,7 +286,7 @@ export async function compilePdfSfc(
       charset: 'utf8',
       format: 'esm',
       loader,
-      sourcefile: filename,
+      sourcefile: compilerFilename,
       sourcemap: true,
       sourcesContent: true,
       target: 'es2022',
@@ -306,8 +307,12 @@ export async function compilePdfSfc(
     return { code: result.code, map }
   }
   catch (error) {
-    throw normalizeBuildError(error, filename)
+    throw normalizeBuildError(error, compilerFilename)
   }
+}
+
+function normalizeCompilerPath(path: string): string {
+  return path.replaceAll('\\', '/')
 }
 
 function parsePdfSfc(source: string, filename: string): SFCDescriptor {
@@ -816,13 +821,16 @@ async function injectAuthoringImports(
   filename: string,
   composablesImport?: string,
 ): Promise<CompiledCode> {
-  const key = composablesImport ?? ''
+  const normalizedComposablesImport = composablesImport
+    ? normalizeCompilerPath(composablesImport)
+    : undefined
+  const key = normalizedComposablesImport ?? ''
   let context = authoringImportContexts.get(key)
 
   if (!context) {
     context = createUnimport({
-      imports: composablesImport
-        ? [{ from: composablesImport, name: 'usePdfPageNumbers' }]
+      imports: normalizedComposablesImport
+        ? [{ from: normalizedComposablesImport, name: 'usePdfPageNumbers' }]
         : [],
       presets: ['vue'],
     })
