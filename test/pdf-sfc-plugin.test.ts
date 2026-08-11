@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { originalPositionFor, TraceMap } from '@jridgewell/trace-mapping'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
   compilePdfSfc,
@@ -37,12 +38,36 @@ describe('PDF SFC compiler', () => {
 
     expect(result.map).toMatchObject({
       sources: [invoiceFile],
+      sourcesContent: [source],
+    })
+    const markerOffset = result.code.indexOf('const props')
+    const beforeMarker = result.code.slice(0, markerOffset)
+    const generatedLine = beforeMarker.split('\n').length
+    const generatedColumn = beforeMarker.length - beforeMarker.lastIndexOf('\n') - 1
+    expect(originalPositionFor(new TraceMap(result.map!), {
+      line: generatedLine,
+      column: generatedColumn,
+    })).toMatchObject({
+      line: 11,
+      source: invoiceFile,
     })
     expect(result.code).toContain('__nuxtPdf')
     expect(result.code).not.toMatch(/\bdefinePdf\s*\(/)
     expect(result.code).toContain('createVNode')
     expect(result.code).not.toContain('ssrRenderComponent')
     expect(result.code).not.toContain('ssrRenderSlot')
+  })
+
+  it('returns no map when separate script and template maps cannot be composed honestly', async () => {
+    const source = `<script>export default { name: 'ClassicPdf' }</script>
+<template><PdfDocument /></template>`
+    const result = await compilePdfSfc(
+      source,
+      resolve(fixturesDirectory, 'classic.vue'),
+      'component',
+    )
+
+    expect(result.map).toBeNull()
   })
 
   it('preserves executable metadata after erasing the macro', async () => {

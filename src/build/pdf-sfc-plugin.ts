@@ -12,6 +12,7 @@ import {
   type SFCDescriptor,
   type SFCScriptBlock,
 } from '@vue/compiler-sfc'
+import remapping from '@jridgewell/remapping'
 import { transform as transformWithEsbuild } from 'esbuild'
 import { createUnimport, type Unimport } from 'unimport'
 import { PDF_DEFINITION_PROPERTY } from '../runtime/shared/template'
@@ -42,8 +43,15 @@ export type PdfSfcTransformResult = {
     sourceRoot?: string
     sources: string[]
     sourcesContent?: string[]
-    version: number
+    version: 3
   } | null
+}
+
+type PdfSourceMap = NonNullable<PdfSfcTransformResult['map']>
+
+type CompiledCode = {
+  code: string
+  map: PdfSourceMap | null
 }
 
 export type PdfSfcPlugin = {
@@ -257,9 +265,9 @@ export async function compilePdfSfc(
     isProduction,
   )
   const cleaned = parsePdfSfc(metadata.source, filename)
-  const componentCode = compileComponent(cleaned, filename, isProduction)
-  const autoImportedComponentCode = await injectAuthoringImports(
-    componentCode,
+  const component = compileComponent(cleaned, filename, isProduction)
+  const autoImportedComponent = await injectAuthoringImports(
+    component.code,
     filename,
     composablesImport,
   )
@@ -270,7 +278,7 @@ export async function compilePdfSfc(
 
   try {
     const result = await transformWithEsbuild([
-      autoImportedComponentCode,
+      autoImportedComponent.code,
       metadataCode,
       `export default ${COMPONENT_VARIABLE}`,
     ].filter(Boolean).join('\n'), {
@@ -283,12 +291,19 @@ export async function compilePdfSfc(
       target: 'es2022',
     })
 
-    return {
-      code: result.code,
-      map: result.map
-        ? JSON.parse(result.map) as PdfSfcTransformResult['map']
-        : null,
-    }
+    const esbuildMap = result.map
+      ? JSON.parse(result.map) as PdfSourceMap
+      : null
+    const map = esbuildMap && autoImportedComponent.map && component.map
+      ? remapping(
+        [esbuildMap, autoImportedComponent.map, component.map],
+        () => null,
+      ) as unknown as PdfSourceMap
+      : null
+
+    if (map) map.sourcesContent = map.sources.map(() => source)
+
+    return { code: result.code, map }
   }
   catch (error) {
     throw normalizeBuildError(error, filename)
@@ -722,10 +737,10 @@ function compileComponent(
   descriptor: SFCDescriptor,
   filename: string,
   isProduction: boolean,
-): string {
+): CompiledCode {
   if (descriptor.scriptSetup) {
     try {
-      return compileScript(descriptor, {
+      const result = compileScript(descriptor, {
         genDefaultAs: COMPONENT_VARIABLE,
         id: 'nuxt-pdf',
         inlineTemplate: true,
@@ -737,7 +752,13 @@ function compileComponent(
           ssr: false,
           transformAssetUrls: false,
         },
-      }).content
+      })
+      return {
+        code: result.content,
+        map: result.map
+          ? JSON.parse(JSON.stringify(result.map)) as PdfSourceMap
+          : null,
+      }
     }
     catch (error) {
       throw normalizeCompilerError(error, filename)
@@ -778,18 +799,23 @@ function compileComponent(
     throw normalizeCompilerError(template.errors[0], filename)
   }
 
-  return [
-    scriptCode,
-    template.code,
-    `${COMPONENT_VARIABLE}.render = render`,
-  ].join('\n')
+  return {
+    code: [
+      scriptCode,
+      template.code,
+      `${COMPONENT_VARIABLE}.render = render`,
+    ].join('\n'),
+    // The separately compiled script and template do not share one generated
+    // coordinate space. Returning no map is safer than publishing a false one.
+    map: null,
+  }
 }
 
 async function injectAuthoringImports(
   componentCode: string,
   filename: string,
   composablesImport?: string,
-): Promise<string> {
+): Promise<CompiledCode> {
   const key = composablesImport ?? ''
   let context = authoringImportContexts.get(key)
 
@@ -804,7 +830,14 @@ async function injectAuthoringImports(
   }
 
   const result = await context.injectImports(componentCode, filename)
-  return result.s.toString()
+  return {
+    code: result.s.toString(),
+    map: JSON.parse(result.s.generateMap({
+      hires: true,
+      includeContent: true,
+      source: filename,
+    }).toString()) as PdfSourceMap,
+  }
 }
 
 function scriptLoader(descriptor: SFCDescriptor): 'js' | 'jsx' | 'ts' | 'tsx' {

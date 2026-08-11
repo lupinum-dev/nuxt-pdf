@@ -59,6 +59,7 @@
     "verify": "pnpm lint && pnpm test:types && pnpm test:docs && pnpm test:version-headings && pnpm test:dependencies && pnpm test && pnpm test:production && pnpm test:serverless && pnpm build && pnpm test:package-metadata && pnpm dev:build && pnpm test:artifact"
   },
   "dependencies": {
+    "@jridgewell/remapping": "2.3.5",
     "@nuxt/kit": "^4.4.8",
     "@react-pdf/font": "4.0.8",
     "@react-pdf/layout": "4.6.1",
@@ -86,6 +87,7 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
+    "@jridgewell/trace-mapping": "0.3.31",
     "@napi-rs/canvas": "0.1.97",
     "@nuxt/devtools": "^3.2.4",
     "@nuxt/eslint-config": "^1.15.2",
