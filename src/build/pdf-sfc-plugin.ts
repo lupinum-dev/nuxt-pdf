@@ -13,6 +13,7 @@ import {
   type SFCScriptBlock,
 } from '@vue/compiler-sfc'
 import { transform as transformWithEsbuild } from 'esbuild'
+import { createUnimport, type Unimport } from 'unimport'
 import { PDF_DEFINITION_PROPERTY } from '../runtime/shared/template'
 
 export type PdfSfcKind = 'component' | 'template'
@@ -30,8 +31,7 @@ export type PdfSfcPluginOptions = {
   composablesImport?: string
 }
 
-// Auto-imported PDF composables the plugin injects on demand.
-const PDF_COMPOSABLES = ['usePdfPageNumbers'] as const
+const authoringImportContexts = new Map<string, Unimport>()
 
 export type PdfSfcTransformResult = {
   code: string
@@ -258,8 +258,9 @@ export async function compilePdfSfc(
   )
   const cleaned = parsePdfSfc(metadata.source, filename)
   const componentCode = compileComponent(cleaned, filename, isProduction)
-  const composableImportCode = composableInjection(
+  const autoImportedComponentCode = await injectAuthoringImports(
     componentCode,
+    filename,
     composablesImport,
   )
   const metadataCode = kind === 'template'
@@ -269,8 +270,7 @@ export async function compilePdfSfc(
 
   try {
     const result = await transformWithEsbuild([
-      composableImportCode,
-      componentCode,
+      autoImportedComponentCode,
       metadataCode,
       `export default ${COMPONENT_VARIABLE}`,
     ].filter(Boolean).join('\n'), {
@@ -785,25 +785,26 @@ function compileComponent(
   ].join('\n')
 }
 
-// Build an import statement for the auto-imported PDF composables a compiled
-// component references but does not already import. Returns `''` when there is
-// nothing to inject or no import path is configured.
-function composableInjection(
+async function injectAuthoringImports(
   componentCode: string,
+  filename: string,
   composablesImport?: string,
-): string {
-  if (!composablesImport) return ''
+): Promise<string> {
+  const key = composablesImport ?? ''
+  let context = authoringImportContexts.get(key)
 
-  const needed = PDF_COMPOSABLES.filter((name) => {
-    const used = new RegExp(`\\b${name}\\b`).test(componentCode)
-    const imported = new RegExp(`import\\s*\\{[^}]*\\b${name}\\b[^}]*\\}`)
-      .test(componentCode)
-    return used && !imported
-  })
+  if (!context) {
+    context = createUnimport({
+      imports: composablesImport
+        ? [{ from: composablesImport, name: 'usePdfPageNumbers' }]
+        : [],
+      presets: ['vue'],
+    })
+    authoringImportContexts.set(key, context)
+  }
 
-  if (needed.length === 0) return ''
-
-  return `import { ${needed.join(', ')} } from ${JSON.stringify(composablesImport)}`
+  const result = await context.injectImports(componentCode, filename)
+  return result.s.toString()
 }
 
 function scriptLoader(descriptor: SFCDescriptor): 'js' | 'jsx' | 'ts' | 'tsx' {

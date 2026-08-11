@@ -199,7 +199,7 @@ definePdf({})
     mounted.unmount()
   })
 
-  it('injects the auto-imported composable only when used and not already imported', async () => {
+  it('injects scope-aware Vue and PDF authoring imports', async () => {
     const composables = resolve('src/runtime/composables/index')
     const importLine = `import { usePdfPageNumbers } from ${JSON.stringify(composables)}`
     const usesFile = resolve('test/fixtures/pdf-sfc/uses-composable.vue')
@@ -208,11 +208,15 @@ definePdf({})
 
     const uses = `<script setup lang="ts">
 definePdf({})
+const count = ref(1)
+const doubled = computed(() => count.value * 2)
 const pages = usePdfPageNumbers()
 </script>
-<template><PdfDocument><PdfPage><PdfText>{{ pages.a ?? '' }}</PdfText></PdfPage></PdfDocument></template>`
+<template><PdfDocument><PdfPage><PdfText>{{ doubled }} {{ pages.a ?? '' }}</PdfText></PdfPage></PdfDocument></template>`
     const injected = await compilePdfSfc(uses, usesFile, 'template', false, composables)
     expect(injected.code).toContain(importLine)
+    expect(injected.code).toMatch(/import \{[^}]*\bref\b[^}]*\} from "vue"/)
+    expect(injected.code).toMatch(/import \{[^}]*\bcomputed\b[^}]*\} from "vue"/)
 
     // Already imported by the author: no duplicate injection.
     const alreadyImported = `<script setup lang="ts">
@@ -231,6 +235,21 @@ definePdf({})
 <template><PdfDocument><PdfPage><PdfText>Hi</PdfText></PdfPage></PdfDocument></template>`
     const untouched = await compilePdfSfc(plain, plainFile, 'template', false, composables)
     expect(untouched.code).not.toContain('usePdfPageNumbers')
+
+    const shadowed = `<script setup lang="ts">
+definePdf({})
+const ref = (value: number) => value
+const count = ref(1)
+</script>
+<template><PdfDocument><PdfPage><PdfText>{{ count }}</PdfText></PdfPage></PdfDocument></template>`
+    const shadowedResult = await compilePdfSfc(
+      shadowed,
+      resolve('test/fixtures/pdf-sfc/shadowed.vue'),
+      'template',
+      false,
+      composables,
+    )
+    expect(shadowedResult.code).not.toMatch(/import \{[^}]*\bref\b[^}]*\} from "vue"/)
   })
 
   it('compiles discovered components with typed props and slots but no metadata', async () => {
