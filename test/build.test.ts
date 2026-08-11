@@ -104,6 +104,7 @@ describe('PDF template discovery', () => {
     const base = await createLayer('base', {
       'pdfs/invoice.vue': '<template>base</template>',
       'pdfs/certificate.vue': '<template />',
+      'pdfs/assets/brand/logo.png': 'base image',
     })
 
     const discovered = await discoverPdfTemplates([
