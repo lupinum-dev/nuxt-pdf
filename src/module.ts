@@ -120,17 +120,8 @@ const existingDirectories = async (directories: readonly string[]) => {
 }
 
 const generateAuthoringTypes = (
-  sharedImport: string,
   componentsImport: string,
-): string => `type NuxtPdfDefinition<Props extends object> = import(${quote(sharedImport)}).PdfDefinition<Props>
-
-declare global {
-  const definePdf: <Props extends object = Record<string, unknown>>(
-    definition: NuxtPdfDefinition<Props>,
-  ) => void
-}
-
-declare module 'vue' {
+): string => `declare module 'vue' {
   interface GlobalComponents {
     PdfDocument: typeof import(${quote(componentsImport)})['PdfDocument']
     PdfImage: typeof import(${quote(componentsImport)})['PdfImage']
@@ -177,6 +168,7 @@ export default defineNuxtModule<ModuleOptions>({
     const sharedImport = resolver.resolve('./runtime/shared/index')
     const componentsImport = resolver.resolve('./runtime/components/index')
     const composablesImport = resolver.resolve('./runtime/composables/index')
+    const definePdfImport = resolver.resolve('./runtime/define-pdf')
     const previewHandler = resolver.resolve('./runtime/server/preview')
     const layers: PdfTemplateLayer[] = getLayerDirectories(nuxt).map(
       (directories, index) => ({
@@ -259,11 +251,15 @@ export default defineNuxtModule<ModuleOptions>({
       as: 'usePdfPageNumbers',
       from: composablesImport,
     })
+    addImports({
+      name: 'definePdf',
+      as: 'definePdf',
+      from: definePdfImport,
+    })
 
     addTypeTemplate({
       filename: 'types/nuxt-pdf-authoring.d.ts',
       getContents: () => generateAuthoringTypes(
-        sharedImport,
         componentsImport,
       ),
       write: true,
