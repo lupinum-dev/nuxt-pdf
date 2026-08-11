@@ -61,7 +61,8 @@ export type { ModuleOptions };
 Source: `dist/test.d.mts`
 
 ```ts
-import { PdfRenderResult } from '../dist/runtime/shared/template.js';
+import { PdfRenderResult, PdfComponentProps } from '../dist/runtime/shared/template.js';
+export { PdfComponentProps } from '../dist/runtime/shared/template.js';
 import { Component } from 'vue';
 import { ModuleOptions } from './module.mjs';
 import '@nuxt/schema';
@@ -215,7 +216,7 @@ interface RenderedPdfTemplate {
  * resolution, font registration, single- or multi-pass layout — without booting
  * Nuxt, then parse the bytes so a test can assert against them immediately.
  */
-declare function renderPdfTemplate<Props extends object>(component: Component, props: Props, options?: RenderPdfTemplateOptions): Promise<RenderedPdfTemplate>;
+declare function renderPdfTemplate<C extends Component>(component: C, props: PdfComponentProps<C>, options?: RenderPdfTemplateOptions): Promise<RenderedPdfTemplate>;
 
 /** User-shaped SFC render configuration, matching the Nuxt module options. */
 type RenderPdfSfcOptions = RenderPdfTemplateOptions & Pick<ModuleOptions, 'fonts'>;
