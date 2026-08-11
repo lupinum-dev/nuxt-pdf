@@ -2,7 +2,11 @@ import {
   Fragment,
   defineComponent,
   h,
+  nextTick,
+  onUnmounted,
+  ref,
   resolveComponent,
+  watchEffect,
   type Component,
   type PropType,
   type VNodeChild,
@@ -336,6 +340,71 @@ describe('Vue PDF host renderer', () => {
       message: '<PdfView> cannot contain text. Wrap it in <PdfText>.',
     })
     expect((error as Error).message).not.toContain('private customer text')
+  })
+
+  it.each([
+    {
+      label: 'prop validation',
+      child: () => h(PdfText as Component, { class: 'invalid' }, () => 'text'),
+    },
+    {
+      label: 'nesting validation',
+      child: () => h(PdfView, null, {
+        default: () => h(PdfPage),
+      }),
+    },
+    {
+      label: 'element text validation',
+      child: () => h(PdfView, null, () => 'invalid text'),
+    },
+  ])('disposes reactive effects after failed $label', async ({ child }) => {
+    const source = ref(0)
+    const effectRuns = vi.fn()
+    const unmounted = vi.fn()
+    const Fixture = defineComponent({
+      setup() {
+        watchEffect(() => {
+          void source.value
+          effectRuns()
+        })
+        onUnmounted(unmounted)
+
+        return () => h(PdfDocument, null, {
+          default: () => h(PdfPage, null, { default: child }),
+        })
+      },
+    })
+
+    await expect(mountPdfComponent(Fixture)).rejects.toBeInstanceOf(Error)
+    expect(effectRuns).toHaveBeenCalledOnce()
+    expect(unmounted).toHaveBeenCalledOnce()
+
+    source.value++
+    await nextTick()
+    expect(effectRuns).toHaveBeenCalledOnce()
+  })
+
+  it('rejects component errors instead of returning partial content', async () => {
+    const BrokenChild = defineComponent({
+      render() {
+        throw new Error('private component failure')
+      },
+    })
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, null, {
+          default: () => [
+            h(PdfText, { key: 'before' }, () => 'Before'),
+            h(BrokenChild, { key: 'broken' }),
+            h(PdfText, { key: 'after' }, () => 'After'),
+          ],
+        }),
+      }),
+    )
+
+    await expect(mountPdfComponent(Fixture)).rejects.toThrow(
+      'private component failure',
+    )
   })
 
   it('ignores formatting whitespace outside text containers', async () => {

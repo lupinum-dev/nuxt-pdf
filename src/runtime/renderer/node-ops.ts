@@ -102,7 +102,15 @@ export const createPdfRoot = (): PdfRoot => ({
   document: null,
 })
 
-export const createPdfNodeOps = (): RendererOptions<PdfHostNode, PdfHostElement> => {
+export type PdfHostErrorHandler = (error: unknown) => void
+
+const throwHostError: PdfHostErrorHandler = (error) => {
+  throw error
+}
+
+export const createPdfNodeOps = (
+  onError: PdfHostErrorHandler = throwHostError,
+): RendererOptions<PdfHostNode, PdfHostElement> => {
   const childOrder = new WeakMap<PdfHostElement, PdfHostNode[]>()
   const parents = new WeakMap<PdfHostNode, PdfHostElement>()
 
@@ -222,7 +230,8 @@ export const createPdfNodeOps = (): RendererOptions<PdfHostNode, PdfHostElement>
     const index = anchor == null ? siblings.length : siblings.indexOf(anchor)
 
     if (index === -1) {
-      throw new TypeError('Cannot insert a PDF node before an unknown anchor.')
+      onError(new TypeError('Cannot insert a PDF node before an unknown anchor.'))
+      return
     }
 
     siblings.splice(index, 0, child)
@@ -235,7 +244,7 @@ export const createPdfNodeOps = (): RendererOptions<PdfHostNode, PdfHostElement>
       siblings.splice(index, 1)
       parents.delete(child)
       sync(parent)
-      throw error
+      onError(error)
     }
   }
 
@@ -244,12 +253,18 @@ export const createPdfNodeOps = (): RendererOptions<PdfHostNode, PdfHostElement>
   }
 
   const createElement = (type: string): PdfElementNode => {
+    let elementType: PdfElementType
     if (!isPdfElementType(type)) {
-      throw new TypeError(`Unknown PDF primitive "${type}".`)
+      onError(new TypeError(`Unknown PDF primitive "${type}".`))
+      // Vue still needs a host element so it can finish mounting and dispose the
+      // component scope. The recorded error prevents this placeholder from ever
+      // reaching layout or becoming public output.
+      elementType = PDF_PRIMITIVES.View
     }
+    else elementType = type
 
     const element: PdfElementNode = {
-      type,
+      type: elementType,
       box: {},
       style: {},
       props: {},
@@ -272,25 +287,46 @@ export const createPdfNodeOps = (): RendererOptions<PdfHostNode, PdfHostElement>
 
   const setText = (node: PdfHostNode, text: string) => {
     if (isPdfElementNode(node)) {
-      throw new TypeError('Cannot set text directly on a PDF element node.')
+      onError(new TypeError('Cannot set text directly on a PDF element node.'))
+      return
     }
 
+    const previousText = node.value
     node.value = text
 
     const parent = parents.get(node)
-    if (parent) sync(parent)
+    if (!parent) return
+
+    try {
+      sync(parent)
+    }
+    catch (error) {
+      node.value = previousText
+      sync(parent)
+      onError(error)
+    }
   }
 
   const setElementText = (element: PdfHostElement, text: string) => {
     const children = childrenOf(element)
+    const previousChildren = [...children]
 
     if (
       children.length === 1
       && isPdfTextInstance(children[0]!)
       && text !== ''
     ) {
-      children[0]!.value = text
-      sync(element)
+      const textNode = children[0]!
+      const previousText = textNode.value
+      textNode.value = text
+      try {
+        sync(element)
+      }
+      catch (error) {
+        textNode.value = previousText
+        sync(element)
+        onError(error)
+      }
       return
     }
 
@@ -303,7 +339,16 @@ export const createPdfNodeOps = (): RendererOptions<PdfHostNode, PdfHostElement>
       parents.set(textNode, element)
     }
 
-    sync(element)
+    try {
+      sync(element)
+    }
+    catch (error) {
+      for (const child of children) parents.delete(child)
+      children.splice(0, children.length, ...previousChildren)
+      for (const child of previousChildren) parents.set(child, element)
+      sync(element)
+      onError(error)
+    }
   }
 
   const parentNode = (node: PdfHostNode): PdfHostElement | null =>
@@ -319,7 +364,14 @@ export const createPdfNodeOps = (): RendererOptions<PdfHostNode, PdfHostElement>
   }
 
   return {
-    patchProp: patchPdfProp,
+    patchProp: (...args) => {
+      try {
+        patchPdfProp(...args)
+      }
+      catch (error) {
+        onError(error)
+      }
+    },
     insert,
     remove,
     createElement,
