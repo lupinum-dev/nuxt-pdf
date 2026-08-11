@@ -20,6 +20,7 @@ import {
 } from './build/discover-templates'
 import { bundlePdfFonts } from './build/fonts'
 import {
+  generatePdfPreviewConfig,
   generatePdfRegistryTypes,
   generatePdfRuntimeRegistry,
 } from './build/generate-registry'
@@ -317,6 +318,13 @@ export default defineNuxtModule<ModuleOptions>({
         })
       })
 
+      addServerTemplate({
+        filename: '#pdf-preview-config',
+        getContents: () => generatePdfPreviewConfig(
+          nuxt.options.app.baseURL,
+          nuxt.options.app.buildAssetsDir,
+        ),
+      })
       addServerHandler({ route: '/_pdf', handler: previewHandler })
       addServerHandler({ route: '/_pdf/**', handler: previewHandler })
     }

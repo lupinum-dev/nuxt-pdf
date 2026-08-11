@@ -69,6 +69,7 @@
     "@vue/compiler-sfc": "3.5.40",
     "esbuild": "0.28.1",
     "h3": "1.15.11",
+    "ufo": "1.6.4",
     "unimport": "6.3.0"
   },
   "peerDependencies": {

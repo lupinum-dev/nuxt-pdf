@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer'
+import { joinURL } from 'ufo'
 import type { RemoteAssetPolicy } from '../runtime/server/assets/remote'
 import type { PdfRenderLimits } from '../runtime/server/render-limits'
 import type { PdfTemplate } from './discover-templates'
@@ -31,6 +32,15 @@ const compareText = (left: string, right: string): number => {
 }
 
 const quote = (value: string): string => JSON.stringify(value)
+
+export const generatePdfPreviewConfig = (
+  baseURL: string,
+  buildAssetsDir: string,
+): string => `export const hmrClientPath = ${quote(joinURL(
+  baseURL.replace(/^\.\//, '/') || '/',
+  buildAssetsDir,
+  '@vite/client',
+))}\n`
 
 const importPath = (filePath: string): string =>
   filePath.replaceAll('\\', '/')

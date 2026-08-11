@@ -12,6 +12,7 @@ import {
   type PdfTemplate,
 } from '../src/build/discover-templates'
 import {
+  generatePdfPreviewConfig,
   generatePdfRegistryTypes,
   generatePdfRuntimeRegistry,
 } from '../src/build/generate-registry'
@@ -213,6 +214,15 @@ describe('PDF template discovery', () => {
 })
 
 describe('PDF registry generation', () => {
+  it('derives the preview HMR client from Nuxt app and asset bases', () => {
+    expect(generatePdfPreviewConfig('/portal/', '/assets/')).toBe(
+      'export const hmrClientPath = "/portal/assets/@vite/client"\n',
+    )
+    expect(generatePdfPreviewConfig('./', '/_nuxt/')).toBe(
+      'export const hmrClientPath = "/_nuxt/@vite/client"\n',
+    )
+  })
+
   const templates = [
     template(
       'reports/monthly',
