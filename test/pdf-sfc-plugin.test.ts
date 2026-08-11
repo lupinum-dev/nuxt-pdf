@@ -427,7 +427,7 @@ const count = ref(1)
       expect(error).toBeInstanceOf(PdfSfcCompileError)
       expect(error).toMatchObject({
         column: 1,
-        filename,
+        filename: compilerPath(filename),
         line: 1,
       })
     }

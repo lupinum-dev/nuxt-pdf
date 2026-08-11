@@ -35,13 +35,15 @@ export type PdfWatchAction = 'ignore' | 'refresh' | 'restart'
 
 const PDF_STRUCTURE_EVENTS = new Set(['add', 'addDir', 'unlink', 'unlinkDir'])
 
+const normalizePathForIgnore = (path: string): string => path.replaceAll('\\', '/')
+
 export const classifyPdfWatchEvent = (
   event: string,
   absolutePath: string,
   layers: readonly PdfTemplateLayer[],
   isIgnored?: (path: string) => boolean,
 ): PdfWatchAction => {
-  if (isIgnored?.(absolutePath)) return 'ignore'
+  if (isIgnored?.(normalizePathForIgnore(absolutePath))) return 'ignore'
 
   for (const layer of layers) {
     const pdfsDir = join(resolve(layer.rootDir), 'pdfs')
@@ -212,7 +214,7 @@ const findFiles = async (
       continue
     }
 
-    if (options.isIgnored?.(absolutePath)) continue
+    if (options.isIgnored?.(normalizePathForIgnore(absolutePath))) continue
 
     if (entry.isDirectory()) {
       files.push(...await findFiles(
