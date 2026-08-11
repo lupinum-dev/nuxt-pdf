@@ -8,7 +8,7 @@ import {
   parsePdf,
   rasterizePdf,
   type PdfPageImage,
-} from './utils/pdf'
+} from '../src/test/pdf'
 
 describe('PDF verification utilities', () => {
   it('parses page text and link annotations from PDF bytes', async () => {

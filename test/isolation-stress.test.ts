@@ -9,13 +9,13 @@ import {
   PdfText,
 } from '../src/runtime/components'
 import { usePdfPageNumbers } from '../src/runtime/composables'
-import { DEFAULT_PDF_RENDER_LIMITS } from '../src/runtime/server/engine/limits'
+import { DEFAULT_PDF_RENDER_LIMITS } from '../src/runtime/server/render-limits'
 import { createPdfTemplate } from '../src/runtime/server/registry'
 import {
   PDF_DEFINITION_PROPERTY,
   type PdfDefinition,
 } from '../src/runtime/shared/template'
-import { parsePdf } from './utils/pdf'
+import { parsePdf } from '../src/test/pdf'
 
 const PNG = readFileSync(resolve('test/fixtures/assets/sample.png'))
 const FONT_DATA = `data:font/ttf;base64,${readFileSync(

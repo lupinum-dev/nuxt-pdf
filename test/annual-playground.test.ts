@@ -12,7 +12,7 @@ import {
   revenueOf,
   sampleAnnualReport,
 } from '../playground/shared/annual'
-import { comparePageImages, decodePngPage, rasterizePdf } from './utils/pdf'
+import { comparePageImages, decodePngPage, rasterizePdf } from '../src/test/pdf'
 
 // The real playground annual-report template, compiled and rendered through the
 // shipped test helper with the playground's Inter/Lora font library. Proves the

@@ -19,7 +19,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { mountPdfComponent } from '../../src/runtime/renderer'
 import { bundlePdfFonts } from '../../src/build/fonts'
 import { renderDocument } from '../../src/runtime/server/engine/render-document'
-import { createPdfFontStore } from '../../src/runtime/server/fonts'
+import { createPdfFontStore } from '../../src/runtime/server/engine/fonts'
 import {
   createReactStyleScenario,
   createReactStylesDocument,
@@ -43,7 +43,7 @@ import {
   hasPdfHeader,
   parsePdf,
   rasterizePdf,
-} from '../utils/pdf'
+} from '../../src/test/pdf'
 
 const fontPath = fileURLToPath(new URL(
   '../fixtures/assets/Roboto-Regular.ttf',

@@ -20,12 +20,12 @@ import {
 import {
   createRenderLimits,
   DEFAULT_PDF_RENDER_LIMITS,
-} from '../src/runtime/server/engine/limits'
-import {
-  PDF_PRIMITIVES,
-  type PdfDocumentNode,
-  type PdfElementNode,
+} from '../src/runtime/server/render-limits'
+import type {
+  PdfDocumentNode,
+  PdfElementNode,
 } from '../src/runtime/renderer/types'
+import { PDF_PRIMITIVES } from '../src/runtime/authoring'
 
 const PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Zl9sAAAAASUVORK5CYII=',

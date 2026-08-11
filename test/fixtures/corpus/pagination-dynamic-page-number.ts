@@ -1,5 +1,5 @@
 import { defineComponent, h } from 'vue'
-import type { PdfDynamicTextRender } from '../../../src/runtime/renderer/types'
+import type { PdfDynamicTextRender } from '../../../src/runtime/authoring'
 import {
   PdfDocument,
   PdfPage,

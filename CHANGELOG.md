@@ -6,6 +6,24 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+### Added
+
+- Public font configuration types (`PdfFontDeclaration`, `PdfFontStyle`,
+  `PdfFontWeight`, and `PdfFontWeightName`) are now exported from the package
+  root instead of leaking through a private server implementation path.
+- `PdfLimitsOptions` is now a named package-root export backed by the same
+  canonical option shape used by the Nuxt module.
+- `RemoteAssetOptions` is now a named package-root export for callers that
+  share remote-image policy between Nuxt configuration and test helpers.
+
+### Breaking changes
+
+- `renderPdfTemplate` options now mirror user-facing `pdf.remote` and
+  `pdf.limits` configuration. Generated asset maps, embedded font descriptors,
+  and template attribution fields are internal. `renderPdfSfc` additionally
+  accepts `pdf.fonts` declarations and always infers the application root from
+  the `pdfs/*.vue` path; its `rootDir` override is removed.
+
 ## 0.3.0 - 2026-07-23
 
 ### Added

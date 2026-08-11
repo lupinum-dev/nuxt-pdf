@@ -9,7 +9,7 @@ import {
   decodePngPage,
   getPdfOutline,
   rasterizePdf,
-} from './utils/pdf'
+} from '../src/test/pdf'
 
 // The shipped ebook showcase, compiled and rendered through the shipped test
 // helper (auto-injecting the usePdfPageNumbers import). Proves the flagship

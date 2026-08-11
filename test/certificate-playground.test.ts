@@ -5,7 +5,7 @@ import {
   longNameCertificate,
   sampleCertificate,
 } from '../playground/shared/certificate'
-import { comparePdfSnapshot } from '../src/test-utils/snapshot'
+import { comparePdfSnapshot } from '../src/test/snapshot'
 
 // The real playground certificate, compiled and rendered through the shipped
 // test helper with the playground's Inter/Lora font library. Proves the shipped

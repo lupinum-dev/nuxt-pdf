@@ -1,8 +1,8 @@
 import type { DocumentNode, SafeDocumentNode } from '@react-pdf/layout'
-import { createPdfFontStore, type PdfFontStore } from '../fonts'
+import { createPdfFontStore, type PdfFontStore } from './fonts'
 import { NuxtPdfError, PDF_ERROR_CODES } from '../../shared/errors'
-import type { PdfElementNode, PdfNode } from '../../renderer/types'
-import type { RenderLimits } from './limits'
+import type { PdfElementNode, PdfNode } from '../../renderer'
+import type { RenderLimits } from '../render-limits'
 import {
   extractDestinationPages,
   layoutPdfTree,

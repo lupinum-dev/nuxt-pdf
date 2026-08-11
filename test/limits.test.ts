@@ -9,16 +9,16 @@ import {
   PdfText,
 } from '../src/runtime/components'
 import { usePdfPageNumbers } from '../src/runtime/composables'
+import type { PdfLimitsOptions } from '../src/module'
 import { createPdfTemplate } from '../src/runtime/server/registry'
 import {
   DEFAULT_PDF_MAX_PAGES,
   DEFAULT_PDF_RENDER_LIMITS,
   DEFAULT_PDF_TIMEOUT_MS,
   normalizePdfLimits,
-  type PdfLimitsOptions,
-} from '../src/runtime/server/engine/limits'
+} from '../src/runtime/server/render-limits'
 import { PDF_DEFINITION_PROPERTY } from '../src/runtime/shared/template'
-import { parsePdf } from './utils/pdf'
+import { parsePdf } from '../src/test/pdf'
 
 const asTemplate = (component: Component): Component =>
   Object.assign(component, { [PDF_DEFINITION_PROPERTY]: {} })

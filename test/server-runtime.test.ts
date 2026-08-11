@@ -14,7 +14,7 @@ import {
   type PdfRenderDiagnostics,
 } from '../src/runtime/server/registry'
 import { usePdfPageNumbers } from '../src/runtime/composables/use-pdf-page-numbers'
-import { DEFAULT_PDF_RENDER_LIMITS } from '../src/runtime/server/engine/limits'
+import { DEFAULT_PDF_RENDER_LIMITS } from '../src/runtime/server/render-limits'
 import { renderPdfPreview } from '../src/runtime/server/preview'
 import { NuxtPdfError } from '../src/runtime/shared/errors'
 import {
@@ -27,7 +27,7 @@ import {
   type PdfDefinition,
   type PdfTemplate,
 } from '../src/runtime/shared/template'
-import { installPdfCanvasGlobals } from './utils/pdf'
+import { installPdfCanvasGlobals } from '../src/test/pdf'
 
 vi.mock('#pdf', () => ({ pdfPreview: {} }))
 

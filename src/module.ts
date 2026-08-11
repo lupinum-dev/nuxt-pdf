@@ -31,8 +31,19 @@ import {
   DEFAULT_PDF_RENDER_LIMITS,
   normalizePdfLimits,
   type PdfLimitsOptions,
-} from './runtime/server/engine/limits'
-import type { PdfFontDeclaration } from './runtime/server/fonts'
+} from './runtime/server/render-limits'
+import type { PdfFontDeclaration } from './runtime/fonts'
+
+export type {
+  PdfFontDeclaration,
+  PdfFontStyle,
+  PdfFontWeight,
+  PdfFontWeightName,
+} from './runtime/fonts'
+
+export type { PdfLimitsOptions } from './runtime/server/render-limits'
+
+export type { RemoteAssetOptions } from './runtime/server/assets/remote'
 
 export type {
   PdfLength,
@@ -41,7 +52,7 @@ export type {
   PdfStyle,
   PdfStyleEntry,
   PdfStyleValue,
-} from './runtime/renderer/types'
+} from './runtime/authoring'
 
 export type {
   PdfBaseProps,

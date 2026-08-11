@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { Certificate } from '../shared/certificate'
 import { longNameCertificate, sampleCertificate } from '../shared/certificate'
-import CertificateBackground from './components/certificate/CertificateBackground'
-import CertificateBorder from './components/certificate/CertificateBorder'
-import CertificateHeadline from './components/certificate/CertificateHeadline'
-import CertificateSeal from './components/certificate/CertificateSeal'
+import CertificateBackground from './components/certificate/CertificateBackground.vue'
+import CertificateBorder from './components/certificate/CertificateBorder.vue'
+import CertificateHeadline from './components/certificate/CertificateHeadline.vue'
+import CertificateSeal from './components/certificate/CertificateSeal.vue'
 
 defineOptions({ name: 'CertificatePdf' })
 

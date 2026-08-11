@@ -19,7 +19,7 @@ import {
 } from '../src/runtime/components'
 import { mountPdfComponent } from '../src/runtime/renderer'
 import { renderDocument } from '../src/runtime/server/engine/render-document'
-import { installPdfCanvasGlobals, parsePdf } from './utils/pdf'
+import { installPdfCanvasGlobals, parsePdf } from '../src/test/pdf'
 
 // Paired React/Vue internal-link fixture. The link targets sit on small,
 // non-splitting heading nodes so React PDF (whose named-destination table is

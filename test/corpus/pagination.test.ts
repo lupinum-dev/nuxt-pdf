@@ -19,7 +19,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { mountPdfComponent, type PdfComponentProps } from '../../src/runtime/renderer'
 import { bundlePdfFonts } from '../../src/build/fonts'
 import { renderDocument } from '../../src/runtime/server/engine/render-document'
-import { createPdfFontStore, type PdfFontStore } from '../../src/runtime/server/fonts'
+import { createPdfFontStore, type PdfFontStore } from '../../src/runtime/server/engine/fonts'
 import {
   comparePageImages,
   decodePngPage,
@@ -27,7 +27,7 @@ import {
   parsePdf,
   rasterizePdf,
   type ParsedPdf,
-} from '../utils/pdf'
+} from '../../src/test/pdf'
 import {
   createReactWrapFalseDocument,
   VueWrapFalseDocument,

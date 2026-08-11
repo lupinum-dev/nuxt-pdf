@@ -20,7 +20,7 @@ import type {
   PdfFontStyle,
   PdfFontWeight,
   PdfFontWeightName,
-} from '../runtime/server/fonts'
+} from '../runtime/fonts'
 
 export const DEFAULT_MAX_PDF_FONT_BYTES = 5 * 1024 * 1024
 

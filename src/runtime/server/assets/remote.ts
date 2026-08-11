@@ -3,7 +3,7 @@ import {
   PDF_ASSET_ERROR_CODES,
   PdfAssetError,
 } from './errors'
-import type { RenderLimits } from '../engine/limits'
+import type { RenderLimits } from '../render-limits'
 
 /** Opt-in policy for runtime image requests. Remote fonts are not supported. */
 export interface RemoteAssetOptions {

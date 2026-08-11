@@ -1,5 +1,5 @@
 import { h, type FunctionalComponent } from 'vue'
-import { PDF_PRIMITIVES } from '../renderer/types'
+import { PDF_PRIMITIVES } from '../authoring'
 import {
   compactProps,
   type PdfCircleProps,

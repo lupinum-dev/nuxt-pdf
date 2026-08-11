@@ -105,15 +105,17 @@ Protected by `test/renderer.test.ts` and the paired conformance fixture. An inco
 ### Closed authoring-input contract
 
 The host-node shape matches the engine; the public input surface deliberately
-does not match every upstream prop or stylesheet key. `PdfStyle` is owned by
-Nuxt PDF and lists only the value shapes and units covered by this repository's
-fixtures. Primitive props are likewise closed: `patchPdfProp` uses an exact
-per-primitive allowlist tied to the exported prop types, then the complete-tree
-validator checks cross-prop and context invariants. This catches Vue fallthrough
-attributes that TypeScript cannot reliably exclude. Unknown props, DOM/event
-attributes, props on the wrong primitive, both/neither image sources, both/neither
-link targets, and page-flow/SVG text branch violations all fail with
-`PDF_TREE_INVALID`; none reach layout as best-effort passthroughs.
+does not match every upstream prop or stylesheet key. `runtime/authoring.ts` is
+the single client-safe vocabulary shared by Vue components and the renderer;
+the host-node model remains internal to `runtime/renderer/types.ts`. `PdfStyle`
+is owned by Nuxt PDF and lists only the value shapes and units covered by this
+repository's fixtures. Primitive props are likewise closed: `patchPdfProp` uses
+an exact per-primitive allowlist tied to the exported prop types, then the
+complete-tree validator checks cross-prop and context invariants. This catches
+Vue fallthrough attributes that TypeScript cannot reliably exclude. Unknown
+props, DOM/event attributes, props on the wrong primitive, both/neither image
+sources, both/neither link targets, and page-flow/SVG text branch violations all
+fail with `PDF_TREE_INVALID`; none reach layout as best-effort passthroughs.
 
 `PdfImage` therefore has exactly one of `src`/`source`, and `PdfLink` exactly one
 of `href`/`src`. SVG `PdfText` requires `x` and `y`, uses direct `fill` for paint,

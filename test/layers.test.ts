@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { fetch as nuxtFetch, setup } from '@nuxt/test-utils/e2e'
 import { describe, expect, it } from 'vitest'
-import { parsePdf } from './utils/pdf'
+import { parsePdf } from '../src/test/pdf'
 
 const fixtureRoot = fileURLToPath(
   new URL('./fixtures/layers', import.meta.url),

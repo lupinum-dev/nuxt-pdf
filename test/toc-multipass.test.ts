@@ -17,7 +17,7 @@ import {
   type MultiPassSource,
 } from '../src/runtime/server/engine/layout-passes'
 import { NuxtPdfError } from '../src/runtime/shared/errors'
-import { parsePdf } from './utils/pdf'
+import { parsePdf } from '../src/test/pdf'
 
 // A MultiPassSource backed by the live mounted Vue tree. `feed` re-patches the
 // tree in place through our renderer by updating a single reactive prop.
@@ -281,7 +281,7 @@ describe('multi-pass TOC layout — non-convergence', () => {
 
     // Manually drive a few passes to record the oscillation the loop detects.
     const { layoutPdfTree } = await import('../src/runtime/server/engine/render-document')
-    const { createPdfFontStore } = await import('../src/runtime/server/fonts')
+    const { createPdfFontStore } = await import('../src/runtime/server/engine/fonts')
     const fontStore = createPdfFontStore()
     let fed: DestinationPageMap = {}
     for (let i = 0; i < 4; i++) {

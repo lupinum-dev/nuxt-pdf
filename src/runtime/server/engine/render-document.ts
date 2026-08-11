@@ -12,21 +12,23 @@ import renderPDF from '@react-pdf/render'
 import {
   createPdfFontStore,
   type PdfFontStore,
-} from '../fonts'
+} from './fonts'
 import {
   NuxtPdfError,
   PDF_ERROR_CODES,
 } from '../../shared/errors'
 import {
   PDF_PRIMITIVES,
-  type PdfElementNode,
-  type PdfNode,
   type PdfStyleValue,
-} from '../../renderer/types'
+} from '../../authoring'
+import type {
+  PdfElementNode,
+  PdfNode,
+} from '../../renderer'
 import {
   enforceMaxPages,
   type RenderLimits,
-} from './limits'
+} from '../render-limits'
 
 export interface PdfEngineOptions {
   compress?: boolean

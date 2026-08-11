@@ -7,11 +7,11 @@ import {
   resolve,
   sep,
 } from 'node:path'
-import {
-  PDF_PRIMITIVES,
-  type PdfDocumentNode,
-  type PdfElementNode,
-} from '../../renderer/types'
+import type {
+  PdfDocumentNode,
+  PdfElementNode,
+} from '../../renderer'
+import { PDF_PRIMITIVES } from '../../authoring'
 import {
   PDF_ASSET_ERROR_CODES,
   PdfAssetError,
@@ -31,15 +31,13 @@ import {
   DEFAULT_PDF_RENDER_LIMITS,
   createRenderLimits,
   type RenderLimits,
-} from '../engine/limits'
+} from '../render-limits'
 
 export {
   PDF_ASSET_ERROR_CODES,
   PdfAssetError,
   type PdfAssetErrorCode,
 } from './errors'
-
-export const DEFAULT_MAX_PDF_IMAGE_BYTES = DEFAULT_PDF_MAX_IMAGE_BYTES
 
 export type PdfImageFormat = 'jpg' | 'png'
 
@@ -126,7 +124,7 @@ const imageLimitExceeded = (message: string): never =>
   fail(PDF_ASSET_ERROR_CODES.LimitExceeded, message)
 
 const resolveMaxBytes = (value: number | undefined): number => {
-  const maxBytes = value ?? DEFAULT_MAX_PDF_IMAGE_BYTES
+  const maxBytes = value ?? DEFAULT_PDF_MAX_IMAGE_BYTES
 
   if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0) {
     invalid('The PDF image byte limit must be a positive safe integer.')

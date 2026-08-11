@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { InvoiceLineItem } from '../../shared/invoice'
-import { formatInvoiceMoney } from '../../shared/invoice'
+import type { InvoiceLineItem } from '../../../shared/invoice'
+import { formatInvoiceMoney } from '../../../shared/invoice'
 
 const props = defineProps<{
   currency: string

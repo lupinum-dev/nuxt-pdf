@@ -1,7 +1,7 @@
 import type {
   PdfStyle,
   PdfStyleValue,
-} from '../../../src/runtime/renderer/types'
+} from '../../../src/runtime/authoring'
 
 // Shared source of truth for the style/layout conformance corpus.
 //

@@ -18,10 +18,8 @@ import {
   DEFAULT_MAX_PDF_FONT_BYTES,
 } from '../src/build/fonts'
 import { renderDocument } from '../src/runtime/server/engine/render-document'
-import {
-  createPdfFontStore,
-  type PdfFontDataUrl,
-} from '../src/runtime/server/fonts'
+import { createPdfFontStore } from '../src/runtime/server/engine/fonts'
+import type { PdfFontDataUrl } from '../src/runtime/fonts'
 
 const fixtureFont = resolve('test/fixtures/assets/Roboto-Regular.ttf')
 const fixtureOpenTypeFont = resolve(

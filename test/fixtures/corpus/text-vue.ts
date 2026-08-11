@@ -5,7 +5,7 @@ import {
   PdfText,
   PdfView,
 } from '../../../src/runtime/components'
-import type { PdfStyleValue } from '../../../src/runtime/renderer'
+import type { PdfStyleValue } from '../../../src/runtime/authoring'
 import {
   ROBOTO,
   alignParagraph,

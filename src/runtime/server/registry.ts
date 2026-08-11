@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import { mountPdfComponent } from '../renderer/render-component'
+import { mountPdfComponent } from '../renderer'
 import {
   NuxtPdfError,
   PDF_ERROR_CODES,
@@ -26,11 +26,9 @@ import {
   type RenderLimits,
   type PdfRenderLimits,
   resolvePdfRenderLimits,
-} from './engine/limits'
-import {
-  createPdfFontStore,
-  type BundledPdfFontDescriptor,
-} from './fonts'
+} from './render-limits'
+import type { BundledPdfFontDescriptor } from '../fonts'
+import { createPdfFontStore } from './engine/fonts'
 import { createPdfRenderResult } from './result'
 
 export type { PdfRenderDiagnostics } from '../shared/template'

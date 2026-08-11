@@ -5,16 +5,8 @@ export type {
 } from './render-component'
 export type {
   PdfDocumentNode,
-  PdfDynamicPageProps,
-  PdfDynamicTextRender,
   PdfElementNode,
   PdfNode,
   PdfRoot,
-  PdfLength,
-  PdfLengthOrPercentage,
-  PdfPercentage,
-  PdfStyle,
-  PdfStyleEntry,
-  PdfStyleValue,
   PdfTextInstance,
 } from './types'

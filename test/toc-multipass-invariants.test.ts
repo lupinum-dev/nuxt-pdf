@@ -19,8 +19,8 @@ import {
   layoutPdfTree,
   renderDocument,
 } from '../src/runtime/server/engine/render-document'
-import { createPdfFontStore } from '../src/runtime/server/fonts'
-import { installPdfCanvasGlobals, parsePdf } from './utils/pdf'
+import { createPdfFontStore } from '../src/runtime/server/engine/fonts'
+import { installPdfCanvasGlobals, parsePdf } from '../src/test/pdf'
 
 // Regression coverage for state that is reused across layout passes. Each
 // fixture compares the converged render with a fresh render of the same final

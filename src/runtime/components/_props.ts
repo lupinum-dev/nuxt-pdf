@@ -1,7 +1,7 @@
 import type {
   PdfDynamicTextRender,
   PdfStyleValue,
-} from '../renderer/types'
+} from '../authoring'
 
 export type PdfBookmark = string | {
   title: string

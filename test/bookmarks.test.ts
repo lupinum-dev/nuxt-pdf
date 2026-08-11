@@ -23,7 +23,7 @@ import { mountPdfComponent } from '../src/runtime/renderer'
 import type { PdfElementNode } from '../src/runtime/renderer/types'
 import { renderDocument } from '../src/runtime/server/engine/render-document'
 import { renderDocumentMultiPass, type DestinationPageMap, type MultiPassSource } from '../src/runtime/server/engine/layout-passes'
-import { getPdfOutline, type PdfOutlineItem } from './utils/pdf'
+import { getPdfOutline, type PdfOutlineItem } from '../src/test/pdf'
 
 // One source of truth for the outline both engines must produce.
 interface SectionSpec { title: string, detail: string, expanded: boolean }
