@@ -159,7 +159,7 @@ export default defineNuxtModule<ModuleOptions>({
     name: 'nuxt-pdf',
     configKey: 'pdf',
     compatibility: {
-      nuxt: '>=4.4.8',
+      nuxt: '^4.4.8',
     },
   },
   defaults: {
