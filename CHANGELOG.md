@@ -6,6 +6,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+## 0.3.0 - 2026-08-11
+
 ### Added
 
 - Public font configuration types (`PdfFontDeclaration`, `PdfFontStyle`,
@@ -15,19 +17,6 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   canonical option shape used by the Nuxt module.
 - `RemoteAssetOptions` is now a named package-root export for callers that
   share remote-image policy between Nuxt configuration and test helpers.
-
-### Breaking changes
-
-- `renderPdfTemplate` options now mirror user-facing `pdf.remote` and
-  `pdf.limits` configuration. Generated asset maps, embedded font descriptors,
-  and template attribution fields are internal. `renderPdfSfc` additionally
-  accepts `pdf.fonts` declarations and always infers the application root from
-  the `pdfs/*.vue` path; its `rootDir` override is removed.
-
-## 0.3.0 - 2026-07-23
-
-### Added
-
 - One canonical `pdf.limits` budget covering tree nodes/depth/text, pages,
   image count/source bytes/decoded pixels, remote request count/concurrency,
   the whole-render deadline, and completed output bytes.
@@ -45,9 +34,43 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Safe registered-font-face diagnostics and an international typography
   calibration fixture that classifies CJK, bidi text, combining marks, variable
   fonts, emoji, fallback, and hyphenation from semantic and raster evidence.
+- Scope-aware Vue Composition API and `usePdfPageNumbers` auto-imports inside
+  PDF SFCs, without pretending that the isolated renderer has Nuxt app context.
+
+### Changed
+
+- Failed Vue mounts are transactional, component effects are always disposed,
+  and unhandled production errors fail the render instead of returning an
+  incomplete PDF.
+- PDF SFC compilation rejects async setup, top-level `await`, `Teleport`, and
+  `v-show` with targeted diagnostics; unsupported PDF styles fail closed.
+- Generated registry and test-helper types expose authored component props
+  instead of Vue framework props, and misplaced `definePdf()` calls fail with a
+  focused runtime explanation.
+- Script-setup source maps now compose the Vue compiler, auto-import, and
+  TypeScript transforms back to the original `.vue` source.
+- Nuxt discovery honors `.nuxtignore` and configured ignore rules. Structural
+  PDF/component changes and embedded image/font changes restart Nuxt so the
+  registry, declarations, and bundled resources cannot become stale.
+- Preview HMR derives its Vite client path from `app.baseURL` and
+  `app.buildAssetsDir`; project and layer resource precedence is covered by
+  integration tests.
+- Documentation now states the Node runtime-core lifecycle, synchronous
+  authoring contract, isolated Vue app boundary, and PDF-specific styling model.
 
 ### Breaking changes
 
+- `renderPdfTemplate` options now mirror user-facing `pdf.remote` and
+  `pdf.limits` configuration. Generated asset maps, embedded font descriptors,
+  and template attribution fields are internal. `renderPdfSfc` additionally
+  accepts `pdf.fonts` declarations and always infers the application root from
+  the `pdfs/*.vue` path; its `rootDir` override is removed.
+- Root render props are now limited to props authored by the Vue component;
+  renderer-owned `class`, `style`, VNode, and reserved props are no longer
+  accepted by the generated registry or `renderPdfTemplate`.
+- Previously unsupported async components, top-level `await`, `Teleport`,
+  `v-show`, and unrecognized style properties now fail explicitly instead of
+  being silently omitted or admitted as no-ops.
 - Template keys now use one slash-separated vocabulary everywhere. A nested
   template such as `pdfs/reports/monthly.vue` is registered as
   `pdf['reports/monthly']`; camel-cased aliases such as `pdf.reportsMonthly`
