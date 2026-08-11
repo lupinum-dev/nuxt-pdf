@@ -1,0 +1,20 @@
+{
+  "repo": "lupinum-dev/nuxt-pdf",
+  "noAuthors": true,
+  "hideAuthorEmail": true,
+  "templates": {
+    "tagBody": "{{newVersion}}"
+  },
+  "types": {
+    "feat": { "title": "Added", "semver": "minor" },
+    "fix": { "title": "Fixed", "semver": "patch" },
+    "perf": { "title": "Performance", "semver": "patch" },
+    "refactor": { "title": "Changed", "semver": "patch" },
+    "types": { "title": "Types", "semver": "patch" },
+    "build": { "title": "Build", "semver": "patch" },
+    "docs": { "title": "Documentation", "semver": "patch" },
+    "test": { "title": "Tests" },
+    "ci": { "title": "CI" },
+    "chore": { "title": "Maintenance" }
+  }
+}

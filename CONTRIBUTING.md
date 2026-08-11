@@ -45,8 +45,13 @@ scripts, or release workflows.
 Do not add a second document schema, a second layout engine, HTML printing,
 generic adapters, or compatibility aliases without an accepted design issue.
 
-Use a focused conventional commit prefix, for example `fix(runtime):`,
-`feat(test):`, `docs:`, or `ci:`.
+Use a focused Conventional Commit title for the pull request, for example
+`fix(runtime): reject invalid images`, `feat(test): add bookmark assertions`,
+`docs: explain font loading`, or `ci: verify release notes`. The repository
+uses the squash commit title to generate its changelog.
+
+Use a descriptive `<type>/<short-description>` branch name. Do not include an
+AI tool, model, vendor, or username in the branch name.
 
 ## Versioning
 

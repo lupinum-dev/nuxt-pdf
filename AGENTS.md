@@ -24,6 +24,7 @@ accepted design decision.
 
 - `package.json` owns the package name, version, exports, and command surface.
 - `pnpm-lock.yaml` owns resolved dependencies.
+- `changelog.config.json` owns changelog grouping and presentation.
 - `docs/site.json` owns documentation identity.
 - `src/` owns runtime behavior and public types.
 - `API_REPORT.md` is derived from built declarations.
@@ -57,6 +58,18 @@ Use these focused commands during development:
 
 Run the smallest relevant test while you work. Run `pnpm check` before you
 finish. Run `pnpm release:verify` for package or release-boundary changes.
+
+## Branches and commits
+
+Use a short Conventional Commit title for each pull request. The squash commit
+on `main` uses that title, and Changelogen uses it to prepare release notes.
+
+Use `<type>/<short-description>` for branch names. Examples include
+`feat/pdf-bookmarks`, `fix/remote-image-timeout`, and
+`chore/release-automation`.
+
+Do not prefix a branch with an agent, model, vendor, tool, or username. Never
+use prefixes such as `agent/`, `codex/`, `claude/`, `cursor/`, or `copilot/`.
 
 ## Architecture boundaries
 
@@ -109,6 +122,10 @@ Agents must not:
 
 Agents can prepare and verify a release artifact. A human maintainer performs
 all registry approvals and external configuration.
+
+After registry verification, only `post-publish.yml` can create the immutable
+release tag and GitHub Release. Agents must not reproduce that operation
+locally.
 
 ## Change policy
 

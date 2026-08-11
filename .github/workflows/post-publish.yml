@@ -15,11 +15,19 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: post-publish-${{ inputs.version }}
+  cancel-in-progress: false
+
 jobs:
   smoke:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
+      - name: Require main
+        env:
+          RELEASE_REF: ${{ github.ref }}
+        run: test "$RELEASE_REF" = refs/heads/main
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
@@ -43,3 +51,55 @@ jobs:
         env:
           NUXT_PDF_TARBALL: ${{ github.workspace }}/registry-artifact/lupinum-nuxt-pdf-${{ inputs.version }}.tgz
         run: node scripts/test-package-quickstart.mjs
+      - name: Prepare GitHub release notes
+        env:
+          VERSION: ${{ inputs.version }}
+        run: node scripts/write-release-notes.mjs "$VERSION" release-metadata/notes.md
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: github-release-metadata-${{ inputs.version }}
+          path: release-metadata
+          if-no-files-found: error
+          retention-days: 1
+
+  release:
+    name: Create immutable GitHub release
+    needs: smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@018cc2cfed7d10b7e69b5a2f4e35f8240c7fc5a3 # v6
+        with:
+          name: github-release-metadata-${{ inputs.version }}
+          path: release-metadata
+      - name: Create the tag and GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.sha }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]
+          [[ "$RELEASE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          test -s release-metadata/notes.md
+
+          tag="v${VERSION}"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "GitHub Release $tag already exists."
+            exit 1
+          fi
+
+          args=(
+            "$tag"
+            --repo "$GITHUB_REPOSITORY"
+            --target "$RELEASE_SHA"
+            --title "$tag"
+            --notes-file release-metadata/notes.md
+          )
+          if [[ "$VERSION" == *-* ]]; then
+            args+=(--prerelease)
+          else
+            args+=(--latest)
+          fi
+          gh release create "${args[@]}"

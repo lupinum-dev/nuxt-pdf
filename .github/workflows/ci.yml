@@ -37,6 +37,16 @@ jobs:
           path: .pnpm-store
           key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       - run: pnpm install --frozen-lockfile
+      - name: Validate pull request title
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^(feat|fix|perf|refactor|types|build|docs|test|ci|chore)(\([a-z0-9][a-z0-9._/-]*\))?(!)?: .+'
+          [[ "$PR_TITLE" =~ $pattern ]] || {
+            echo 'Use a Conventional Commit pull request title, for example: fix(runtime): reject invalid images'
+            exit 1
+          }
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test:docs

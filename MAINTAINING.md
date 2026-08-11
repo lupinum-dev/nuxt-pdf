@@ -10,27 +10,30 @@ This file is for Lupinum OG maintainers. Contributors use
 - `CONFORMANCE.md` owns the tested compatibility claim.
 - `pnpm-lock.yaml` owns the resolved dependency graph.
 - `docs/site.json` owns the documentation identity.
+- `changelog.config.json` owns changelog grouping and presentation.
 - The retained `.tgz` file is the release candidate.
 
-Do not create a release branch, a second version file, or a local publication
-path.
+Do not create a long-lived release branch, a second version file, or a local
+publication path.
 
 ## Prepare a release
 
-1. Merge the version and changelog to protected `main`.
-2. Confirm that `CONFORMANCE.md` describes the same version.
-3. Confirm that the worktree is clean.
-4. Run `pnpm release:verify`.
-5. Review the package file list, checksum, license inventory, SBOM, and packed
+1. Start a release preparation branch from protected `main`.
+2. Run `pnpm release:prepare`. Changelogen infers the version from the
+   Conventional Commit history and updates `package.json` and `CHANGELOG.md`.
+3. Review the inferred version and generated changelog. Update
+   `CONFORMANCE.md` to describe the same version.
+4. Merge the release preparation pull request to protected `main`.
+5. Run `pnpm release:verify`.
+6. Review the package file list, checksum, license inventory, SBOM, and packed
    consumer result.
-6. Push the release commit to `main`.
 7. Start `release.yml` from `main` with staging enabled.
 8. Download the GitHub release artifact and verify `SHA256SUMS`.
 9. Download the npm stage and compare its tarball checksum.
 10. Approve the npm stage with WebAuthn or another permitted second factor.
 11. Run `post-publish.yml` with the exact version and approved tarball SHA-256.
-12. Verify the registry version, dist-tag, provenance, and package contents.
-13. Create the protected Git tag and GitHub release for the verified commit.
+12. The workflow verifies the registry package, then creates the protected Git
+    tag and GitHub Release from the matching `CHANGELOG.md` entry.
 
 The workflow derives the dist-tag from the package version. A stable version
 uses `latest`. A prerelease version uses the first prerelease identifier. For
@@ -38,6 +41,13 @@ example, `0.4.0-next.1` uses `next`.
 
 Do not rebuild after the release artifact is created. The stage job must use
 the retained tarball from the build job.
+
+Do not use `changelogen --release`, `--push`, or `--publish`. Those options
+bypass the protected pull request, retained-artifact, and staged-publication
+boundaries.
+
+Changelogen uses the latest immutable `v*` tag as its starting point. Do not
+prepare the next release until the current npm version has its matching tag.
 
 ## Bootstrap the package
 
