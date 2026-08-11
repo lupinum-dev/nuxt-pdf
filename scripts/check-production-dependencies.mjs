@@ -1,4 +1,8 @@
 import { execFileSync } from 'node:child_process'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const rootDir = resolve(fileURLToPath(new URL('..', import.meta.url)))
 
 const forbidden = new Set([
   '@react-pdf/reconciler',
@@ -24,7 +28,10 @@ const visit = (dependencies = {}) => {
   }
 }
 
-for (const project of projects) visit(project.dependencies)
+const packageProject = projects.find(project => resolve(project.path) === rootDir)
+if (!packageProject) throw new Error('pnpm did not report the root package project.')
+
+visit(packageProject.dependencies)
 
 if (found.size > 0) {
   throw new Error(`Forbidden production dependencies: ${[...found].sort().join(', ')}`)
