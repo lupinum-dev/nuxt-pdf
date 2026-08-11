@@ -469,7 +469,9 @@ const temporaryDirectory = await mkdtemp(join(tmpdir(), 'nuxt-pdf-quickstart-'))
 try {
   let tarball
   if (process.env.NUXT_PDF_TARBALL) {
-    tarball = resolve(process.env.NUXT_PDF_TARBALL)
+    const sourceTarball = resolve(process.env.NUXT_PDF_TARBALL)
+    tarball = join(temporaryDirectory, basename(sourceTarball))
+    await copyFile(sourceTarball, tarball)
   }
   else {
     const output = execFileSync(

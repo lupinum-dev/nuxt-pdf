@@ -9,7 +9,10 @@ const packageJson = JSON.parse(
   await readFile(join(rootDir, 'package.json'), 'utf8'),
 )
 const expectedRelease = {
+  bugs: 'https://github.com/lupinum-dev/nuxt-pdf/issues',
+  homepage: 'https://nuxt-pdf.lupinum.com',
   name: '@lupinum/nuxt-pdf',
+  repository: 'git+https://github.com/lupinum-dev/nuxt-pdf.git',
 }
 
 const requiredFiles = [
@@ -133,6 +136,13 @@ try {
   assert(packedPackageJson.name === packageJson.name, 'Packed package.json has the wrong name.')
   assert(packedPackageJson.version === packageJson.version, 'Packed package.json has the wrong version.')
   assert(packedPackageJson.private !== true, 'Packed package.json must be publishable.')
+  assert(packedPackageJson.author === 'Lupinum OG <info@lupinum.com> (https://lupinum.com)', 'Packed package.json has the wrong author.')
+  assert(packedPackageJson.bugs?.url === expectedRelease.bugs, 'Packed package.json has the wrong issues URL.')
+  assert(packedPackageJson.homepage === expectedRelease.homepage, 'Packed package.json has the wrong homepage.')
+  assert(packedPackageJson.license === 'MIT', 'Packed package.json must use the MIT license.')
+  assert(packedPackageJson.repository?.url === expectedRelease.repository, 'Packed package.json has the wrong repository URL.')
+  assert(!packedPackageJson.scripts?.prepare, 'Packed package.json must not run a prepare script during installation.')
+  assert(packedPackageJson.scripts?.prepublishOnly === 'node scripts/block-source-publish.mjs', 'Packed package.json must retain the source-publish blocker.')
   assert(packedPackageJson.publishConfig?.access === 'public', 'Scoped package must publish with public access.')
   assert(importTarget && fileSet.has(importTarget), `Package export target is missing: ${importTarget}.`)
   assert(typeTarget && fileSet.has(typeTarget), `Package type target is missing: ${typeTarget}.`)

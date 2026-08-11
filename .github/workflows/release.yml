@@ -3,57 +3,98 @@ name: release
 on:
   workflow_dispatch:
     inputs:
-      dry_run:
-        description: Verify and produce artifacts without publishing
+      stage:
+        description: Stage the verified package on npm after the build
         required: true
         type: boolean
         default: true
-      tag:
-        description: npm dist-tag
-        required: true
-        type: choice
-        options: [next, latest]
-        default: next
-
-permissions:
-  contents: read
-  id-token: write
 
 concurrency:
   group: release
   cancel-in-progress: false
 
 jobs:
-  release:
+  build:
+    name: Build and verify
     runs-on: ubuntu-24.04
     timeout-minutes: 60
-    environment: npm
+    permissions:
+      contents: read
     steps:
+      - name: Require main
+        env:
+          RELEASE_REF: ${{ github.ref }}
+        run: test "$RELEASE_REF" = refs/heads/main
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 24.11.1
-          registry-url: https://registry.npmjs.org
-      - run: npm install --global pnpm@10.34.5
+          node-version: 24.18.0
+      - name: Enable the pinned package manager
+        run: corepack enable pnpm && corepack prepare pnpm@11.21.0 --activate
       - run: pnpm install --frozen-lockfile
-      - run: pnpm verify
+      - name: Build, test, and retain the verified package
+        run: pnpm release:verify
         env:
           NODE_OPTIONS: --max-old-space-size=4096
-      - name: Create release evidence
-        run: |
-          mkdir -p release-artifacts
-          npm pack --pack-destination release-artifacts
-          node scripts/generate-sbom.mjs release-artifacts/nuxt-pdf.cdx.json
-          node scripts/generate-license-inventory.mjs release-artifacts/third-party-licenses.json
-          cd release-artifacts
-          sha256sum *.tgz nuxt-pdf.cdx.json third-party-licenses.json > SHA256SUMS
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: npm-release-evidence
           path: release-artifacts
-      - name: Validate npm publication
-        if: inputs.dry_run
-        run: npm publish ./release-artifacts/*.tgz --dry-run --tag "${{ inputs.tag }}"
-      - name: Publish with npm provenance
-        if: ${{ !inputs.dry_run }}
-        run: npm publish ./release-artifacts/*.tgz --provenance --access public --tag "${{ inputs.tag }}"
+          if-no-files-found: error
+          retention-days: 14
+
+  stage:
+    name: Stage on npm
+    if: inputs.stage
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: npm
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24.18.0
+          registry-url: https://registry.npmjs.org
+      - uses: actions/download-artifact@018cc2cfed7d10b7e69b5a2f4e35f8240c7fc5a3 # v6
+        with:
+          name: npm-release-evidence
+          path: release-artifacts
+      - name: Verify the inert release evidence
+        working-directory: release-artifacts
+        run: sha256sum --check SHA256SUMS
+      - name: Read package metadata without running package code
+        id: package
+        working-directory: release-artifacts
+        run: |
+          mapfile -t tarballs < <(find . -maxdepth 1 -type f -name '*.tgz' -print)
+          test "${#tarballs[@]}" -eq 1
+          package_name="$(tar -xOf "${tarballs[0]}" package/package.json | node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => process.stdout.write(JSON.parse(input).name))")"
+          package_version="$(tar -xOf "${tarballs[0]}" package/package.json | node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => process.stdout.write(JSON.parse(input).version))")"
+          test "$package_name" = '@lupinum/nuxt-pdf'
+          if [[ "$package_version" == *-* ]]; then
+            dist_tag="${package_version#*-}"
+            dist_tag="${dist_tag%%.*}"
+            [[ "$dist_tag" =~ ^[a-z][a-z0-9-]*$ ]]
+            test "$dist_tag" != latest
+          else
+            dist_tag=latest
+          fi
+          printf 'tarball=%s\n' "${tarballs[0]}" >> "$GITHUB_OUTPUT"
+          printf 'version=%s\n' "$package_version" >> "$GITHUB_OUTPUT"
+          printf 'dist-tag=%s\n' "$dist_tag" >> "$GITHUB_OUTPUT"
+      - name: Require a hardened npm client
+        run: |
+          npm_version="$(npm --version)"
+          npm_major="${npm_version%%.*}"
+          npm_minor_patch="${npm_version#*.}"
+          npm_minor="${npm_minor_patch%%.*}"
+          test "$npm_major" -gt 11 || { test "$npm_major" -eq 11 && test "$npm_minor" -ge 15; }
+      - name: Stage with npm trusted publishing
+        working-directory: release-artifacts
+        run: npm stage publish "${{ steps.package.outputs.tarball }}" --provenance --access public --tag "${{ steps.package.outputs['dist-tag'] }}" --ignore-scripts

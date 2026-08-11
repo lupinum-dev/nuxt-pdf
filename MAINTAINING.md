@@ -32,8 +32,9 @@ path.
 12. Verify the registry version, dist-tag, provenance, and package contents.
 13. Create the protected Git tag and GitHub release for the verified commit.
 
-The workflow derives `latest` or `next` from the package version. A stable
-version uses `latest`. A version with a prerelease suffix uses `next`.
+The workflow derives the dist-tag from the package version. A stable version
+uses `latest`. A prerelease version uses the first prerelease identifier. For
+example, `0.4.0-next.1` uses `next`.
 
 Do not rebuild after the release artifact is created. The stage job must use
 the retained tarball from the build job.

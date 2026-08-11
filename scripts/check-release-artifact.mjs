@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -20,18 +21,30 @@ const parsePackReport = (output) => {
   throw new Error(`npm pack did not return a usable JSON report:\n${output}`)
 }
 
-const temporaryDirectory = await mkdtemp(join(tmpdir(), 'nuxt-pdf-release-artifact-'))
+const requestedOutput = process.argv[2]
+const retainedDirectory = join(rootDir, 'release-artifacts')
+if (requestedOutput && resolve(requestedOutput) !== retainedDirectory) {
+  throw new Error('The retained release output must be ./release-artifacts.')
+}
+
+const workingDirectory = await mkdtemp(join(tmpdir(), 'nuxt-pdf-release-artifact-'))
+const outputDirectory = requestedOutput ? retainedDirectory : workingDirectory
+
+if (requestedOutput) {
+  await rm(outputDirectory, { force: true, recursive: true })
+  await mkdir(outputDirectory, { recursive: true })
+}
 
 try {
   const output = execFileSync(
     'npm',
-    ['pack', '--json', '--pack-destination', temporaryDirectory],
+    ['pack', '--ignore-scripts', '--json', '--pack-destination', outputDirectory],
     {
       cwd: rootDir,
       encoding: 'utf8',
       env: {
         ...process.env,
-        npm_config_cache: join(temporaryDirectory, 'pack-cache'),
+        npm_config_cache: join(workingDirectory, 'pack-cache'),
         npm_config_loglevel: 'silent',
       },
       maxBuffer: 10 * 1024 * 1024,
@@ -48,8 +61,8 @@ try {
   if (report.unpackedSize > performanceBaseline.packageUnpackedBytes * 1.1) {
     throw new Error(`Unpacked package size regressed from ${performanceBaseline.packageUnpackedBytes} to ${report.unpackedSize} bytes.`)
   }
-  const tarball = join(temporaryDirectory, basename(report.filename))
-  const reportPath = join(temporaryDirectory, 'pack-report.json')
+  const tarball = join(outputDirectory, basename(report.filename))
+  const reportPath = join(outputDirectory, 'pack-report.json')
   await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`)
 
   const env = {
@@ -77,7 +90,30 @@ try {
     env,
     stdio: 'inherit',
   })
+
+  const sbomPath = join(outputDirectory, 'nuxt-pdf.cdx.json')
+  const licensesPath = join(outputDirectory, 'third-party-licenses.json')
+  execFileSync(process.execPath, ['scripts/generate-sbom.mjs', sbomPath], {
+    cwd: rootDir,
+    stdio: 'inherit',
+  })
+  execFileSync(process.execPath, ['scripts/generate-license-inventory.mjs', licensesPath], {
+    cwd: rootDir,
+    stdio: 'inherit',
+  })
+
+  const evidence = [tarball, reportPath, sbomPath, licensesPath]
+  const checksums = []
+  for (const path of evidence) {
+    const checksum = createHash('sha256').update(await readFile(path)).digest('hex')
+    checksums.push(`${checksum}  ${basename(path)}`)
+  }
+  await writeFile(join(outputDirectory, 'SHA256SUMS'), `${checksums.join('\n')}\n`)
+
+  console.log(requestedOutput
+    ? `Retained verified release evidence in ${outputDirectory}.`
+    : 'Verified the release artifact and evidence.')
 }
 finally {
-  await rm(temporaryDirectory, { force: true, recursive: true })
+  await rm(workingDirectory, { force: true, recursive: true })
 }

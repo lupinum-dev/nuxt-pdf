@@ -7,6 +7,10 @@ on:
         description: Exact published version to verify
         required: true
         type: string
+      sha256:
+        description: SHA-256 of the approved package tarball
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -27,10 +31,14 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Download the immutable registry artifact
         env:
+          EXPECTED_SHA256: ${{ inputs.sha256 }}
           VERSION: ${{ inputs.version }}
         run: |
+          [[ "$EXPECTED_SHA256" =~ ^[a-f0-9]{64}$ ]]
           mkdir -p registry-artifact
-          npm pack "@lupinum/nuxt-pdf@${VERSION}" --pack-destination registry-artifact
+          npm pack "@lupinum/nuxt-pdf@${VERSION}" --ignore-scripts --pack-destination registry-artifact
+          tarball="registry-artifact/lupinum-nuxt-pdf-${VERSION}.tgz"
+          test "$(sha256sum "$tarball" | cut -d ' ' -f 1)" = "$EXPECTED_SHA256"
       - name: Render through npm and pnpm consumers
         env:
           NUXT_PDF_TARBALL: ${{ github.workspace }}/registry-artifact/lupinum-nuxt-pdf-${{ inputs.version }}.tgz
