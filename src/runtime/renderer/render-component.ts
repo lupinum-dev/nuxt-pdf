@@ -100,8 +100,25 @@ export const mountPdfComponent = async (
   component: Component,
   initialProps: PdfComponentProps = {},
 ): Promise<MountedPdfComponent> => {
+  let hasRenderError = false
+  let renderError: unknown
+  const recordRenderError = (error: unknown) => {
+    if (hasRenderError) return
+    hasRenderError = true
+    renderError = error
+  }
+  const resetRenderError = () => {
+    hasRenderError = false
+    renderError = undefined
+  }
+  const throwRenderError = () => {
+    if (!hasRenderError) return
+    const error = renderError
+    resetRenderError()
+    throw error
+  }
   const renderer = createRenderer<PdfHostNode, PdfHostElement>(
-    createPdfNodeOps(),
+    createPdfNodeOps(recordRenderError),
   )
   const root = createPdfRoot()
   const currentProps = shallowRef(initialProps)
@@ -111,6 +128,11 @@ export const mountPdfComponent = async (
   })
 
   const app = renderer.createApp(RootComponent)
+  // A PDF is an all-or-nothing artifact. Vue's default production behavior logs
+  // component errors and continues rendering, which can otherwise return a
+  // successful document with missing content.
+  app.config.errorHandler = recordRenderError
+  app.config.throwUnhandledErrorInProduction = true
 
   for (const [name, primitive] of Object.entries(PDF_COMPONENTS)) {
     app.component(name, primitive)
@@ -129,18 +151,56 @@ export const mountPdfComponent = async (
   })
 
   let mounted = false
+  const dispose = (surfaceCleanupError: boolean) => {
+    if (!mounted) return
+    resetRenderError()
+    try {
+      app.unmount()
+      if (surfaceCleanupError) throwRenderError()
+    }
+    finally {
+      mounted = false
+    }
+  }
+  const fail = (error: unknown): never => {
+    try {
+      dispose(false)
+    }
+    catch {
+      // Preserve the render failure. Cleanup errors must not replace the cause
+      // that made the document invalid.
+    }
+    throw error
+  }
+  const requireSuccessfulDocument = (): PdfDocumentNode => {
+    throwRenderError()
+    return requireDocument(root)
+  }
+  const updateDocument = async (
+    mutate: () => void,
+  ): Promise<PdfDocumentNode> => {
+    resetRenderError()
+    try {
+      mutate()
+      await nextTick()
+      return requireSuccessfulDocument()
+    }
+    catch (error) {
+      return fail(error)
+    }
+  }
+
   try {
     app.mount(root)
     mounted = true
     await nextTick()
-    requireDocument(root)
+    requireSuccessfulDocument()
   }
   catch (error) {
     // Tree-wide validation runs after Vue has mounted. Tear that application
     // down before surfacing an invalid document so failed renders retain no
     // reactive effects or component state.
-    if (mounted) app.unmount()
-    throw error
+    return fail(error)
   }
 
   return {
@@ -152,20 +212,20 @@ export const mountPdfComponent = async (
       return pageNumbersUsed
     },
     async update(props) {
-      currentProps.value = props
-      await nextTick()
-      return requireDocument(root)
+      return updateDocument(() => {
+        currentProps.value = props
+      })
     },
     async feedPageNumbers(pages) {
-      for (const key of Object.keys(pageNumbers)) {
-        if (!(key in pages)) Reflect.deleteProperty(pageNumbers, key)
-      }
-      Object.assign(pageNumbers, pages)
-      await nextTick()
-      return requireDocument(root)
+      return updateDocument(() => {
+        for (const key of Object.keys(pageNumbers)) {
+          if (!(key in pages)) Reflect.deleteProperty(pageNumbers, key)
+        }
+        Object.assign(pageNumbers, pages)
+      })
     },
     unmount() {
-      app.unmount()
+      dispose(true)
     },
   }
 }
