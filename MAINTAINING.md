@@ -160,8 +160,9 @@ process.
 
 ## Review dependency changes
 
-Dependabot opens dependency pull requests. It does not merge them
-automatically. Keep one dependency bot. Do not add a second automation source.
+Renovate opens grouped dependency pull requests each week. It does not merge
+them automatically. Keep one dependency bot. Disable Dependabot version
+updates in the repository settings, but keep security alerts enabled.
 
 For each update:
 
