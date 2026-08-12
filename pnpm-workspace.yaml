@@ -10,7 +10,7 @@ minimumReleaseAgeExclude:
   - '@iconify-json/lucide@1.2.123'
   - '@iconify/collections@1.0.723'
   - '@lupinum/ginko-content@0.4.0-rc.1'
-  - '@lupinum/ginko-docs@0.3.0-rc.2'
+  - '@lupinum/ginko-docs@0.3.0-rc.3'
   - '@nuxt/icon@2.5.0'
   - '@nuxtjs/sitemap@8.3.4'
   - '@shikijs/core@4.4.3'
