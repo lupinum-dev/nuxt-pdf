@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@lupinum/nuxt-pdf": "workspace:*",
-    "nuxt": "^4.4.8"
+    "nuxt": "^4.5.2"
   },
   "devDependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
