@@ -112,6 +112,10 @@ all registry approvals and external configuration.
 
 ## Change policy
 
+Use a short branch name that describes the work, such as
+`fix/font-containment`. Do not require an agent or tool prefix such as
+`codex/`, `claude/`, or `cursor/`.
+
 Prefer deletion and simplification. Do not add generic adapters, wrappers,
 configuration, caches, state machines, or compatibility paths for possible
 future use.
