@@ -20,6 +20,10 @@ export default {
       branch: "main",
       contentDirectory: "docs/content",
     },
+    analytics: {
+      plausible: { scriptId: "pa-XxT9ZOr0ZLg10B4KV40xH" },
+    },
+    feedback: { enabled: true },
     landing: {
       eyebrow: { en: "Nuxt module · external alpha" },
       title: { en: "PDFs authored as Vue components." },
