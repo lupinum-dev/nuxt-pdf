@@ -35,7 +35,7 @@ reviews:
     auto_incremental_review: true
     auto_pause_after_reviewed_commits: 5
     ignore_usernames:
-      - renovate[bot]
+      - dependabot[bot]
       - github-actions[bot]
 
 chat:

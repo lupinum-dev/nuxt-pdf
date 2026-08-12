@@ -24,8 +24,8 @@ Use one route for each request:
 - Send a vulnerability to GitHub private vulnerability reporting.
 - Send a conduct report to `info@lupinum.com`.
 - Send usage questions to the Lupinum OSS Discord.
-- Use the bug form for a reproducible defect.
-- Use the feature form for a user problem or a large change.
+- Use the bug template for a reproducible defect.
+- Use the proposal template for a user problem or a large change.
 
 Ask for a minimal public reproduction before you investigate an unclear bug.
 Close requests that are outside the documented product boundary. State the
@@ -160,9 +160,8 @@ process.
 
 ## Review dependency changes
 
-Renovate opens grouped dependency pull requests each week. It does not merge
-them automatically. Dependabot version and security updates remain disabled
-so that one bot owns dependency pull requests.
+Dependabot opens dependency pull requests. It does not merge them
+automatically. Keep one dependency bot. Do not add a second automation source.
 
 For each update:
 

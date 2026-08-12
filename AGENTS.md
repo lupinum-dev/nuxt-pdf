@@ -128,11 +128,15 @@ After registry verification, only `post-publish.yml` can create the immutable
 release tag and GitHub Release. Agents must not reproduce that operation
 locally.
 
-Use the issue forms for public reports. Send security reports through GitHub
+Use the issue templates for public reports. Send security reports through GitHub
 private vulnerability reporting. CodeRabbit comments are advisory. Apply a
 suggestion only after you verify it against the repository rules and tests.
 
 ## Change policy
+
+Use a short branch name that describes the work, such as
+`fix/font-containment`. Do not require an agent or tool prefix such as
+`codex/`, `claude/`, or `cursor/`.
 
 Prefer deletion and simplification. Do not add generic adapters, wrappers,
 configuration, caches, state machines, or compatibility paths for possible
