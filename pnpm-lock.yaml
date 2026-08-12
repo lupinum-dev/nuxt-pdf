@@ -121,8 +121,8 @@ importers:
         specifier: 0.4.0-rc.1
         version: 0.4.0-rc.1(826752ae27913ef6d2687bc66b7b477d)
       '@lupinum/ginko-docs':
-        specifier: 0.3.0-rc.2
-        version: 0.3.0-rc.2(fb62ff8f4e2cecbd32fbd6adcc1a9dc7)
+        specifier: 0.3.0-rc.3
+        version: 0.3.0-rc.3(fb62ff8f4e2cecbd32fbd6adcc1a9dc7)
       nuxt:
         specifier: ^4.4.8
         version: 4.4.8(@babel/plugin-syntax-jsx@7.29.7(@babel/core@7.29.7(supports-color@10.2.2)))(@babel/plugin-syntax-typescript@7.29.7(@babel/core@7.29.7(supports-color@10.2.2)))(@parcel/watcher@2.5.6)(@types/node@26.1.1)(@vue/compiler-sfc@3.5.40)(cac@6.7.14)(db0@0.3.4)(esbuild@0.28.1)(eslint@10.7.0(jiti@2.7.0)(supports-color@10.2.2))(ioredis@5.11.1(supports-color@10.2.2))(lightningcss@1.33.0)(magicast@0.5.3)(optionator@0.9.4)(rollup-plugin-visualizer@7.0.1(rollup@4.62.2))(rollup@4.62.2)(srvx@0.12.5)(supports-color@10.2.2)(terser@5.49.0)(typescript@5.9.3)(vite@7.3.6(@types/node@26.1.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.49.0)(yaml@2.9.0))(vue-tsc@2.2.12(typescript@5.9.3))(yaml@2.9.0)
@@ -1325,8 +1325,8 @@ packages:
       vitest:
         optional: true
 
-  '@lupinum/ginko-docs@0.3.0-rc.2':
-    resolution: {integrity: sha512-YBJL5XiQKR5r+Johm+W5p2HdA5lT8UyL64J6BQj1k2aWEcwTb53Tb/kFmdgDrv/9qDypAfD3WNqL6mBols+vug==}
+  '@lupinum/ginko-docs@0.3.0-rc.3':
+    resolution: {integrity: sha512-4SAbTM8rPkw6u6IJwaVCxhl6XRuhoES0VunRfTKvxSmcJTpkc/K+a9/v3A/OV1n2y+FDxHeIZGj7IicGMKeEKQ==}
     engines: {node: ^22.18.0 || ^24.11.0 || >=26.0.0}
     peerDependencies:
       '@lupinum/ginko-content': '>=0.4.0-rc.1 <0.5.0'
@@ -8949,7 +8949,7 @@ snapshots:
       - webpack
       - xml2js
 
-  '@lupinum/ginko-docs@0.3.0-rc.2(fb62ff8f4e2cecbd32fbd6adcc1a9dc7)':
+  '@lupinum/ginko-docs@0.3.0-rc.3(fb62ff8f4e2cecbd32fbd6adcc1a9dc7)':
     dependencies:
       '@iconify-json/circle-flags': 1.2.10
       '@iconify-json/logos': 1.2.12
