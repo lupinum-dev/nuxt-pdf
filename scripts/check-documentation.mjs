@@ -62,8 +62,8 @@ for (const marker of [
 ]) {
   if (!docsAppConfig.includes(marker)) errors.push(`Documentation app config is missing: ${marker}`)
 }
-const docsSiteConfig = await readFile(resolve(rootDir, 'docs/site.json'), 'utf8')
-if (!docsSiteConfig.includes('https://discord.gg/RPH6SeA36N')) {
+const docsSiteConfig = JSON.parse(await readFile(resolve(rootDir, 'docs/site.json'), 'utf8'))
+if (docsSiteConfig.discord !== 'https://discord.gg/RPH6SeA36N') {
   errors.push('Documentation site config is missing the shared Discord link.')
 }
 
