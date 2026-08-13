@@ -3,7 +3,7 @@ import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const rootDir = resolve(fileURLToPath(new URL('..', import.meta.url)))
-const workflowNames = ['ci.yml', 'release.yml', 'post-publish.yml']
+const workflowNames = ['ci.yml', 'release.yml']
 const workflows = new Map(await Promise.all(workflowNames.map(async name => [
   name,
   await readFile(join(rootDir, '.github/workflows', name), 'utf8'),
@@ -39,7 +39,6 @@ for (const [name, source] of workflows) {
 
 const ci = workflows.get('ci.yml')
 const release = workflows.get('release.yml')
-const postPublish = workflows.get('post-publish.yml')
 const allWorkflows = [...workflows.values()].join('\n')
 
 assert(
@@ -49,35 +48,35 @@ assert(
 )
 assert(
   (allWorkflows.match(/contents: write/gu) ?? []).length === 1
-  && postPublish.includes('contents: write'),
-  'Only post-publish.yml can request repository write authority.',
+  && release.includes('contents: write'),
+  'Only release.yml can request repository write authority.',
 )
 assert(
   !ci.includes('id-token: write') && !ci.includes('contents: write'),
   'Normal CI must remain read-only.',
 )
 
-const stageJob = extractJob(release, 'stage')
-assert(stageJob.includes('environment: npm'), 'The npm stage job must use the npm environment.')
-assert(stageJob.includes('id-token: write'), 'The npm stage job must request OIDC authority.')
-assert(!stageJob.includes('actions/checkout'), 'The npm stage job must not check out repository code.')
-assert(!/\bpnpm\b/u.test(stageJob), 'The npm stage job must not run pnpm.')
-assert(!/npm (?:install|ci|exec|run)\b/u.test(stageJob), 'The npm stage job must not install or run package code.')
-assert(!/node scripts\//u.test(stageJob), 'The npm stage job must not run repository scripts.')
+const publishJob = extractJob(release, 'publish')
+assert(publishJob.includes('environment: npm'), 'The npm publish job must use the npm environment.')
+assert(publishJob.includes('id-token: write'), 'The npm publish job must request OIDC authority.')
+assert(!publishJob.includes('actions/checkout'), 'The npm publish job must not check out repository code.')
+assert(!/\bpnpm\b/u.test(publishJob), 'The npm publish job must not run pnpm.')
+assert(!/npm (?:install|ci|exec|run)\b/u.test(publishJob), 'The npm publish job must not install or run package code.')
+assert(!/node scripts\//u.test(publishJob), 'The npm publish job must not run repository scripts.')
 assert(
-  stageJob.includes('test "${tarballs[0]}" = "$tarball"'),
-  'The npm stage job must require the canonical tarball filename.',
+  publishJob.includes('test "${tarballs[0]}" = "$tarball"'),
+  'The npm publish job must require the canonical tarball filename.',
 )
 assert(
-  stageJob.includes('npm stage publish "$tarball"'),
-  'The npm stage job must publish only the validated shell variable.',
+  publishJob.includes('npm publish "$tarball"'),
+  'The npm publish job must publish only the validated shell variable.',
 )
 assert(
-  extractRunSources(stageJob).every(run => !run.includes('${{')),
-  'The npm stage job must not interpolate GitHub expressions into shell source.',
+  extractRunSources(publishJob).every(run => !run.includes('${{')),
+  'The npm publish job must not interpolate GitHub expressions into shell source.',
 )
 
-const githubReleaseJob = extractJob(postPublish, 'release')
+const githubReleaseJob = extractJob(release, 'github-release')
 assert(!githubReleaseJob.includes('actions/checkout'), 'The GitHub release job must not check out repository code.')
 assert(!/\bpnpm\b/u.test(githubReleaseJob), 'The GitHub release job must not run pnpm.')
 assert(!/npm (?:install|ci|exec|run)\b/u.test(githubReleaseJob), 'The GitHub release job must not install or run package code.')
@@ -86,10 +85,9 @@ assert(
   extractRunSources(githubReleaseJob).every(run => !run.includes('${{')),
   'The GitHub release job must not interpolate GitHub expressions into shell source.',
 )
-assert(!postPublish.includes('github.sha'), 'Post-publish tags must not use the dispatch-time commit.')
-assert(postPublish.includes('release_run_id:'), 'Post-publish must accept the original release run ID.')
-assert(!postPublish.includes('sha256:'), 'Post-publish must derive the checksum from retained evidence.')
-assert(postPublish.includes('--verify-tag'), 'GitHub Release creation must verify the source tag.')
+assert(githubReleaseJob.includes('needs: publish'), 'The GitHub release must wait for npm publication.')
+assert(githubReleaseJob.includes('sha256sum --check SHA256SUMS'), 'The GitHub release must verify retained checksums.')
+assert(githubReleaseJob.includes('gh release create'), 'The protected workflow must create the GitHub release.')
 
 if (errors.length > 0) {
   console.error(errors.join('\n'))

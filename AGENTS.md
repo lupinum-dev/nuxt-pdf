@@ -115,7 +115,7 @@ match the controlled-English profile.
 Agents must not:
 
 - Publish an npm package.
-- Approve or reject an npm stage.
+- Approve an npm environment deployment.
 - Move an npm dist-tag.
 - Create or push a release tag.
 - Change npm trusted-publisher settings.
@@ -124,9 +124,9 @@ Agents must not:
 Agents can prepare and verify a release artifact. A human maintainer performs
 all registry approvals and external configuration.
 
-After registry verification, only `post-publish.yml` can create the immutable
-release tag and GitHub Release. Agents must not reproduce that operation
-locally.
+Only the protected `release.yml` workflow can publish the certified tarball and
+create the immutable release tag and GitHub Release. Agents must not reproduce
+that operation locally.
 
 Use the issue templates for public reports. Send security reports through GitHub
 private vulnerability reporting. CodeRabbit comments are advisory. Apply a

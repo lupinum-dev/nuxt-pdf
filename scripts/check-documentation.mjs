@@ -13,6 +13,11 @@ const requiredFiles = [
   'MAINTAINING.md',
   'README.md',
   'SECURITY.md',
+  '.github/ISSUE_TEMPLATE/bug.md',
+  '.github/ISSUE_TEMPLATE/config.yml',
+  '.github/ISSUE_TEMPLATE/documentation.md',
+  '.github/ISSUE_TEMPLATE/proposal.md',
+  '.github/pull_request_template.md',
   'docs/WRITING.md',
 ]
 const excludedFiles = new Set([

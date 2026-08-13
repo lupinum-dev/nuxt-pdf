@@ -81,29 +81,13 @@ documentation change.
    version.
 4. Run `pnpm release:verify`.
 5. Open and merge the release preparation pull request.
-6. Start `release.yml` from `main` with staging enabled.
-7. Record the release workflow run ID from its GitHub Actions URL.
-8. Download the `npm-release-evidence` artifact. Verify `SHA256SUMS`, the
+6. Start `release.yml` from `main` with the exact package version.
+7. Download the `npm-release-evidence` artifact. Verify `SHA256SUMS`, the
    package file list, license inventory, SBOM, and packed consumer result.
-9. Review the npm stage and compare its downloaded tarball with the retained
-   tarball.
-10. Approve the npm stage with WebAuthn or another permitted second factor.
-11. Start `post-publish.yml` with the release workflow run ID. Run it before
-    the 14-day release artifact expires.
-12. Confirm the npm version, provenance, protected `v*` tag, GitHub Release,
+8. Approve the protected `npm` environment deployment after you inspect the
+   retained artifact.
+9. Confirm the npm version, provenance, protected `v*` tag, GitHub Release,
     and documentation links.
-
-Use these npm stage commands from a trusted workstation:
-
-```bash
-npm stage list @lupinum/nuxt-pdf
-npm stage view <stage-id>
-npm stage download <stage-id>
-npm stage approve <stage-id>
-```
-
-Use `npm stage reject <stage-id>` when the content, version, or dist-tag is
-wrong. Approval and rejection require a human second factor.
 
 The workflow derives the dist-tag from the package version. A stable version
 uses `latest`. Every prerelease version uses the shared `next` tag.
@@ -113,7 +97,7 @@ the retained tarball. It does not check out code, install dependencies, or run
 repository scripts.
 
 Do not use `changelogen --release`, `--push`, or `--publish`. Those options
-bypass the protected pull request, retained artifact, and staged publication
+bypass the protected pull request, retained artifact, and trusted-publication
 boundaries.
 
 Changelogen uses the latest immutable `v*` tag as its starting point. Do not
@@ -125,7 +109,7 @@ GitHub Release.
 Do not unpublish a release unless npm policy and a confirmed security incident
 require it.
 
-1. Stop release workflows and reject any pending stage.
+1. Stop release workflows.
 2. Identify the bad version and the last known-good version.
 3. Move `latest` to the known-good version:
    `npm dist-tag add @lupinum/nuxt-pdf@<good-version> latest`.
@@ -161,10 +145,12 @@ Vercel deploys the documentation application as the `nuxt-pdf-docs` project. `ma
 is the production branch. Pull requests receive preview deployments. The
 production domain is `nuxt-pdf.lupinum.com`.
 
-The Vercel project uses the repository root. Root `vercel.json` installs the
-locked workspace, builds the package, recreates the documentation Nuxt types,
-and then builds the site. It does not need a repository secret. Test the same
-path locally with `pnpm docs:build:vercel` before you merge.
+The Vercel project uses `docs/` as its root. Enable **Include source files
+outside of the Root Directory in the Build Step**. `docs/vercel.json` installs
+the locked workspace, builds the package, recreates the documentation Nuxt
+types, and then builds the site. Do not set an Output Directory override. It
+does not need a repository secret. Test the same path locally with
+`pnpm docs:build:vercel` before you merge.
 
 ## Audit external settings
 
@@ -193,7 +179,7 @@ GitHub must have:
 npm must have:
 
 - A trusted publisher bound to `lupinum-dev/nuxt-pdf`, `release.yml`, the
-  `npm` environment, and stage-only publication.
+  `npm` environment, and publish permission.
 - 2FA for package changes and no publication token.
 
 Vercel must have:
@@ -207,12 +193,11 @@ Vercel must have:
 If a GitHub or npm account may be compromised:
 
 1. Stop all release workflows.
-2. Reject pending npm stages.
-3. Revoke affected sessions, tokens, and trusted-publisher bindings.
-4. Review GitHub audit logs, workflow changes, releases, tags, and npm access
+2. Revoke affected sessions, tokens, and trusted-publisher bindings.
+3. Review GitHub audit logs, workflow changes, releases, tags, and npm access
    history.
-5. Deprecate any untrusted package version and restore the last known-good
+4. Deprecate any untrusted package version and restore the last known-good
    dist-tag.
-6. Restore trusted publishing only after you verify the source commit,
+5. Restore trusted publishing only after you verify the source commit,
    workflow, and package artifacts.
-7. Record the incident and recovery evidence outside the public repository.
+6. Record the incident and recovery evidence outside the public repository.
