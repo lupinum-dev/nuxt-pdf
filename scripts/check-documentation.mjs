@@ -45,6 +45,28 @@ for (const file of requiredFiles) {
   if (!trackedSet.has(file)) errors.push(`${file}: required documentation file is missing.`)
 }
 
+const pullRequestTemplate = await readFile(resolve(rootDir, '.github/pull_request_template.md'), 'utf8')
+for (const marker of [
+  '- [ ] I ran `pnpm verify`, or I explained why it does not apply.',
+  '- [ ] I updated versions, migration guidance, and compatibility notes when the public contract changed.',
+]) {
+  if (!pullRequestTemplate.includes(marker)) errors.push(`Pull request template is missing: ${marker}`)
+}
+
+const docsAppConfig = await readFile(resolve(rootDir, 'docs/app/app.config.ts'), 'utf8')
+for (const marker of [
+  'plausible: { scriptId: "XxT9ZOr0ZLg10B4KV40xH" }',
+  'feedback: { enabled: true }',
+  'https://lupinum.com/impressum',
+  'https://lupinum.com/datenschutz',
+]) {
+  if (!docsAppConfig.includes(marker)) errors.push(`Documentation app config is missing: ${marker}`)
+}
+const docsSiteConfig = await readFile(resolve(rootDir, 'docs/site.json'), 'utf8')
+if (!docsSiteConfig.includes('https://discord.gg/RPH6SeA36N')) {
+  errors.push('Documentation site config is missing the shared Discord link.')
+}
+
 for (const file of trackedFiles.filter(file => file.endsWith('.md') && !excludedFiles.has(file))) {
   const content = await readFile(resolve(rootDir, file), 'utf8')
   for (const { pattern, reason } of forbiddenPatterns) {
