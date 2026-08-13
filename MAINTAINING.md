@@ -150,7 +150,9 @@ outside of the Root Directory in the Build Step**. `docs/vercel.json` installs
 the locked workspace, builds the package, recreates the documentation Nuxt
 types, and then builds the site. Do not set an Output Directory override. It
 does not need a repository secret. Test the same path locally with
-`pnpm docs:build:vercel` before you merge.
+`pnpm docs:build:vercel` before you merge. Set the non-secret build environment
+variable `ENABLE_EXPERIMENTAL_COREPACK=1` for Production, Preview, and
+Development so Corepack can activate the pinned pnpm version.
 
 ## Audit external settings
 
@@ -187,6 +189,7 @@ Vercel must have:
 - The `nuxt-pdf-docs` project bound to this repository with root `docs`.
 - `main` as the production branch and pull request previews enabled.
 - `nuxt-pdf.lupinum.com` as the production domain.
+- `ENABLE_EXPERIMENTAL_COREPACK=1` in every deployment environment.
 
 ## Respond to a credential incident
 
