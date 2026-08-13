@@ -1,6 +1,6 @@
 {
   "name": "@lupinum/nuxt-pdf",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Author and render PDFs with Vue components in Nuxt",
   "keywords": [
     "nuxt",
