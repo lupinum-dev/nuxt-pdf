@@ -40,7 +40,7 @@ Use the exact Node and pnpm versions declared by the repository.
 ```bash
 pnpm install --frozen-lockfile
 pnpm dev
-pnpm check
+pnpm verify
 ```
 
 Use these focused commands during development:
@@ -55,9 +55,10 @@ Use these focused commands during development:
 - `pnpm test:workflows` checks the release privilege boundaries.
 - `pnpm docs:dev` runs the documentation site.
 - `pnpm docs:build` builds the documentation site.
+- `pnpm audit:all` audits the complete workspace.
 - `pnpm release:verify` creates and verifies the release candidate.
 
-Run the smallest relevant test while you work. Run `pnpm check` before you
+Run the smallest relevant test while you work. Run `pnpm verify` before you
 finish. Run `pnpm release:verify` for package or release-boundary changes.
 
 ## Branches and commits
@@ -69,8 +70,7 @@ Use `<type>/<short-description>` for branch names. Examples include
 `feat/pdf-bookmarks`, `fix/remote-image-timeout`, and
 `chore/release-automation`.
 
-Do not prefix a branch with an agent, model, vendor, tool, or username. Never
-use prefixes such as `agent/`, `codex/`, `claude/`, `cursor/`, or `copilot/`.
+Do not prefix a branch with an agent, model, vendor, tool, or username.
 
 ## Architecture boundaries
 
@@ -135,8 +135,7 @@ suggestion only after you verify it against the repository rules and tests.
 ## Change policy
 
 Use a short branch name that describes the work, such as
-`fix/font-containment`. Do not require an agent or tool prefix such as
-`codex/`, `claude/`, or `cursor/`.
+`fix/font-containment`. Do not require an agent or tool prefix.
 
 Prefer deletion and simplification. Do not add generic adapters, wrappers,
 configuration, caches, state machines, or compatibility paths for possible

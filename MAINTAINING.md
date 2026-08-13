@@ -36,7 +36,7 @@ reason and link to the relevant documentation.
 1. Create a short branch from current `main`.
 2. Change one concern.
 3. Run the smallest relevant test while you work.
-4. Run `pnpm check` before you finish.
+4. Run `pnpm verify` before you finish.
 5. Open a pull request with a Conventional Commit title.
 6. Resolve review threads and required checks.
 7. Squash the pull request into `main`.
@@ -148,23 +148,23 @@ For each update:
 
 1. Review the upstream release, provenance, and lifecycle-script changes.
 2. Keep `allowBuilds` limited to dependencies that require a build.
-3. Run `pnpm check`.
+3. Run `pnpm verify`.
 4. Run raster, performance, and compatibility jobs when the engine or Nuxt
    dependency family changes.
 5. Give every temporary override a reason and review date.
 
-Do not bypass the three-day dependency release-age policy for convenience.
+Do not bypass the 24-hour dependency release-age policy for convenience.
 
 ## Publish the documentation site
 
-Vercel deploys the `docs/` workspace as the `nuxt-pdf-docs` project. `main`
+Vercel deploys the documentation application as the `nuxt-pdf-docs` project. `main`
 is the production branch. Pull requests receive preview deployments. The
 production domain is `nuxt-pdf.lupinum.com`.
 
-The project uses the Nuxt framework preset and `docs` as its root directory.
-It does not need a repository secret. `docs/vercel.json` owns the exact pnpm
-installer because Vercel does not provide pnpm 11 by default. Test
-documentation locally with `pnpm docs:build` before you merge.
+The Vercel project uses the repository root. Root `vercel.json` installs the
+locked workspace, builds the package, recreates the documentation Nuxt types,
+and then builds the site. It does not need a repository secret. Test the same
+path locally with `pnpm docs:build:vercel` before you merge.
 
 ## Audit external settings
 

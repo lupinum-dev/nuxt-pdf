@@ -19,9 +19,16 @@
 > release, but a minor release can contain documented breaking changes before
 > version 1.0.
 
+## Why use Nuxt PDF?
+
 Nuxt PDF discovers Vue Single File Components in `pdfs/`. It renders these
 components on the Node server through a PDF layout engine. The client bundle
 does not contain the renderer or document templates.
+
+This approach gives you typed document props, reusable Vue components, stable
+server output, and PDF-specific test helpers in one Nuxt module.
+
+## When to use it
 
 Use Nuxt PDF for structured documents such as invoices, reports,
 certificates, tickets, and labels.
@@ -38,7 +45,7 @@ edit and sign an existing PDF.
 Nuxt 3, Node 20, browser rendering, and edge rendering are outside the current
 support boundary.
 
-## Install
+## Installation
 
 Install the module in a Nuxt 4 application:
 
@@ -54,7 +61,7 @@ export default defineNuxtConfig({
 })
 ```
 
-## Render a document
+## Quick start
 
 Create `pdfs/invoice.vue`:
 
@@ -125,7 +132,7 @@ Start Nuxt. Open these development routes:
 Restart `nuxt dev` after you first enable the module. This action generates
 the typed `#pdf` registry.
 
-## Authoring model
+## How it works
 
 PDF templates use typed props, interpolation, `v-if`, keyed `v-for`, slots,
 and local Vue components. Nuxt PDF provides document, page, text, image, link,
@@ -137,11 +144,6 @@ Load request data before the render and pass it through typed props.
 
 Nuxt PDF supports local images and fonts. Remote images are disabled until an
 operator configures an explicit HTTPS allowlist.
-
-Read the [documentation](https://nuxt-pdf.lupinum.com) for authoring, assets,
-links, bookmarks, tables of contents, testing, and the complete API reference.
-Read [CONFORMANCE.md](./CONFORMANCE.md) for the exact tested behavior and known
-limitations.
 
 ## Test a document
 
@@ -172,16 +174,24 @@ expectPdf(parsed)
 The test entry can also inspect links, bookmarks, page geometry, and raster
 baselines.
 
-## Develop Nuxt PDF
+## Documentation
+
+Read the [Nuxt PDF documentation](https://nuxt-pdf.lupinum.com) for authoring,
+assets, links, bookmarks, tables of contents, testing, and the complete API
+reference. Read [CONFORMANCE.md](./CONFORMANCE.md) for the exact tested behavior
+and known limitations.
+
+## Contributing and development
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm dev
-pnpm check
+pnpm verify
 ```
 
-Use `pnpm docs:dev` to run the documentation site. Use
-`pnpm release:verify` only for release preparation.
+Use `pnpm docs:dev` to run the documentation site. Run `pnpm docs:build` before
+you hand off a documentation change. Use `pnpm release:verify` only for release
+preparation.
 
 Read [CONTRIBUTING.md](./CONTRIBUTING.md) before you open a pull request.
 Maintainers use [MAINTAINING.md](./MAINTAINING.md) for release and recovery
@@ -191,9 +201,9 @@ procedures.
 
 - Read the [documentation](https://nuxt-pdf.lupinum.com).
 - Join the [Lupinum OSS Discord](https://discord.gg/RPH6SeA36N).
-- Open a [bug report](https://github.com/lupinum-dev/nuxt-pdf/issues/new?template=bug.yml)
+- Open a [bug report](https://github.com/lupinum-dev/nuxt-pdf/issues/new?template=bug.md)
   for a reproducible defect.
-- Open a [feature request](https://github.com/lupinum-dev/nuxt-pdf/issues/new?template=feature.yml)
+- Open a [feature request](https://github.com/lupinum-dev/nuxt-pdf/issues/new?template=proposal.md)
   before you plan a larger change.
 - Follow [SECURITY.md](./SECURITY.md) for a private vulnerability report.
 

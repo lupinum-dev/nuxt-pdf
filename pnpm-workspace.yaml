@@ -2,33 +2,13 @@ packages:
   - playground
   - docs
 
-minimumReleaseAge: 4320
+minimumReleaseAge: 1440
 minimumReleaseAgeStrict: true
-# Remove this list after 2026-08-15. These exact versions are part of the
-# reviewed Ginko Docs 0.3.0-rc.2 adoption and are still inside quarantine.
+# Reviewed first-party release candidates required by this sprint.
+# Remove these exceptions after 2026-08-15.
 minimumReleaseAgeExclude:
-  - '@iconify-json/lucide@1.2.123'
-  - '@iconify/collections@1.0.723'
   - '@lupinum/ginko-content@0.4.0-rc.1'
   - '@lupinum/ginko-docs@0.3.0-rc.3'
-  - '@nuxt/icon@2.5.0'
-  - '@nuxtjs/sitemap@8.3.4'
-  - '@shikijs/core@4.4.3'
-  - '@shikijs/engine-javascript@4.4.3'
-  - '@shikijs/engine-oniguruma@4.4.3'
-  - '@shikijs/langs@4.4.3'
-  - '@shikijs/primitive@4.4.3'
-  - '@shikijs/themes@4.4.3'
-  - '@shikijs/transformers@4.4.3'
-  - '@shikijs/types@4.4.3'
-  - 'nuxt-og-image@6.7.8'
-  - 'nuxt-site-config-kit@4.2.2'
-  - 'nuxt-site-config@4.2.2'
-  - 'nuxtseo-shared@5.3.12'
-  - 'reka-ui@2.10.3'
-  - 'shiki@4.4.3'
-  - 'site-config-stack@4.2.2'
-  - 'sitemapd@0.2.2'
 trustLockfile: false
 blockExoticSubdeps: true
 storeDir: .pnpm-store

@@ -29,11 +29,8 @@ Use the Node and pnpm versions in `package.json`.
 pnpm install --frozen-lockfile
 pnpm dev:prepare
 pnpm test
+pnpm verify
 ```
-
-Run `pnpm check` before you submit a pull request. Run
-`pnpm release:verify` when you change package metadata, exports, release
-scripts, or release workflows.
 
 ## Keep the change focused
 

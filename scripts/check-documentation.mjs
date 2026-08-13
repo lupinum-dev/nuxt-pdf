@@ -87,6 +87,35 @@ for (const [file, content] of [['README.md', readme], ['SECURITY.md', security],
 if (!readme.includes('https://discord.gg/RPH6SeA36N')) errors.push('README.md: shared Discord link is missing.')
 if (!readme.includes('https://nuxt-pdf.lupinum.com')) errors.push('README.md: canonical documentation URL is missing.')
 
+const readmeHeadings = [...readme.matchAll(/^## (.+)$/gmu)].map(match => match[1])
+const expectedReadmeHeadings = [
+  'Why use Nuxt PDF?',
+  'When to use it',
+  'Requirements',
+  'Installation',
+  'Quick start',
+  'How it works',
+  'Test a document',
+  'Documentation',
+  'Contributing and development',
+  'Support and security',
+  'License',
+]
+if (JSON.stringify(readmeHeadings) !== JSON.stringify(expectedReadmeHeadings)) {
+  errors.push(`README.md: public sections are out of order: ${readmeHeadings.join(' -> ')}`)
+}
+if ((readme.match(/<h1 align="center">/gu) ?? []).length !== 1 || /^# /mu.test(readme)) {
+  errors.push('README.md: use one centered HTML H1 and no Markdown H1.')
+}
+if (!/<img [^>]*width="128"/u.test(readme)) errors.push('README.md: centered 128 px product icon is missing.')
+for (const marker of ['img.shields.io/npm/v/', 'actions/workflows/ci.yml', 'license-MIT']) {
+  if (!readme.includes(marker)) errors.push(`README.md: badge marker ${marker} is missing.`)
+}
+if (!readme.includes('@lupinum/nuxt-pdf')) errors.push('README.md: current package name is missing.')
+if (/\b(?:TODO|TBD|lorem ipsum|placeholder)\b/iu.test(readme)) {
+  errors.push('README.md: placeholder text is not allowed.')
+}
+
 if (errors.length > 0) {
   console.error(errors.join('\n'))
   process.exitCode = 1

@@ -13,3 +13,11 @@
 - [ ] I inspected every changed raster baseline.
 - [ ] I kept this pull request focused on one concern.
 - [ ] I did not include credentials, customer documents, or generated output.
+
+## Release note
+
+<!-- State the changelog entry. Write "None" and explain why when no package release note is required. -->
+
+## Risk
+
+<!-- State the main failure mode and the evidence that controls it. -->
