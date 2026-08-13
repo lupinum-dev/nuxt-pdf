@@ -183,7 +183,7 @@ GitHub must have:
   versioned repository documentation remains authoritative.
 - A tag ruleset that blocks deletion and force updates for `v*` tags.
 - An `npm` environment that permits only `main`, requires a maintainer review,
-  and does not permit administrator bypass.
+  and uses administrator bypass only for documented incident recovery.
 - Private vulnerability reporting, secret scanning, and push protection.
 - CodeQL Default Setup for JavaScript and TypeScript, plus automated security
   fixes.
