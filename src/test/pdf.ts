@@ -487,7 +487,6 @@ async function withPdfDocument<Result>(
   const loadingTask = pdfJs.getDocument({
     CanvasFactory: NapiCanvasFactory,
     data: copyPdfData(data),
-    isEvalSupported: false,
     stopAtErrors: true,
     useWorkerFetch: false,
     verbosity: 0,

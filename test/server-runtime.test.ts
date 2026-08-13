@@ -152,7 +152,6 @@ const readPdfMetadata = async (
   const pdfJs = await import('pdfjs-dist/legacy/build/pdf.mjs')
   const task = pdfJs.getDocument({
     data: Uint8Array.from(bytes),
-    isEvalSupported: false,
     stopAtErrors: true,
     useWorkerFetch: false,
     verbosity: 0,
