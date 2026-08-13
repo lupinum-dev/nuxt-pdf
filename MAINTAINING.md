@@ -176,6 +176,8 @@ GitHub must have:
 - A `main` ruleset that blocks deletion and force pushes, requires linear
   history and resolved review threads, and requires all eight CI jobs.
 - Squash merge as the only merge method and automatic branch deletion.
+- GitHub Actions restricted to full commit-SHA references, with default
+  workflow permissions read-only.
 - Issues enabled for public reports, with Wikis and Discussions disabled so
   versioned repository documentation remains authoritative.
 - A tag ruleset that blocks deletion and force updates for `v*` tags.
