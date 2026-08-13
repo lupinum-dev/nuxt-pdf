@@ -90,10 +90,7 @@ jobs:
           test "${tarballs[0]}" = "$tarball"
 
           if [[ "$package_version" == *-* ]]; then
-            dist_tag="${package_version#*-}"
-            dist_tag="${dist_tag%%.*}"
-            [[ "$dist_tag" =~ ^[a-z][a-z0-9-]*$ ]]
-            test "$dist_tag" != latest
+            dist_tag=next
           else
             dist_tag=latest
           fi

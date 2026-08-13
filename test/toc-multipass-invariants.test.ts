@@ -157,12 +157,13 @@ describe('multi-pass state isolation', () => {
 const readOutline = async (bytes: Uint8Array): Promise<unknown> => {
   installPdfCanvasGlobals()
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
-  const doc = await pdfjs.getDocument({ data: Uint8Array.from(bytes), useWorkerFetch: false, verbosity: 0 }).promise
+  const task = pdfjs.getDocument({ data: Uint8Array.from(bytes), useWorkerFetch: false, verbosity: 0 })
+  const doc = await task.promise
   interface OutlineItem { title: string, items?: OutlineItem[] }
   const simplify = (items: OutlineItem[]): unknown =>
     (items ?? []).map(i => ({ title: i.title, children: simplify(i.items ?? []) }))
   const result = simplify((await doc.getOutline()) as unknown as OutlineItem[])
-  await doc.destroy()
+  await task.destroy()
   return result
 }
 
@@ -330,10 +331,11 @@ describe('page-spanning destination anchoring', () => {
 
     installPdfCanvasGlobals()
     const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
-    const doc = await pdfjs.getDocument({ data: Uint8Array.from(result.bytes), useWorkerFetch: false, verbosity: 0 }).promise
+    const task = pdfjs.getDocument({ data: Uint8Array.from(result.bytes), useWorkerFetch: false, verbosity: 0 })
+    const doc = await task.promise
     const dest = await doc.getDestination('big') as [{ num: number, gen: number }]
     const destPage = (await doc.getPageIndex(dest[0])) + 1
-    await doc.destroy()
+    await task.destroy()
     expect(destPage).toBe(startPage)
   })
 })

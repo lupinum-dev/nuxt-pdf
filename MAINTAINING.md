@@ -106,8 +106,7 @@ Use `npm stage reject <stage-id>` when the content, version, or dist-tag is
 wrong. Approval and rejection require a human second factor.
 
 The workflow derives the dist-tag from the package version. A stable version
-uses `latest`. A prerelease version uses its first prerelease identifier. For
-example, `0.4.0-next.1` uses `next`.
+uses `latest`. Every prerelease version uses the shared `next` tag.
 
 Do not rebuild after the release artifact is created. The OIDC job downloads
 the retained tarball. It does not check out code, install dependencies, or run
