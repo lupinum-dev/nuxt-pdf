@@ -120,25 +120,6 @@ Changelogen uses the latest immutable `v*` tag as its starting point. Do not
 prepare the next release until the current npm version has a matching tag and
 GitHub Release.
 
-## Bootstrap the package
-
-npm staged publishing requires an existing package. Use this procedure only
-for the first release of a new Lupinum package:
-
-1. Run the repository release workflow from protected `main` with staging
-   disabled.
-2. Download and verify the retained release artifact on a trusted workstation.
-3. Inspect the tarball file list and packed `package.json`.
-4. Publish that exact tarball with interactive WebAuthn:
-   `npm publish <file>.tgz --access public --ignore-scripts`.
-5. Configure the npm trusted publisher for the exact organization,
-   repository, release workflow filename, and `npm` environment.
-6. Permit only `npm stage publish`.
-7. Require 2FA for package changes and disallow publication tokens.
-8. Revoke any token that can publish the package.
-
-Do not use this procedure after trusted publishing is active.
-
 ## Roll back a defective release
 
 Do not unpublish a release unless npm policy and a confirmed security incident
