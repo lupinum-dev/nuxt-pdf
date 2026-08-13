@@ -4,6 +4,32 @@ All notable changes to `@lupinum/nuxt-pdf` are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.3.1 - 2026-08-13
+
+### Fixed
+
+- Prepare the Nuxt type files before clean package and documentation builds.
+- Normalize compiler and package paths on Windows.
+- Preserve literal title markers in public documentation.
+
+### Changed
+
+- Move the package, repository, documentation, contribution, and support
+  surfaces to the shared Lupinum standard.
+- Update the documentation site to Ginko Content `0.4.0-rc.2` and Ginko Docs
+  `0.3.0-rc.5`.
+- Add privacy-friendly Plausible analytics and page feedback to the
+  documentation site.
+- Stabilize the table-of-contents raster evidence across supported runners.
+
+### Security
+
+- Replace source publishing with a protected workflow that certifies one
+  immutable tarball, publishes it through npm trusted publishing with
+  provenance, and creates the matching GitHub release.
+- Add full dependency audits, CodeQL, package previews, and explicit
+  repository policy checks.
+
 ## 0.3.0 - 2026-08-11
 
 ### Added
