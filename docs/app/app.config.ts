@@ -13,6 +13,10 @@ export default {
       },
       logo: { light: "/logo.svg", dark: "/logo-dark.svg" },
       docsSidebarSwitcher: "tabs",
+      legalLinks: [
+        { label: { en: "Legal notice" }, to: "https://lupinum.com/impressum" },
+        { label: { en: "Privacy" }, to: "https://lupinum.com/datenschutz" },
+      ],
     },
     social: { github: site.repository, discord: site.discord },
     repository: {
