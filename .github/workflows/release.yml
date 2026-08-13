@@ -71,7 +71,7 @@ jobs:
         with:
           node-version: 24.18.0
           registry-url: https://registry.npmjs.org
-      - uses: actions/download-artifact@018cc2cfed7d10b7e69b5a2f4e35f8240c7fc5a3 # v6
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: npm-release-evidence
           path: release-artifacts
@@ -119,7 +119,7 @@ jobs:
       actions: read
       contents: write
     steps:
-      - uses: actions/download-artifact@018cc2cfed7d10b7e69b5a2f4e35f8240c7fc5a3 # v6
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: npm-release-evidence
           path: release-artifacts
