@@ -36,9 +36,9 @@ Treat these defects as security-sensitive:
 
 ## Publication security
 
-The release workflow uses npm trusted publishing with stage-only permission.
-It does not use a long-lived npm publication token. A maintainer must inspect
-and approve each npm stage with WebAuthn or another permitted second factor.
+The release workflow uses npm trusted publishing with publish permission. It
+does not use a long-lived npm publication token. A maintainer must inspect the
+certified artifact and approve the protected `npm` environment deployment.
 
-Agents and normal CI jobs must not publish packages, approve npm stages, move
-dist-tags, or create release tags.
+Agents and normal CI jobs must not publish packages, approve protected
+deployments, move dist-tags, or create release tags.

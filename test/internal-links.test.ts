@@ -74,7 +74,8 @@ const destinationPageNumbers = async (
 ): Promise<Record<string, number>> => {
   installPdfCanvasGlobals()
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
-  const doc = await pdfjs.getDocument({ data: Uint8Array.from(bytes), useWorkerFetch: false, verbosity: 0 }).promise
+  const task = pdfjs.getDocument({ data: Uint8Array.from(bytes), useWorkerFetch: false, verbosity: 0 })
+  const doc = await task.promise
   try {
     const pages: Record<string, number> = {}
     for (const id of ids) {
@@ -85,7 +86,7 @@ const destinationPageNumbers = async (
     return pages
   }
   finally {
-    await doc.destroy()
+    await task.destroy()
   }
 }
 

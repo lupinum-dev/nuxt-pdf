@@ -36,6 +36,18 @@ Use these terms with the specified meaning:
 Do not use `artifact`, `build`, `release`, and `package` as interchangeable
 terms.
 
+## Structure public READMEs
+
+Center the 128 px product icon, product name, one-sentence value proposition,
+and npm, CI, and MIT badges. State the release status when the package is not
+stable.
+
+Then explain why and when to use the product, requirements, installation, the
+smallest useful example, product concepts, documentation, contribution,
+support, security, and license. Explain user outcomes before internal
+architecture. Keep fixture, font, baseline, and proof READMEs technical and
+unbranded.
+
 ## Structure each page
 
 - Put `title` and `description` in frontmatter.

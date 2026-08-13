@@ -24,6 +24,7 @@ accepted design decision.
 
 - `package.json` owns the package name, version, exports, and command surface.
 - `pnpm-lock.yaml` owns resolved dependencies.
+- `changelog.config.json` owns changelog grouping and presentation.
 - `docs/site.json` owns documentation identity.
 - `src/` owns runtime behavior and public types.
 - `API_REPORT.md` is derived from built declarations.
@@ -39,7 +40,7 @@ Use the exact Node and pnpm versions declared by the repository.
 ```bash
 pnpm install --frozen-lockfile
 pnpm dev
-pnpm check
+pnpm verify
 ```
 
 Use these focused commands during development:
@@ -51,12 +52,25 @@ Use these focused commands during development:
 - `pnpm test:production` checks the production Nuxt boundary.
 - `pnpm test:serverless` checks the serverless build boundary.
 - `pnpm test:raster` compares reviewed PDF images.
+- `pnpm test:workflows` checks the release privilege boundaries.
 - `pnpm docs:dev` runs the documentation site.
 - `pnpm docs:build` builds the documentation site.
+- `pnpm audit:all` audits the complete workspace.
 - `pnpm release:verify` creates and verifies the release candidate.
 
-Run the smallest relevant test while you work. Run `pnpm check` before you
+Run the smallest relevant test while you work. Run `pnpm verify` before you
 finish. Run `pnpm release:verify` for package or release-boundary changes.
+
+## Branches and commits
+
+Use a short Conventional Commit title for each pull request. The squash commit
+on `main` uses that title, and Changelogen uses it to prepare release notes.
+
+Use `<type>/<short-description>` for branch names. Examples include
+`feat/pdf-bookmarks`, `fix/remote-image-timeout`, and
+`chore/release-automation`.
+
+Do not prefix a branch with an agent, model, vendor, tool, or username.
 
 ## Architecture boundaries
 
@@ -101,7 +115,7 @@ match the controlled-English profile.
 Agents must not:
 
 - Publish an npm package.
-- Approve or reject an npm stage.
+- Approve an npm environment deployment.
 - Move an npm dist-tag.
 - Create or push a release tag.
 - Change npm trusted-publisher settings.
@@ -110,11 +124,18 @@ Agents must not:
 Agents can prepare and verify a release artifact. A human maintainer performs
 all registry approvals and external configuration.
 
+Only the protected `release.yml` workflow can publish the certified tarball and
+create the immutable release tag and GitHub Release. Agents must not reproduce
+that operation locally.
+
+Use the issue templates for public reports. Send security reports through GitHub
+private vulnerability reporting. CodeRabbit comments are advisory. Apply a
+suggestion only after you verify it against the repository rules and tests.
+
 ## Change policy
 
 Use a short branch name that describes the work, such as
-`fix/font-containment`. Do not require an agent or tool prefix such as
-`codex/`, `claude/`, or `cursor/`.
+`fix/font-containment`. Do not require an agent or tool prefix.
 
 Prefer deletion and simplification. Do not add generic adapters, wrappers,
 configuration, caches, state machines, or compatibility paths for possible

@@ -16,6 +16,11 @@ We are most likely to accept:
 Open an issue before you start a feature, a breaking change, or a large
 refactor. This step helps you prevent work that the project cannot accept.
 
+Use the bug form for a reproducible defect. Use the feature form to describe
+the user problem before you propose an implementation. Ask usage questions in
+the [Lupinum OSS Discord](https://discord.gg/RPH6SeA36N). Follow
+[SECURITY.md](./SECURITY.md) for a private vulnerability report.
+
 ## Prepare the repository
 
 Use the Node and pnpm versions in `package.json`.
@@ -24,11 +29,8 @@ Use the Node and pnpm versions in `package.json`.
 pnpm install --frozen-lockfile
 pnpm dev:prepare
 pnpm test
+pnpm verify
 ```
-
-Run `pnpm check` before you submit a pull request. Run
-`pnpm release:verify` when you change package metadata, exports, release
-scripts, or release workflows.
 
 ## Keep the change focused
 
@@ -45,8 +47,16 @@ scripts, or release workflows.
 Do not add a second document schema, a second layout engine, HTML printing,
 generic adapters, or compatibility aliases without an accepted design issue.
 
-Use a focused conventional commit prefix, for example `fix(runtime):`,
-`feat(test):`, `docs:`, or `ci:`.
+Use a focused Conventional Commit title for the pull request, for example
+`fix(runtime): reject invalid images`, `feat(test): add bookmark assertions`,
+`docs: explain font loading`, or `ci: verify release notes`. The repository
+uses the squash commit title to generate its changelog.
+
+Use a descriptive `<type>/<short-description>` branch name. Do not include an
+AI tool, model, vendor, or username in the branch name.
+
+Complete the pull request template. CodeRabbit can add advisory review
+comments. A maintainer decides which comments require a change.
 
 ## Versioning
 

@@ -7,11 +7,17 @@ const rootDir = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const requiredFiles = [
   'AGENTS.md',
   'CLAUDE.md',
+  'CODE_OF_CONDUCT.md',
   'CONTRIBUTING.md',
   'LICENSE',
   'MAINTAINING.md',
   'README.md',
   'SECURITY.md',
+  '.github/ISSUE_TEMPLATE/bug.md',
+  '.github/ISSUE_TEMPLATE/config.yml',
+  '.github/ISSUE_TEMPLATE/documentation.md',
+  '.github/ISSUE_TEMPLATE/proposal.md',
+  '.github/pull_request_template.md',
   'docs/WRITING.md',
 ]
 const excludedFiles = new Set([
@@ -37,6 +43,28 @@ const errors = []
 
 for (const file of requiredFiles) {
   if (!trackedSet.has(file)) errors.push(`${file}: required documentation file is missing.`)
+}
+
+const pullRequestTemplate = await readFile(resolve(rootDir, '.github/pull_request_template.md'), 'utf8')
+for (const marker of [
+  '- [ ] I ran `pnpm verify`, or I explained why it does not apply.',
+  '- [ ] I updated versions, migration guidance, and compatibility notes when the public contract changed.',
+]) {
+  if (!pullRequestTemplate.includes(marker)) errors.push(`Pull request template is missing: ${marker}`)
+}
+
+const docsAppConfig = await readFile(resolve(rootDir, 'docs/app/app.config.ts'), 'utf8')
+for (const marker of [
+  'plausible: { scriptId: "XxT9ZOr0ZLg10B4KV40xH" }',
+  'feedback: { enabled: true }',
+  'https://lupinum.com/impressum',
+  'https://lupinum.com/datenschutz',
+]) {
+  if (!docsAppConfig.includes(marker)) errors.push(`Documentation app config is missing: ${marker}`)
+}
+const docsSiteConfig = JSON.parse(await readFile(resolve(rootDir, 'docs/site.json'), 'utf8'))
+if (docsSiteConfig.discord !== 'https://discord.gg/RPH6SeA36N') {
+  errors.push('Documentation site config is missing the shared Discord link.')
 }
 
 for (const file of trackedFiles.filter(file => file.endsWith('.md') && !excludedFiles.has(file))) {
@@ -85,6 +113,35 @@ for (const [file, content] of [['README.md', readme], ['SECURITY.md', security],
 }
 if (!readme.includes('https://discord.gg/RPH6SeA36N')) errors.push('README.md: shared Discord link is missing.')
 if (!readme.includes('https://nuxt-pdf.lupinum.com')) errors.push('README.md: canonical documentation URL is missing.')
+
+const readmeHeadings = [...readme.matchAll(/^## (.+)$/gmu)].map(match => match[1])
+const expectedReadmeHeadings = [
+  'Why use Nuxt PDF?',
+  'When to use it',
+  'Requirements',
+  'Installation',
+  'Quick start',
+  'How it works',
+  'Test a document',
+  'Documentation',
+  'Contributing and development',
+  'Support and security',
+  'License',
+]
+if (JSON.stringify(readmeHeadings) !== JSON.stringify(expectedReadmeHeadings)) {
+  errors.push(`README.md: public sections are out of order: ${readmeHeadings.join(' -> ')}`)
+}
+if ((readme.match(/<h1 align="center">/gu) ?? []).length !== 1 || /^# /mu.test(readme)) {
+  errors.push('README.md: use one centered HTML H1 and no Markdown H1.')
+}
+if (!/<img [^>]*width="128"/u.test(readme)) errors.push('README.md: centered 128 px product icon is missing.')
+for (const marker of ['img.shields.io/npm/v/', 'actions/workflows/ci.yml', 'license-MIT']) {
+  if (!readme.includes(marker)) errors.push(`README.md: badge marker ${marker} is missing.`)
+}
+if (!readme.includes('@lupinum/nuxt-pdf')) errors.push('README.md: current package name is missing.')
+if (/\b(?:TODO|TBD|lorem ipsum|placeholder)\b/iu.test(readme)) {
+  errors.push('README.md: placeholder text is not allowed.')
+}
 
 if (errors.length > 0) {
   console.error(errors.join('\n'))

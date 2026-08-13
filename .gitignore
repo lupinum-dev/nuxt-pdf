@@ -2,6 +2,7 @@
 node_modules
 .pnpm-store
 release-artifacts
+.package-preview
 
 # Logs
 *.log*

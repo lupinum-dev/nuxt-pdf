@@ -370,7 +370,7 @@ const assertPdfSemantics = async (bytes) => {
     assert(text.includes('Page 1 of 1'), 'PDF is missing dynamic page text.')
   }
   finally {
-    await document.destroy()
+    await loadingTask.destroy()
   }
 }
 

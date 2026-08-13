@@ -82,7 +82,7 @@ async function checkSnippet(file, fence) {
 }
 
 function checkVueSnippet(source, filename) {
-  const completeSfc = /<(?:script|template)(?:\s|>)/.test(source)
+  const completeSfc = ['script', 'template'].some(tag => containsOpeningTag(source, tag))
   const sfcSource = completeSfc ? source : `<template>\n${source}\n</template>`
   const { descriptor, errors } = parse(sfcSource, { filename })
 
@@ -105,6 +105,21 @@ function checkVueSnippet(source, filename) {
       throw new Error(result.errors.map(formatError).join('; '))
     }
   }
+}
+
+function containsOpeningTag(source, tag) {
+  const marker = `<${tag}`
+  let offset = source.indexOf(marker)
+
+  while (offset !== -1) {
+    const next = source[offset + marker.length]
+    if (next === '>' || next === ' ' || next === '\t' || next === '\r' || next === '\n') {
+      return true
+    }
+    offset = source.indexOf(marker, offset + marker.length)
+  }
+
+  return false
 }
 
 async function findMarkdownFiles(directory) {

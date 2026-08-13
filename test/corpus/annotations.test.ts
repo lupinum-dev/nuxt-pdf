@@ -57,7 +57,6 @@ const withPdf = async <Result>(
   const pdfJs = await pdfJsPromise
   const task = pdfJs.getDocument({
     data: Uint8Array.from(bytes),
-    isEvalSupported: false,
     stopAtErrors: true,
     useWorkerFetch: false,
     verbosity: 0,
