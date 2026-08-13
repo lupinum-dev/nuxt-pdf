@@ -199,6 +199,9 @@ GitHub must have:
 - An `npm` environment that permits only `main`, requires a maintainer review,
   and does not permit administrator bypass.
 - Private vulnerability reporting, secret scanning, and push protection.
+- CodeQL Default Setup for JavaScript and TypeScript, plus automated security
+  fixes.
+- Renovate as the routine dependency updater.
 - CodeRabbit in advisory mode. It must not be a required check.
 
 npm must have:
