@@ -162,8 +162,9 @@ is the production branch. Pull requests receive preview deployments. The
 production domain is `nuxt-pdf.lupinum.com`.
 
 The project uses the Nuxt framework preset and `docs` as its root directory.
-It does not need a repository secret. Test documentation locally with
-`pnpm docs:build` before you merge.
+It does not need a repository secret. `docs/vercel.json` owns the exact pnpm
+installer because Vercel does not provide pnpm 11 by default. Test
+documentation locally with `pnpm docs:build` before you merge.
 
 ## Audit external settings
 
