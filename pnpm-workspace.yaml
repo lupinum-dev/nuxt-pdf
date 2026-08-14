@@ -4,11 +4,6 @@ packages:
 
 minimumReleaseAge: 1440
 minimumReleaseAgeStrict: true
-# Reviewed first-party releases required by the docs app.
-# Remove these exceptions after 2026-08-14 17:36 Europe/Vienna.
-minimumReleaseAgeExclude:
-  - '@lupinum/ginko-content@0.4.0-rc.2'
-  - '@lupinum/ginko-docs@0.3.0-rc.5'
 trustLockfile: false
 blockExoticSubdeps: true
 storeDir: .pnpm-store
