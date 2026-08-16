@@ -65,6 +65,25 @@ try {
   const reportPath = join(outputDirectory, 'pack-report.json')
   await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`)
 
+  const sourceSha = process.env.GITHUB_SHA
+    ?? execFileSync('git', ['rev-parse', 'HEAD'], { cwd: rootDir, encoding: 'utf8' }).trim()
+  if (!/^[a-f0-9]{40}$/u.test(sourceSha)) {
+    throw new Error('The release artifact requires an exact 40-character source commit.')
+  }
+
+  const tarballBytes = await readFile(tarball)
+  const manifestPath = join(outputDirectory, 'release-artifact.json')
+  await writeFile(manifestPath, `${JSON.stringify({
+    schemaVersion: 1,
+    packageName: report.name,
+    packageVersion: report.version,
+    channel: report.version.includes('-') ? 'next' : 'latest',
+    commit: sourceSha,
+    tarball: basename(report.filename),
+    sha1: createHash('sha1').update(tarballBytes).digest('hex'),
+    sha256: createHash('sha256').update(tarballBytes).digest('hex'),
+  }, null, 2)}\n`)
+
   const env = {
     ...process.env,
     NUXT_PDF_PACK_REPORT: reportPath,
@@ -102,7 +121,7 @@ try {
     stdio: 'inherit',
   })
 
-  const evidence = [tarball, reportPath, sbomPath, licensesPath]
+  const evidence = [tarball, reportPath, manifestPath, sbomPath, licensesPath]
   const checksums = []
   for (const path of evidence) {
     const checksum = createHash('sha256').update(await readFile(path)).digest('hex')

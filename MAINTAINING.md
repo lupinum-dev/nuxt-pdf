@@ -81,8 +81,10 @@ documentation change.
    version.
 4. Run `pnpm release:verify`.
 5. Open and merge the release preparation pull request.
-6. Start `release.yml` from `main` with the exact package version.
-7. Download the `npm-release-evidence` artifact. Verify `SHA256SUMS`, the
+6. Wait for the exact merged commit's `ci` workflow to succeed. Start
+   `release.yml` from `main` with the exact package version. The workflow
+   finds the certified artifact for that commit.
+7. Download the `release-candidate` artifact. Verify `SHA256SUMS`, the
    package file list, license inventory, SBOM, and packed consumer result.
 8. Approve the protected `npm` environment deployment after you inspect the
    retained artifact.
@@ -95,6 +97,13 @@ uses `latest`. Every prerelease version uses the shared `next` tag.
 Do not rebuild after the release artifact is created. The OIDC job downloads
 the retained tarball. It does not check out code, install dependencies, or run
 repository scripts.
+
+If npm already contains the same version, rerun the current workflow only when
+the registry SHA-1 matches the certified tarball and npm exposes provenance.
+The workflow repairs a missing matching GitHub release without republishing.
+Different bytes always stop the release. Dispatch a new run from updated
+`main` after a workflow fix. Do not rerun an old failed run because it keeps
+the old workflow definition.
 
 Do not use `changelogen --release`, `--push`, or `--publish`. Those options
 bypass the protected pull request, retained artifact, and trusted-publication

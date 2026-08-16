@@ -55,8 +55,17 @@ assert(
   !ci.includes('id-token: write') && !ci.includes('contents: write'),
   'Normal CI must remain read-only.',
 )
+assert(ci.includes('node scripts/verify-action-shas.mjs'), 'CI must verify pinned Action commits upstream.')
 
 const publishJob = extractJob(release, 'publish')
+const verifyCandidateJob = extractJob(release, 'verify-candidate')
+assert(release.includes('head_sha=$GITHUB_SHA'), 'The release workflow must find successful CI for the exact main commit.')
+assert(verifyCandidateJob.includes('actions: read'), 'Candidate verification must read the selected CI artifact.')
+assert(verifyCandidateJob.includes('release-candidate'), 'Candidate verification must download the main CI artifact.')
+assert(verifyCandidateJob.includes('verified-release'), 'Candidate verification must retain the same verified bytes.')
+assert(!verifyCandidateJob.includes('actions/checkout'), 'Candidate verification must not check out source.')
+assert(!/\bpnpm\b/u.test(verifyCandidateJob), 'Candidate verification must not rebuild the package.')
+assert(!/npm (?:install|ci|exec|run)\b/u.test(verifyCandidateJob), 'Candidate verification must not install or run package code.')
 assert(publishJob.includes('environment: npm'), 'The npm publish job must use the npm environment.')
 assert(publishJob.includes('id-token: write'), 'The npm publish job must request OIDC authority.')
 assert(!publishJob.includes('actions/checkout'), 'The npm publish job must not check out repository code.')
@@ -71,6 +80,8 @@ assert(
   publishJob.includes('npm publish "$tarball"'),
   'The npm publish job must publish only the validated shell variable.',
 )
+assert(publishJob.includes('dist.shasum'), 'The npm publish job must verify exact registry bytes.')
+assert(publishJob.includes('dist.attestations'), 'The npm publish job must require provenance.')
 assert(
   extractRunSources(publishJob).every(run => !run.includes('${{')),
   'The npm publish job must not interpolate GitHub expressions into shell source.',
@@ -88,6 +99,7 @@ assert(
 assert(githubReleaseJob.includes('needs: publish'), 'The GitHub release must wait for npm publication.')
 assert(githubReleaseJob.includes('sha256sum --check SHA256SUMS'), 'The GitHub release must verify retained checksums.')
 assert(githubReleaseJob.includes('gh release create'), 'The protected workflow must create the GitHub release.')
+assert(githubReleaseJob.includes('gh release edit'), 'The protected workflow must safely repair an existing matching release.')
 
 if (errors.length > 0) {
   console.error(errors.join('\n'))

@@ -15,11 +15,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
-    name: Build and verify
+  verify-candidate:
+    name: Verify certified artifact
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 15
     permissions:
+      actions: read
       contents: read
     steps:
       - name: Require main
@@ -29,38 +30,41 @@ jobs:
         run: |
           test "$RELEASE_REF" = refs/heads/main
           node -e "if (!/^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$/.test(process.env.RELEASE_VERSION)) throw new Error('Invalid release version')"
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: 24.18.0
-      - name: Enable the pinned package manager
-        run: corepack enable pnpm && corepack prepare pnpm@11.21.0 --activate
-      - run: pnpm install --frozen-lockfile
-      - name: Build, test, and retain the verified package
-        run: pnpm release:verify
+      - name: Find successful CI for this commit
+        id: ci
         env:
-          NODE_OPTIONS: --max-old-space-size=4096
-      - name: Verify version and retain release notes
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&event=push&status=completed&per_page=20" --jq '.workflow_runs | map(select(.conclusion == "success" and .head_branch == "main")) | first | .id // empty')"
+          test -n "$run_id"
+          printf 'run-id=%s\n' "$run_id" >> "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: release-candidate
+          path: release-artifacts
+          run-id: ${{ steps.ci.outputs.run-id }}
+          github-token: ${{ github.token }}
+      - name: Verify the exact candidate
         env:
           RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_SHA: ${{ github.sha }}
         run: |
-          test "$(node -p "require('./package.json').version")" = "$RELEASE_VERSION"
-          node scripts/write-release-notes.mjs "$RELEASE_VERSION" release-artifacts/release-notes.md
-          test -s release-artifacts/release-notes.md
+          cd release-artifacts
+          sha256sum --check SHA256SUMS
+          node -e "const fs=require('node:fs');const crypto=require('node:crypto');const m=require('./release-artifact.json');const b=fs.readFileSync(m.tarball);if(m.schemaVersion!==1||m.packageName!=='@lupinum/nuxt-pdf'||m.packageVersion!==process.env.RELEASE_VERSION||m.commit!==process.env.RELEASE_SHA||m.channel!==(m.packageVersion.includes('-')?'next':'latest')||m.sha1!==crypto.createHash('sha1').update(b).digest('hex')||m.sha256!==crypto.createHash('sha256').update(b).digest('hex'))throw new Error('Artifact failed exact-source validation')"
+          test -s release-notes.md
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: npm-release-evidence
+          name: verified-release
           path: release-artifacts
           if-no-files-found: error
           retention-days: 14
 
   publish:
     name: Publish to npm
-    needs: build
+    needs: verify-candidate
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 30
     environment: npm
     permissions:
       actions: read
@@ -73,7 +77,7 @@ jobs:
           registry-url: https://registry.npmjs.org
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
-          name: npm-release-evidence
+          name: verified-release
           path: release-artifacts
       - name: Verify the inert release evidence
         working-directory: release-artifacts
@@ -85,30 +89,40 @@ jobs:
           npm_minor_patch="${npm_version#*.}"
           npm_minor="${npm_minor_patch%%.*}"
           test "$npm_major" -gt 11 || { test "$npm_major" -eq 11 && test "$npm_minor" -ge 15; }
-      - name: Publish with npm trusted publishing
+      - name: Publish or verify the exact package
         working-directory: release-artifacts
         env:
           RELEASE_VERSION: ${{ inputs.version }}
         run: |
           mapfile -t tarballs < <(find . -maxdepth 1 -type f -name '*.tgz' -print)
           test "${#tarballs[@]}" -eq 1
-
           package_name="$(tar -xOf "${tarballs[0]}" package/package.json | node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => process.stdout.write(JSON.parse(input).name))")"
           package_version="$(tar -xOf "${tarballs[0]}" package/package.json | node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => process.stdout.write(JSON.parse(input).version))")"
           test "$package_name" = '@lupinum/nuxt-pdf'
-          [[ "$package_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+([.-][a-zA-Z0-9]+)*)?$ ]]
           test "$package_version" = "$RELEASE_VERSION"
-
           tarball="./lupinum-nuxt-pdf-${package_version}.tgz"
           test "${tarballs[0]}" = "$tarball"
-
-          if [[ "$package_version" == *-* ]]; then
-            dist_tag=next
-          else
-            dist_tag=latest
+          if [[ "$package_version" == *-* ]]; then dist_tag=next; else dist_tag=latest; fi
+          expected_sha1="$(sha1sum "$tarball" | cut -d' ' -f1)"
+          published_sha1="$(npm view "$package_name@$package_version" dist.shasum --json 2>/dev/null | tr -d '"' || true)"
+          if [[ -n "$published_sha1" && "$published_sha1" != "$expected_sha1" ]]; then
+            echo 'npm already contains different bytes for this version.' >&2
+            exit 1
           fi
-
-          npm publish "$tarball" --provenance --access public --tag "$dist_tag" --ignore-scripts
+          if [[ -z "$published_sha1" ]]; then
+            npm publish "$tarball" --provenance --access public --tag "$dist_tag" --ignore-scripts
+          fi
+          for _ in $(seq 1 240); do
+            published_sha1="$(npm view "$package_name@$package_version" dist.shasum --json 2>/dev/null | tr -d '"' || true)"
+            provenance="$(npm view "$package_name@$package_version" dist.attestations --json 2>/dev/null | node -e "let input='';process.stdin.on('data',c=>input+=c);process.stdin.on('end',()=>{try{const p=JSON.parse(input);process.stdout.write(p?.provenance?.predicateType?'yes':'')}catch{}})" || true)"
+            active_tag="$(npm view "$package_name" "dist-tags.$dist_tag" --json 2>/dev/null | tr -d '"' || true)"
+            if [[ "$published_sha1" = "$expected_sha1" && "$provenance" = yes && "$active_tag" = "$package_version" ]]; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo 'npm did not expose the exact package, provenance, and dist-tag within 20 minutes.' >&2
+          exit 1
 
   github-release:
     name: Create GitHub release
@@ -121,9 +135,9 @@ jobs:
     steps:
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
-          name: npm-release-evidence
+          name: verified-release
           path: release-artifacts
-      - name: Create the release from certified evidence
+      - name: Create or repair the release from certified evidence
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ inputs.version }}
@@ -135,15 +149,17 @@ jobs:
           test "${#tarballs[@]}" -eq 1
           test "${tarballs[0]}" = "./lupinum-nuxt-pdf-${RELEASE_VERSION}.tgz"
           test -s release-notes.md
-
           prerelease=()
-          if [[ "$RELEASE_VERSION" == *-* ]]; then
-            prerelease=(--prerelease)
+          if [[ "$RELEASE_VERSION" == *-* ]]; then prerelease=(--prerelease); fi
+          tag="v$RELEASE_VERSION"
+          existing_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" --jq '.object.sha' 2>/dev/null || true)"
+          if [[ -n "$existing_sha" && "$existing_sha" != "$RELEASE_SHA" ]]; then
+            echo 'The release tag targets a different commit.' >&2
+            exit 1
           fi
-
-          gh release create "v$RELEASE_VERSION" "${tarballs[0]}" \
-            --repo "$GITHUB_REPOSITORY" \
-            --target "$RELEASE_SHA" \
-            --title "v$RELEASE_VERSION" \
-            --notes-file release-notes.md \
-            "${prerelease[@]}"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" "${tarballs[0]}" --repo "$GITHUB_REPOSITORY" --clobber
+            gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --target "$RELEASE_SHA" --title "$tag" --notes-file release-notes.md "${prerelease[@]}"
+          else
+            gh release create "$tag" "${tarballs[0]}" --repo "$GITHUB_REPOSITORY" --target "$RELEASE_SHA" --title "$tag" --notes-file release-notes.md "${prerelease[@]}"
+          fi
