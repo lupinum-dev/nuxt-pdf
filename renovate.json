@@ -5,7 +5,7 @@
     "helpers:pinGitHubActionDigests"
   ],
   "automerge": false,
-  "minimumReleaseAge": "3 days",
+  "minimumReleaseAge": "1 day",
   "schedule": [
     "before 05:00 on Monday"
   ],
