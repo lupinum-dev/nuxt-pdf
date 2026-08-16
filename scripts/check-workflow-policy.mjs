@@ -56,6 +56,7 @@ assert(
   'Normal CI must remain read-only.',
 )
 assert(ci.includes('node scripts/verify-action-shas.mjs'), 'CI must verify pinned Action commits upstream.')
+assert(!ci.includes('GITHUB_TOKEN'), 'Action verification must not receive GITHUB_TOKEN.')
 
 const publishJob = extractJob(release, 'publish')
 const verifyCandidateJob = extractJob(release, 'verify-candidate')
