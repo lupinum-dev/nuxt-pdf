@@ -5,6 +5,11 @@ import site from "../site.json" with { type: "json" };
 // so only `en` is populated.
 export default {
   ginkoDocs: {
+    theme: {
+      neutral: "custom",
+      primary: "custom",
+      codeBlocks: "adaptive",
+    },
     site: {
       url: site.url,
       name: { en: site.name },
