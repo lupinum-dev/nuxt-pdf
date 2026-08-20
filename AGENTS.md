@@ -54,6 +54,7 @@ Use these focused commands during development:
 - `pnpm test:raster` compares reviewed PDF images.
 - `pnpm test:workflows` checks the release privilege boundaries.
 - `pnpm docs:dev` runs the documentation site.
+- `pnpm docs:theme` checks the Nuxt visual tokens and Ginko Docs version.
 - `pnpm docs:build` builds the documentation site.
 - `pnpm audit:all` audits the complete workspace.
 - `pnpm release:verify` creates and verifies the release candidate.
