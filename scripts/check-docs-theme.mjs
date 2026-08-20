@@ -71,7 +71,7 @@ for (const [shade, value] of Object.entries(nuxtGreens)) {
   )
   requireMatch(
     themeCss,
-    new RegExp(`--theme-neutral-${shade}:`),
+    new RegExp(`--theme-neutral-${shade}:\\s*var\\(--color-slate-${shade}\\)`),
     `theme.css must map Slate neutral ${shade}.`,
   )
 }
