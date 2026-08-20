@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { parse } from 'yaml'
 
 const rootDir = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const workflowNames = ['ci.yml', 'release.yml']
@@ -38,6 +39,7 @@ for (const [name, source] of workflows) {
 }
 
 const ci = workflows.get('ci.yml')
+const ciConfig = parse(ci)
 const release = workflows.get('release.yml')
 const allWorkflows = [...workflows.values()].join('\n')
 
@@ -57,6 +59,40 @@ assert(
 )
 assert(ci.includes('node scripts/verify-action-shas.mjs'), 'CI must verify pinned Action commits upstream.')
 assert(!ci.includes('GITHUB_TOKEN'), 'Action verification must not receive GITHUB_TOKEN.')
+const classifyScript = ciConfig.jobs.classify.steps.find(
+  step => step.name === 'Select required lanes',
+)?.with?.script
+assert(typeof classifyScript === 'string', 'CI must classify expensive pull-request lanes.')
+const ciGate = ciConfig.jobs.gate
+const classifiedJobs = ['quality', 'core', 'raster', 'nuxt-integration', 'windows', 'package']
+assert(
+  ciGate.if === 'always()'
+  && ciGate.name === 'CI gate'
+  && classifiedJobs.every(job => ciGate.needs.includes(job)),
+  'CI must expose one always-reported gate for every classified lane.',
+)
+const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor
+for (const scenario of [
+  { name: 'public docs', event: 'pull_request', paths: ['docs/content/1.index.md'], full: 'false', quality: 'true' },
+  { name: 'top-level prose', event: 'pull_request', paths: ['README.md'], full: 'false', quality: 'false' },
+  { name: 'compiler source', event: 'pull_request', paths: ['src/runtime/compiler.ts'], full: 'true', quality: 'true' },
+  { name: 'workflow policy', event: 'pull_request', paths: ['.github/workflows/ci.yml'], full: 'true', quality: 'true' },
+  { name: 'main certification', event: 'push', paths: [], full: 'true', quality: 'true' },
+]) {
+  const outputs = new Map()
+  await new AsyncFunction('context', 'github', 'core', classifyScript)(
+    { eventName: scenario.event, issue: { number: 1 }, repo: { owner: 'lupinum-dev', repo: 'nuxt-pdf' } },
+    {
+      paginate: async () => scenario.paths.map(filename => ({ filename })),
+      rest: { pulls: { listFiles() {} } },
+    },
+    { setOutput: (name, value) => outputs.set(name, value) },
+  )
+  assert(
+    outputs.get('full') === scenario.full && outputs.get('quality') === scenario.quality,
+    `CI classification failed the ${scenario.name} fixture.`,
+  )
+}
 
 const publishJob = extractJob(release, 'publish')
 const verifyCandidateJob = extractJob(release, 'verify-candidate')

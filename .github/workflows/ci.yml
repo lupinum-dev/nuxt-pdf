@@ -20,8 +20,48 @@ env:
   CI: 'true'
 
 jobs:
+  classify:
+    name: Classify changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions:
+      pull-requests: read
+    outputs:
+      full: ${{ steps.paths.outputs.full }}
+      quality: ${{ steps.paths.outputs.quality }}
+    steps:
+      - name: Select required lanes
+        id: paths
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const runAll = context.eventName !== 'pull_request'
+            const files = runAll
+              ? []
+              : await github.paginate(github.rest.pulls.listFiles, {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: context.issue.number,
+                  per_page: 100,
+                })
+            const paths = files.map((file) => file.filename)
+            const publicDocsOnly =
+              paths.length > 0 &&
+              paths.every((path) =>
+                /^(?:docs\/content\/|README\.md$|CONTRIBUTING\.md$|SECURITY\.md$|MAINTAINING\.md$|AGENTS\.md$|CLAUDE\.md$|LICENSE$)/u.test(path),
+              )
+            const topLevelProseOnly =
+              paths.length > 0 &&
+              paths.every((path) =>
+                /^(?:README\.md$|CONTRIBUTING\.md$|SECURITY\.md$|MAINTAINING\.md$|AGENTS\.md$|CLAUDE\.md$|LICENSE$)/u.test(path),
+              )
+            core.setOutput('full', String(runAll || !publicDocsOnly))
+            core.setOutput('quality', String(runAll || !topLevelProseOnly))
+
   quality:
     name: Quality and documentation
+    needs: classify
+    if: needs.classify.outputs.quality == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -61,6 +101,8 @@ jobs:
 
   core:
     name: Core (Node ${{ matrix.node }})
+    needs: classify
+    if: needs.classify.outputs.full == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
@@ -84,6 +126,8 @@ jobs:
 
   raster:
     name: Pinned Linux raster evidence
+    needs: classify
+    if: needs.classify.outputs.full == 'true'
     runs-on: ubuntu-24.04
     container:
       image: node:24.11.1-bookworm@sha256:9a2ed90cd91b1f3412affe080b62e69b057ba8661d9844e143a6bbd76a23260f
@@ -121,6 +165,8 @@ jobs:
 
   nuxt-integration:
     name: Nuxt production and serverless
+    needs: classify
+    if: needs.classify.outputs.full == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
@@ -143,6 +189,8 @@ jobs:
 
   windows:
     name: Windows paths and assets
+    needs: classify
+    if: needs.classify.outputs.full == 'true'
     runs-on: windows-2025
     timeout-minutes: 25
     steps:
@@ -159,6 +207,8 @@ jobs:
 
   package:
     name: Exact installable artifact
+    needs: classify
+    if: needs.classify.outputs.full == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
@@ -188,6 +238,38 @@ jobs:
           path: release-artifacts
           if-no-files-found: error
           retention-days: 14
+
+  gate:
+    name: CI gate
+    if: always()
+    needs:
+      - classify
+      - quality
+      - core
+      - raster
+      - nuxt-integration
+      - windows
+      - package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Require every selected lane
+        env:
+          CLASSIFY_RESULT: ${{ needs.classify.result }}
+          QUALITY: ${{ needs.classify.outputs.quality }}
+          QUALITY_RESULT: ${{ needs.quality.result }}
+          FULL: ${{ needs.classify.outputs.full }}
+          CORE_RESULT: ${{ needs.core.result }}
+          RASTER_RESULT: ${{ needs.raster.result }}
+          NUXT_RESULT: ${{ needs.nuxt-integration.result }}
+          WINDOWS_RESULT: ${{ needs.windows.result }}
+          PACKAGE_RESULT: ${{ needs.package.result }}
+        run: |
+          test "$CLASSIFY_RESULT" = success
+          if [ "$QUALITY" = true ]; then test "$QUALITY_RESULT" = success; else test "$QUALITY_RESULT" = skipped; fi
+          for result in "$CORE_RESULT" "$RASTER_RESULT" "$NUXT_RESULT" "$WINDOWS_RESULT" "$PACKAGE_RESULT"; do
+            if [ "$FULL" = true ]; then test "$result" = success; else test "$result" = skipped; fi
+          done
 
   compatibility:
     name: Current dependency compatibility (${{ matrix.label }})
