@@ -1,17 +1,29 @@
 <p align="center">
-  <img src="docs/public/logo.svg" width="128" alt="Nuxt PDF">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/public/icon-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/public/icon-light.svg">
+    <img src="docs/public/icon-light.svg" width="128" alt="Nuxt PDF icon">
+  </picture>
 </p>
 
-<h1 align="center">Nuxt PDF</h1>
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/public/wordmark-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/public/wordmark-light.svg">
+    <img src="docs/public/wordmark-light.svg" width="256" alt="Nuxt PDF">
+  </picture>
+</h1>
 
 <p align="center">
   Author and render PDFs with Vue components in Nuxt.
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@lupinum/nuxt-pdf"><img src="https://img.shields.io/npm/v/@lupinum/nuxt-pdf?color=315d3b" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/@lupinum/nuxt-pdf"><img src="https://img.shields.io/npm/v/@lupinum/nuxt-pdf?color=00DC82" alt="npm version"></a>
   <a href="https://github.com/lupinum-dev/nuxt-pdf/actions/workflows/ci.yml"><img src="https://github.com/lupinum-dev/nuxt-pdf/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-315d3b" alt="MIT license"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-00DC82" alt="MIT license"></a>
+  <a href="https://discord.gg/RPH6SeA36N"><img src="https://img.shields.io/badge/Discord-18181B?logo=discord" alt="Discord"></a>
+  <a href="https://deepwiki.com/lupinum-dev/nuxt-pdf"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 </p>
 
 > [!IMPORTANT]
@@ -131,6 +143,21 @@ Start Nuxt. Open these development routes:
 
 Restart `nuxt dev` after you first enable the module. This action generates
 the typed `#pdf` registry.
+
+## Discord
+
+Join the Lupinum OSS community to discuss Nuxt PDF, ask questions, and share
+what you build.
+
+<p align="center">
+  <a href="https://discord.gg/RPH6SeA36N">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/public/discord-dark.svg">
+      <source media="(prefers-color-scheme: light)" srcset="docs/public/discord-light.svg">
+      <img src="docs/public/discord-light.svg" width="500" alt="Join the Lupinum OSS Discord">
+    </picture>
+  </a>
+</p>
 
 ## How it works
 
