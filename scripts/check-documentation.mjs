@@ -112,7 +112,9 @@ for (const [file, content] of [['README.md', readme], ['SECURITY.md', security],
   if (!content.includes('Lupinum OG')) errors.push(`${file}: must identify Lupinum OG.`)
 }
 if (!readme.includes('https://discord.gg/RPH6SeA36N')) errors.push('README.md: shared Discord link is missing.')
-if (!readme.includes('https://deepwiki.com/lupinum-dev/nuxt-pdf')) errors.push('README.md: DeepWiki link is missing.')
+if (!/<a href="https:\/\/deepwiki\.com\/lupinum-dev\/nuxt-pdf">/u.test(readme)) {
+  errors.push('README.md: DeepWiki link is missing.')
+}
 if (!readme.includes('https://nuxt-pdf.lupinum.com')) errors.push('README.md: canonical documentation URL is missing.')
 
 const readmeHeadings = [...readme.matchAll(/^## (.+)$/gmu)].map(match => match[1])
