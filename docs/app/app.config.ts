@@ -16,7 +16,7 @@ export default {
       description: {
         en: site.description,
       },
-      logo: { light: "/logo.svg", dark: "/logo-dark.svg" },
+      logo: { light: "/logo-light.svg", dark: "/logo-dark.svg" },
       docsSidebarSwitcher: "tabs",
       legalLinks: [
         { label: { en: "Legal notice" }, to: "https://lupinum.com/impressum" },
