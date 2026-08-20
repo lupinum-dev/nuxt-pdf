@@ -5,17 +5,18 @@
   "scripts": {
     "dev": "nuxt dev",
     "build": "nuxt build",
-    "check": "pnpm check:snippets && pnpm typecheck && pnpm check:doctor && pnpm build && pnpm check:links",
+    "check": "pnpm check:snippets && pnpm check:theme && pnpm typecheck && pnpm check:doctor && pnpm build && pnpm check:links",
     "check:doctor": "ginko-content doctor .",
     "check:links": "ginko-content validate .",
     "check:snippets": "node ../scripts/check-docs-snippets.mjs",
+    "check:theme": "node ../scripts/check-docs-theme.mjs",
     "generate": "nuxt generate",
     "prepare": "nuxt prepare",
     "typecheck": "nuxt prepare && vue-tsc --noEmit"
   },
   "dependencies": {
     "@lupinum/ginko-content": "0.4.0-rc.2",
-    "@lupinum/ginko-docs": "0.3.0-rc.5",
+    "@lupinum/ginko-docs": "0.3.0",
     "nuxt": "^4.5.2",
     "nuxt-site-config": "4.1.2",
     "vue": "^3.5.35",

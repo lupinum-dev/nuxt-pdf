@@ -1,0 +1,148 @@
+/* Nuxt visual theme for this Ginko Docs consumer. */
+
+:root {
+  /* Nuxt brand green from nuxt/nuxt.com. */
+  --nuxt-green-50: #effdf5;
+  --nuxt-green-100: #d9fbe8;
+  --nuxt-green-200: #b3f5d1;
+  --nuxt-green-300: #75edae;
+  --nuxt-green-400: #00dc82;
+  --nuxt-green-500: #00c16a;
+  --nuxt-green-600: #00a155;
+  --nuxt-green-700: #007f45;
+  --nuxt-green-800: #016538;
+  --nuxt-green-900: #0a5331;
+  --nuxt-green-950: #052e16;
+
+  /* Nuxt surfaces. */
+  --background: #ffffff;
+  --foreground: var(--color-slate-900);
+  --card: #ffffff;
+  --card-foreground: var(--color-slate-900);
+  --popover: #ffffff;
+  --popover-foreground: var(--color-slate-900);
+  --primary: var(--theme-primary-light);
+  --primary-foreground: var(--theme-primary-light-foreground);
+  --secondary: var(--color-slate-50);
+  --secondary-foreground: var(--color-slate-900);
+  --muted: var(--color-slate-50);
+  --muted-foreground: var(--color-slate-500);
+  --accent: var(--color-slate-100);
+  --accent-foreground: var(--color-slate-900);
+  --border: var(--color-slate-200);
+  --input: var(--color-slate-200);
+  --ring: var(--nuxt-green-600);
+  --code: var(--color-slate-50);
+  --code-foreground: var(--color-slate-900);
+  --code-border: var(--color-slate-200);
+
+  /* Landing-page identity. */
+  --hero-bg: #ffffff;
+  --hero-bg-muted: var(--color-slate-50);
+  --hero-blue: var(--nuxt-green-500);
+  --hero-blue-light: var(--nuxt-green-400);
+  --hero-blue-dark: var(--nuxt-green-700);
+  --hero-blue-muted: var(--nuxt-green-50);
+  --hero-mint: var(--nuxt-green-500);
+  --hero-mint-dark: var(--nuxt-green-700);
+  --hero-mint-muted: var(--nuxt-green-50);
+  --hero-mint-text: var(--nuxt-green-700);
+  --hero-yellow: var(--nuxt-green-500);
+  --hero-yellow-hover: var(--nuxt-green-600);
+  --hero-yellow-dark: var(--nuxt-green-700);
+  --hero-yellow-muted: var(--nuxt-green-50);
+  --hero-coral: var(--nuxt-green-500);
+  --hero-coral-light: var(--nuxt-green-400);
+  --hero-coral-dark: var(--nuxt-green-700);
+  --hero-coral-muted: var(--nuxt-green-50);
+  --hero-coral-text: var(--nuxt-green-700);
+  --hero-check: var(--nuxt-green-400);
+  --hero-white: #ffffff;
+
+  --agent-background: var(--color-slate-950);
+  --agent-foreground: var(--color-slate-100);
+  --agent-muted: var(--color-slate-400);
+
+  /* Nuxt UI-compatible semantic aliases for consumer-owned examples. */
+  --ui-bg: var(--background);
+  --ui-bg-muted: var(--muted);
+  --ui-bg-elevated: var(--card);
+  --ui-bg-accented: var(--accent);
+  --ui-border: var(--border);
+  --ui-border-muted: var(--border);
+  --ui-border-accented: var(--border);
+  --ui-text: var(--foreground);
+  --ui-text-default: var(--foreground);
+  --ui-text-highlighted: var(--foreground);
+  --ui-text-muted: var(--muted-foreground);
+  --ui-text-dimmed: var(--muted-foreground);
+  --ui-text-toned: var(--muted-foreground);
+  --ui-primary: var(--primary);
+}
+
+html[data-neutral='custom'] {
+  --theme-neutral-50: var(--color-slate-50);
+  --theme-neutral-100: var(--color-slate-100);
+  --theme-neutral-200: var(--color-slate-200);
+  --theme-neutral-300: var(--color-slate-300);
+  --theme-neutral-400: var(--color-slate-400);
+  --theme-neutral-500: var(--color-slate-500);
+  --theme-neutral-600: var(--color-slate-600);
+  --theme-neutral-700: var(--color-slate-700);
+  --theme-neutral-800: var(--color-slate-800);
+  --theme-neutral-900: var(--color-slate-900);
+  --theme-neutral-950: var(--color-slate-950);
+}
+
+html[data-primary='custom'] {
+  /*
+   * Ginko uses primary for normal-size text and controls. Nuxt green 700
+   * preserves readable contrast on white while green 400 carries dark mode.
+   */
+  --theme-primary-light: var(--nuxt-green-700);
+  --theme-primary-light-foreground: #ffffff;
+  --theme-primary-light-ring: var(--nuxt-green-600);
+  --theme-primary-dark: var(--nuxt-green-400);
+  --theme-primary-dark-foreground: var(--nuxt-green-950);
+  --theme-primary-dark-ring: var(--nuxt-green-400);
+}
+
+.dark {
+  --background: var(--color-slate-950);
+  --foreground: var(--color-slate-50);
+  --card: var(--color-slate-900);
+  --card-foreground: var(--color-slate-50);
+  --popover: var(--color-slate-900);
+  --popover-foreground: var(--color-slate-50);
+  --primary: var(--nuxt-green-400);
+  --primary-foreground: var(--nuxt-green-950);
+  --secondary: var(--color-slate-900);
+  --secondary-foreground: var(--color-slate-50);
+  --muted: var(--color-slate-900);
+  --muted-foreground: var(--color-slate-400);
+  --accent: var(--color-slate-800);
+  --accent-foreground: var(--color-slate-50);
+  --border: var(--color-slate-800);
+  --input: var(--color-slate-700);
+  --ring: var(--nuxt-green-400);
+  --code: var(--color-slate-900);
+  --code-foreground: var(--color-slate-50);
+  --code-border: var(--color-slate-800);
+
+  --hero-bg: var(--color-slate-950);
+  --hero-bg-muted: var(--color-slate-900);
+  --hero-blue-dark: var(--nuxt-green-400);
+  --hero-mint-dark: var(--nuxt-green-400);
+  --hero-yellow-dark: var(--nuxt-green-400);
+  --hero-coral-dark: var(--nuxt-green-400);
+  --hero-blue-muted: color-mix(
+    in oklab,
+    var(--nuxt-green-400) 12%,
+    var(--color-slate-900)
+  );
+  --hero-mint-muted: var(--hero-blue-muted);
+  --hero-yellow-muted: var(--hero-blue-muted);
+  --hero-coral-muted: var(--hero-blue-muted);
+  --hero-mint-text: var(--nuxt-green-300);
+  --hero-coral-text: var(--nuxt-green-300);
+}
