@@ -56,6 +56,14 @@ const runtimeOptionsSource = (
   const fonts = options.fonts ?? []
   const { remote, limits } = options
 
+  for (const asset of assets) {
+    if ((asset.root !== undefined) === (asset.dataB64 !== undefined)) {
+      throw new TypeError(
+        `PDF image asset "${asset.key}" must declare exactly one of root or dataB64.`,
+      )
+    }
+  }
+
   if (assets.length === 0 && fonts.length === 0 && !remote && !limits) return []
 
   const lines = ['', 'const __pdfRuntimeOptions = Object.freeze({']

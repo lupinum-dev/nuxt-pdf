@@ -349,6 +349,25 @@ export { NuxtPdfError, PDF_ERROR_CODES } from "#pdf-runtime"
     expect(source).not.toContain('dataB64')
   })
 
+  it('rejects asset entries without exactly one source form', () => {
+    expect(() => generatePdfRuntimeRegistry(templates, {
+      assets: [{ format: 'png', key: 'brand/logo.png' }],
+      development: true,
+      runtimeImport: '#pdf-runtime',
+    })).toThrow(/exactly one of root or dataB64/)
+
+    expect(() => generatePdfRuntimeRegistry(templates, {
+      assets: [{
+        dataB64: 'AQID',
+        format: 'png',
+        key: 'brand/logo.png',
+        root: '/project/pdfs/assets',
+      }],
+      development: true,
+      runtimeImport: '#pdf-runtime',
+    })).toThrow(/exactly one of root or dataB64/)
+  })
+
   it('generates typed key access and an explicit dynamic escape hatch', () => {
     const source = generatePdfRegistryTypes(templates, options)
 

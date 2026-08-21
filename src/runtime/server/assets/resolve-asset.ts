@@ -498,7 +498,7 @@ const resolvedImageCache = new Map<string, ResolvedPdfImageAsset>()
 let resolvedImageCacheBytes = 0
 
 // Identity-keyed cache for embedded production entries (see resolveLocalImage).
-const embeddedImageCache = new WeakMap<object, ResolvedPdfImageAsset>()
+const embeddedImageCache = new WeakMap<object, Map<string, ResolvedPdfImageAsset>>()
 
 const rememberResolvedImage = (
   cacheKey: string,
@@ -567,9 +567,18 @@ const resolveLocalImage = async (
   if ('dataB64' in entry) {
     // Embedded production bytes are immutable for the life of the process and
     // the generated registry freezes exactly one entry object per asset, so
-    // identity is a safe cache key. Decoded results are retained (bounded by
-    // the project's own asset set) but every caller gets a private copy.
-    const cached = embeddedImageCache.get(entry)
+    // identity is a safe outer cache key. Limits still participate: a hit
+    // must never bypass the calling render's own budgets. Decoded results are
+    // retained (bounded by the project's asset set) but every caller gets a
+    // private copy.
+    const limitsKey = `${maxBytes}\0${maxPixels}`
+    let byLimits = embeddedImageCache.get(entry)
+    if (!byLimits) {
+      byLimits = new Map()
+      embeddedImageCache.set(entry, byLimits)
+    }
+
+    const cached = byLimits.get(limitsKey)
     if (cached) return { ...cached, data: Buffer.from(cached.data) }
 
     const resolved = validateImageBytes(
@@ -578,7 +587,7 @@ const resolveLocalImage = async (
       assetFormat,
       maxPixels,
     )
-    embeddedImageCache.set(entry, resolved)
+    byLimits.set(limitsKey, resolved)
     return { ...resolved, data: Buffer.from(resolved.data) }
   }
 
@@ -598,7 +607,10 @@ const resolveLocalImage = async (
     return invalid('The local PDF image is not a regular file.')
   }
 
-  const cacheKey = `disk\0${key}\0${fileStat.mtimeMs}\0${fileStat.size}`
+  // Limits participate in the cache key: a hit must never bypass the calling
+  // render's own byte/pixel budgets, which may be tighter than another
+  // render's were when the entry was validated.
+  const cacheKey = `disk\0${key}\0${fileStat.mtimeMs}\0${fileStat.size}\0${maxBytes}\0${maxPixels}`
   const cached = cachedResolvedImage(cacheKey)
   if (cached) return cached
 

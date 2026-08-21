@@ -241,6 +241,31 @@ describe('PDF image tree resolution', () => {
     expect(Buffer.from(third.props.src as Uint8Array)).toEqual(PNG)
   })
 
+  it('never reuses a cached image across different render budgets', async () => {
+    const root = await createTemporaryDirectory()
+    await mkdir(join(root, 'images'), { recursive: true })
+    await writeFile(join(root, 'images', 'logo.png'), PNG)
+
+    const assets: PdfImageAssetMap = Object.freeze({
+      'images/logo.png': Object.freeze({ format: 'png', root }),
+    })
+
+    // A render with the default limits validates and caches the image…
+    await resolvePdfImageAssets(documentWith(image({ src: 'images/logo.png' })), {
+      assets,
+      limits: imageLimits({}),
+    })
+
+    // …but a tighter budget must still fail on its own admission pass.
+    await expectAssetError(
+      resolvePdfImageAssets(documentWith(image({ src: 'images/logo.png' })), {
+        assets,
+        limits: imageLimits({ maxImageBytes: PNG.byteLength - 1 }),
+      }),
+      PDF_ASSET_ERROR_CODES.LimitExceeded,
+    )
+  })
+
   it('shares repeated image buffers within one render but isolates renders', async () => {
     const assets: PdfImageAssetMap = Object.freeze({
       'images/logo.png': Object.freeze({ dataB64: PNG.toString('base64'), format: 'png' }),
