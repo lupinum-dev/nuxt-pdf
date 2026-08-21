@@ -296,11 +296,11 @@ definePdf<MenuProps>({
               {{ dish.name }}
             </PdfText>
             <DotLeader
-                :baseline="2"
-                :gap="7"
-                :color="leader"
-                :width="0.75"
-              />
+              :baseline="2"
+              :gap="7"
+              :color="leader"
+              :width="0.75"
+            />
             <PdfText :style="dishPriceStyle">
               {{ formatMenuPrice(dish.price) }}
             </PdfText>

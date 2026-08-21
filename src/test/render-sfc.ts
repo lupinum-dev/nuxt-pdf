@@ -16,10 +16,7 @@ import { normalizeRemoteAssetPolicy } from '../runtime/server/assets/remote'
 import {
   pdfImageFormatFromKey,
 } from '../runtime/server/assets/resolve-asset'
-import {
-  normalizePdfLimits,
-  resolvePdfRenderLimits,
-} from '../runtime/server/render-limits'
+import { normalizePdfLimits } from '../runtime/server/render-limits'
 import {
   assertRenderOptionKeys,
   renderPreparedPdfTemplate,
@@ -140,7 +137,6 @@ export async function renderPdfSfc<Props extends object>(
     throw new Error(`PDF SFC ${JSON.stringify(entry)} must be a template directly inside pdfs/ or one of its feature directories.`)
   }
   const normalizedLimits = normalizePdfLimits(options.limits)
-  const limits = resolvePdfRenderLimits(normalizedLimits)
   const [component, imageFiles, fonts] = await Promise.all([
     loadPdfSfc(entry),
     discoverPdfImageFiles([{ name: 'test', rootDir }]),

@@ -141,7 +141,6 @@ void [
   imageCachePassthrough,
   imageFromBytes,
   imageFromSrc,
-  imageWithTwoSources,
   imageWithoutSource,
   incompletePage,
   inheritedGradient,
