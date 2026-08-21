@@ -3,6 +3,7 @@ import { Buffer } from 'node:buffer'
 import { isAbsolute, join, relative, resolve as resolvePath } from 'node:path'
 import { version as moduleVersion } from '../package.json'
 import {
+  addComponent,
   addImports,
   addServerHandler,
   addServerTemplate,
@@ -34,6 +35,7 @@ import {
   type PdfRegistryAssetEntry,
 } from './build/generate-registry'
 import { createPdfSfcPlugin } from './build/pdf-sfc-plugin'
+import { PDF_STUB_NAMES } from './runtime/components/stubs'
 import {
   normalizeRemoteAssetPolicy,
   type RemoteAssetOptions,
@@ -367,6 +369,16 @@ export default defineNuxtModule<ModuleOptions>({
           view: { type: 'iframe', src: joinURL(nuxt.options.app.baseURL || '/', '_pdf') },
         })
       })
+
+      // Global Pdf* types make misuse outside pdfs/ typecheck; these stubs
+      // turn the silent runtime failure into an immediate, actionable error.
+      for (const name of PDF_STUB_NAMES) {
+        addComponent({
+          name,
+          export: name,
+          filePath: resolver.resolve('./runtime/components/stubs'),
+        })
+      }
     }
   },
 })

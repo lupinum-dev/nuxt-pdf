@@ -175,7 +175,7 @@ definePdf<AnnualProps>({
           From the Managing Director
         </PdfText>
         <PdfText
-          v-bind="{ hyphenationCallback: noHyphen }"
+          :hyphenation-callback="noHyphen"
           :style="{ color: ink.strong, fontFamily: 'Lora', fontSize: 23, marginTop: 14, width: 340 }"
         >
           {{ report.letter.salutation }}
@@ -185,7 +185,7 @@ definePdf<AnnualProps>({
           <PdfText
             v-for="(paragraph, index) in report.letter.paragraphs"
             :key="index"
-            v-bind="{ hyphenationCallback: noHyphen }"
+            :hyphenation-callback="noHyphen"
             :style="{ color: ink.soft, fontFamily: 'Lora', fontSize: 11, lineHeight: 1.62, marginBottom: 13 }"
           >
             {{ paragraph }}

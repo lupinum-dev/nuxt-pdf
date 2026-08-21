@@ -77,7 +77,7 @@ export default defineNuxtConfig({
 
 Create `pdfs/invoice.vue`:
 
-```vue
+```vue [pdfs/invoice.vue]
 <script setup lang="ts">
 type InvoiceProps = {
   invoice: {
@@ -92,6 +92,7 @@ const props = defineProps<InvoiceProps>()
 definePdf<InvoiceProps>({
   title: ({ invoice }) => `Invoice ${invoice.number}`,
   filename: ({ invoice }) => `invoice-${invoice.number}.pdf`,
+  language: 'en-GB',
   sampleData: {
     invoice: {
       customer: 'Ada Lovelace',

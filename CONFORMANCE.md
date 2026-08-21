@@ -215,8 +215,9 @@ The 0.3.1 tests verify:
 - framework-owned `PdfStyle` and exact primitive prop types checked through a
   real Vue SFC, plus closed per-primitive runtime allowlists that reject
   unknown, DOM/event, removed, and wrong-host props without echoing values;
-- exactly one `src`/`source` for `PdfImage`, exactly one `href`/`src` for
-  `PdfLink`, and context-specific page-flow/SVG `PdfText` invariants;
+- a required `src` for `PdfImage`, a required `href` for `PdfLink` (an `href`
+  starting with `#` is an internal destination), and context-specific
+  page-flow/SVG `PdfText` invariants;
 - one completed render held behind immutable byte, buffer, and `Response`
   conversions, with exact frozen resolved metadata and one frozen, content-free
   diagnostics object shared by the public result and development preview; the
@@ -287,7 +288,7 @@ and exposes it through one composable and existing props. The tested boundary:
   `PDF_LIMIT_EXCEEDED` `NuxtPdfError` attributed to the template key and file
   through the same boundary as every other render failure.
 - **Named destinations resolve to a section's first page.** A node's `id` becomes
-  a named destination; a `PdfLink` `src="#id"` jumps to it. When the id sits on a
+  a named destination; a `PdfLink` `href="#id"` jumps to it. When the id sits on a
   node that spans a page boundary, both the printed number and the jump target
   resolve to the section's **first** page (a deliberate divergence from React PDF,
   whose last-writer-wins destination table points at the last page). This holds on
@@ -317,8 +318,10 @@ and exposes it through one composable and existing props. The tested boundary:
 
 ### Local resources
 
-The module validates and embeds configured resources during the Nuxt build.
-The tested boundary includes:
+The module validates configured resources during the Nuxt build. Production
+builds embed validated image bytes in the server bundle; development builds
+point at the source files and re-read them per render, so an edited image
+shows up without a restart. The tested boundary includes:
 
 - PNG and JPEG extension/signature validation and source byte limits;
 - TTF and OTF signature/extension/SFNT table-directory validation,
