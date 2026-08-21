@@ -79,7 +79,7 @@ definePdf<ReportProps>({
       <PdfLink
         v-for="entry in entries"
         :key="entry.id"
-        :src="`#${entry.id}`"
+        :href="`#${entry.id}`"
         :style="{ color: '#18251D', marginBottom: 11, textDecoration: 'none' }"
       >
         <PdfView :style="{ alignItems: 'flex-end', flexDirection: 'row', marginLeft: entry.depth * 18 }">

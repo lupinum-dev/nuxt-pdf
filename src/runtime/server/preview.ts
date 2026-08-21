@@ -218,7 +218,7 @@ const indexPage = (
   if (templates.length === 0) {
     return htmlResponse(
       'PDF templates',
-      '<header><h1>PDF templates</h1></header><p>No templates found. Add <code>pdfs/invoice.vue</code> and restart the development server.</p>',
+      '<header><h1>PDF templates</h1></header><p>No templates found. Add <code>pdfs/invoice.vue</code>; Nuxt PDF restarts and registers it automatically.</p>',
     )
   }
 

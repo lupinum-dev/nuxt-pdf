@@ -569,14 +569,11 @@ describe('Vue PDF host renderer', () => {
     })
   })
 
-  it.each(['src', 'href'] as const)('rejects a missing internal destination supplied through %s', async (prop) => {
-    const linkProps = prop === 'src'
-      ? { src: '#missing' }
-      : { href: '#missing' }
+  it('rejects a missing internal destination', async () => {
     const Fixture = defineComponent(() => () =>
       h(PdfDocument, null, {
         default: () => h(PdfPage, null, {
-          default: () => h(PdfLink, linkProps, () => 'Broken'),
+          default: () => h(PdfLink, { href: '#missing' }, () => 'Broken'),
         }),
       }),
     )
@@ -591,7 +588,7 @@ describe('Vue PDF host renderer', () => {
     const Fixture = defineComponent(() => () =>
       h(PdfDocument, null, {
         default: () => h(PdfPage, null, {
-          default: () => h(PdfLink, { src: '#' }, () => 'Empty'),
+          default: () => h(PdfLink, { href: '#' }, () => 'Empty'),
         }),
       }),
     )
@@ -712,28 +709,25 @@ describe('Vue PDF host renderer', () => {
     {
       label: 'an image without a source',
       render: () => h(PdfImage as Component, {}),
-      message: '<PdfImage> requires exactly one of "src" or "source".',
+      message: '<PdfImage> requires a "src" prop.',
     },
     {
-      label: 'an image with both source aliases',
+      label: 'an image with the removed source alias',
       render: () => h(PdfImage as Component, {
         source: new Uint8Array([1]),
-        src: new Uint8Array([2]),
       }),
-      message: '<PdfImage> requires exactly one of "src" or "source".',
+      message: 'Unsupported prop "source" on <PdfImage>.',
     },
     {
       label: 'a link without a target',
       render: () => h(PdfLink as Component, {}, () => 'invalid link'),
-      message: '<PdfLink> requires exactly one of "href" or "src".',
+      message: '<PdfLink> requires an "href" prop.',
     },
     {
-      label: 'a link with both target aliases',
-      render: () => h(PdfLink as Component, {
-        href: 'https://example.com',
-        src: '#details',
-      }, () => 'invalid link'),
-      message: '<PdfLink> requires exactly one of "href" or "src".',
+      label: 'a link with the removed src alias',
+      render: () =>
+        h(PdfLink as Component, { src: '#missing' }, () => 'invalid link'),
+      message: 'Unsupported prop "src" on <PdfLink>.',
     },
   ])('fails tree validation for $label', async ({ render, message }) => {
     const Fixture = defineComponent(() => () =>

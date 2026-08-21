@@ -186,10 +186,10 @@ describe('PDF image tree resolution', () => {
   it('resolves bundled paths and byte sources without creating another tree', async () => {
     const images = [
       image({ src: './images/logo.png' }),
-      image({ source: { uri: 'images/photo.jpeg', format: 'jpeg' } }),
+      image({ src: { uri: 'images/photo.jpeg', format: 'jpeg' } }),
       image({ src: new Uint8Array(PNG) }),
       image({
-        source: {
+        src: {
           data: JPEG.buffer.slice(
             JPEG.byteOffset,
             JPEG.byteOffset + JPEG.byteLength,
@@ -200,24 +200,50 @@ describe('PDF image tree resolution', () => {
     ]
     const document = documentWith(...images)
     const assets: PdfImageAssetMap = Object.freeze({
-      'images/logo.png': Object.freeze({ data: PNG, format: 'png' }),
-      'images/photo.jpeg': Object.freeze({ data: JPEG, format: 'jpg' }),
+      'images/logo.png': Object.freeze({ dataB64: PNG.toString('base64'), format: 'png' }),
+      'images/photo.jpeg': Object.freeze({ dataB64: JPEG.toString('base64'), format: 'jpg' }),
     })
 
     const resolved = await resolvePdfImageAssets(document, { assets })
 
     expect(resolved).toBe(document)
     expect(images.map(node =>
-      Buffer.isBuffer(node.props.src ?? node.props.source),
+      Buffer.isBuffer(node.props.src),
     )).toEqual([true, true, true, true])
     expect(images.map(node =>
-      Buffer.from((node.props.src ?? node.props.source) as Uint8Array),
+      Buffer.from(node.props.src as Uint8Array),
     )).toEqual([PNG, JPEG, PNG, JPEG])
+  })
+
+  it('resolves disk-root entries and picks up edited files without a restart', async () => {
+    const root = await createTemporaryDirectory()
+    const imagesDirectory = join(root, 'images')
+    await mkdir(imagesDirectory, { recursive: true })
+    const logoPath = join(imagesDirectory, 'logo.png')
+    await writeFile(logoPath, PNG)
+
+    const assets: PdfImageAssetMap = Object.freeze({
+      'images/logo.png': Object.freeze({ format: 'png', root }),
+    })
+
+    const first = image({ src: 'images/logo.png' })
+    await resolvePdfImageAssets(documentWith(first), { assets })
+    expect(Buffer.from(first.props.src as Uint8Array)).toEqual(PNG)
+
+    // Edit the file on disk: the next render must observe the new bytes.
+    await writeFile(logoPath, JPEG.subarray(0, 2) /* invalid on purpose */)
+    await expect(resolvePdfImageAssets(documentWith(image({ src: 'images/logo.png' })), { assets }))
+      .rejects.toMatchObject({ code: PDF_ASSET_ERROR_CODES.Invalid })
+
+    await writeFile(logoPath, PNG)
+    const third = image({ src: 'images/logo.png' })
+    await resolvePdfImageAssets(documentWith(third), { assets })
+    expect(Buffer.from(third.props.src as Uint8Array)).toEqual(PNG)
   })
 
   it('shares repeated image buffers within one render but isolates renders', async () => {
     const assets: PdfImageAssetMap = Object.freeze({
-      'images/logo.png': Object.freeze({ data: PNG, format: 'png' }),
+      'images/logo.png': Object.freeze({ dataB64: PNG.toString('base64'), format: 'png' }),
     })
     const firstImages = [
       image({ src: 'images/logo.png' }),
@@ -248,7 +274,7 @@ describe('PDF image tree resolution', () => {
 
   it('charges a repeated named source once against aggregate budgets', async () => {
     const assets: PdfImageAssetMap = Object.freeze({
-      'images/logo.png': Object.freeze({ data: PNG, format: 'png' }),
+      'images/logo.png': Object.freeze({ dataB64: PNG.toString('base64'), format: 'png' }),
     })
     const images = [
       image({ src: 'images/logo.png' }),
@@ -290,7 +316,7 @@ describe('PDF image tree resolution', () => {
 
     await expectAssetError(
       resolvePdfImageAssets(document, {
-        assets: { 'images/logo.png': { data: PNG, format: 'png' } },
+        assets: { 'images/logo.png': { dataB64: PNG.toString('base64'), format: 'png' } },
       }),
       PDF_ASSET_ERROR_CODES.Blocked,
     )
@@ -301,7 +327,7 @@ describe('PDF image tree resolution', () => {
       resolvePdfImageAssets(
         documentWith(image({ src: 'images/logo.png' })),
         {
-          assets: { 'images/logo.png': { data: JPEG, format: 'png' } },
+          assets: { 'images/logo.png': { dataB64: JPEG.toString('base64'), format: 'png' } },
         },
       ),
       PDF_ASSET_ERROR_CODES.Invalid,
@@ -330,7 +356,7 @@ describe('PDF image tree resolution', () => {
 
     await expectAssetError(
       resolvePdfImageAssets(document, {
-        assets: { 'images/logo.png': { data: PNG, format: 'png' } },
+        assets: { 'images/logo.png': { dataB64: PNG.toString('base64'), format: 'png' } },
       }),
       PDF_ASSET_ERROR_CODES.Blocked,
     )
@@ -392,10 +418,9 @@ describe('PDF image tree resolution', () => {
     )
 
     await expectAssetError(
-      resolvePdfImageAssets(
-        documentWith(image({ src: PNG, source: PNG })),
-        { assets: {} },
-      ),
+      resolvePdfImageAssets(documentWith(image({} as never)), {
+        assets: {},
+      }),
       PDF_ASSET_ERROR_CODES.Invalid,
     )
   })

@@ -25,12 +25,12 @@ export const VueAnnotationsDocument = defineComponent({
       default: () => h(PdfPage, { size: 'A4' }, {
         default: () => [
           h(PdfLink, {
-            src: linkTargets.external,
+            href: linkTargets.external,
             hitSlop: linkHitSlop,
             style: linkStyle,
           }, { default: () => 'External documentation' }),
           h(PdfLink, {
-            src: linkTargets.mailto,
+            href: linkTargets.mailto,
             style: linkStyle,
           }, { default: () => 'Email the report owner' }),
           h(PdfNote, null, { default: () => noteContent }),

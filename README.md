@@ -141,8 +141,9 @@ Start Nuxt. Open these development routes:
 - `/_pdf/invoice` shows the document preview.
 - `/api/invoice` returns the production-style PDF response.
 
-Restart `nuxt dev` after you first enable the module. This action generates
-the typed `#pdf` registry.
+Nuxt PDF regenerates the typed `#pdf` registry whenever templates change. If
+your editor still shows `#pdf` as untyped, run `nuxt prepare` once to refresh
+the generated types.
 
 ## Discord
 

@@ -43,7 +43,7 @@ const TocTemplate = withDefinition(
               default: () => [
                 h(PdfText, { style: { fontSize: 22, marginBottom: 16 } }, { default: () => 'Contents' }),
                 ...SECTIONS.map(s =>
-                  h(PdfLink, { src: `#${s.id}`, style: { fontSize: 13, marginBottom: 8, color: 'black' } }, {
+                  h(PdfLink, { href: `#${s.id}`, style: { fontSize: 13, marginBottom: 8, color: 'black' } }, {
                     default: () => `${s.title} ..... ${pageNumbers[s.id] ?? ''}`,
                   }),
                 ),
@@ -96,7 +96,7 @@ const LinkOnlyTemplate = withDefinition(
         h(PdfDocument, {}, {
           default: () => [
             h(PdfPage, { size: 'A4', style: { padding: 48 } }, {
-              default: () => h(PdfLink, { src: '#target', style: { fontSize: 13 } }, { default: () => 'Jump to target' }),
+              default: () => h(PdfLink, { href: '#target', style: { fontSize: 13 } }, { default: () => 'Jump to target' }),
             }),
             h(PdfPage, { size: 'A4', style: { padding: 48 } }, {
               default: () => h(PdfText, { id: 'target', break: true }, { default: () => 'HEADING target' }),
@@ -192,7 +192,7 @@ describe('table-of-contents feature (productized)', () => {
               default: () => [
                 h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
                   default: () => [
-                    h(PdfLink, { src: '#only', style: { fontSize: 14 } }, { default: () => `Ch ..... ${pageNumbers.only ?? ''}` }),
+                    h(PdfLink, { href: '#only', style: { fontSize: 14 } }, { default: () => `Ch ..... ${pageNumbers.only ?? ''}` }),
                     h(PdfView, { style: { height: pageNumbers.only === 2 ? 790 : 0 } }),
                   ],
                 }),

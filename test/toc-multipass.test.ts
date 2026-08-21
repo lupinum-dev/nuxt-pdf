@@ -72,7 +72,7 @@ const NormalDoc = defineComponent({
             default: () => [
               h(PdfText, { style: { fontSize: 22, marginBottom: 16 } }, { default: () => 'Contents' }),
               ...SECTIONS.map(s =>
-                h(PdfLink, { src: `#${s.id}`, style: { fontSize: 13, marginBottom: 8, color: 'black', textDecoration: 'none' } }, {
+                h(PdfLink, { href: `#${s.id}`, style: { fontSize: 13, marginBottom: 8, color: 'black', textDecoration: 'none' } }, {
                   default: () => `${s.title} ..... ${resolved()[s.id] ?? ''}`,
                 }),
               ),
@@ -223,7 +223,7 @@ const PathologicalDoc = defineComponent({
         default: () => [
           h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
             default: () => [
-              h(PdfLink, { src: '#only', style: { fontSize: 14 } }, {
+              h(PdfLink, { href: '#only', style: { fontSize: 14 } }, {
                 default: () => `Chapter ..... ${resolved().only ?? ''}`,
               }),
               // Feedback spacer: tall only when the fed page number is exactly 2.

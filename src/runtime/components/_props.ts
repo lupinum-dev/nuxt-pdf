@@ -156,17 +156,17 @@ export type PdfImageSource
     | { data: Uint8Array, format: 'png' | 'jpg' }
     | { uri: string, format?: 'png' | 'jpg' }
 
-type PdfImageSourceProp
-  = | { src: PdfImageSource, source?: never }
-    | { src?: never, source: PdfImageSource }
+export type PdfImageProps = PdfBaseProps & PdfBookmarkProp & {
+  /** Local bundled path, remote allowlisted URL, or inline bytes. */
+  src: PdfImageSource
+}
 
-export type PdfImageProps = PdfBaseProps & PdfBookmarkProp & PdfImageSourceProp
-
-type PdfLinkTarget
-  = | { href: string, src?: never }
-    | { href?: never, src: string }
-
-export type PdfLinkProps = PdfBaseProps & PdfLinkTarget & {
+export type PdfLinkProps = PdfBaseProps & {
+  /**
+   * Link target. A string starting with `#` jumps to the element whose `id`
+   * matches the rest of the string; every other value opens as an external URL.
+   */
+  href: string
   wrap?: boolean
   hitSlop?: {
     top?: number

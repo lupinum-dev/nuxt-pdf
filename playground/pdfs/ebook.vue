@@ -289,7 +289,7 @@ definePdf<EbookProps>({
       <PdfLink
         v-for="chapter in ebook.chapters"
         :key="chapter.id"
-        :src="`#${chapter.id}`"
+        :href="`#${chapter.id}`"
         :style="{ color: ink, marginBottom: 20, textDecoration: 'none' }"
       >
         <PdfView :style="{ alignItems: 'flex-end', flexDirection: 'row' }">

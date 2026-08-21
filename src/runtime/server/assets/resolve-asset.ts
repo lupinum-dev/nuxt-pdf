@@ -41,16 +41,20 @@ export {
 
 export type PdfImageFormat = 'jpg' | 'png'
 
-export type PdfImageAsset = Readonly<{
-  data: Uint8Array
-  format: PdfImageFormat
-}>
+/**
+ * One discovered local image. In development the entry points at the source
+ * file on disk so edits show up without a restart; in production the validated
+ * bytes travel as base64 inside the server bundle so every Nitro preset stays
+ * self-contained. Both forms resolve through the same validation boundary.
+ */
+export type PdfImageAssetEntry = Readonly<
+  | { format: PdfImageFormat, root: string }
+  | { dataB64: string, format: PdfImageFormat }
+>
 
-export type LoadedPdfImageAsset = PdfImageAsset & Readonly<{
-  key: string
-}>
+export type PdfImageAssetMap = Readonly<Record<string, PdfImageAssetEntry>>
 
-export type PdfImageAssetMap = Readonly<Record<string, PdfImageAsset>>
+export type LoadedPdfImageAsset = Readonly<{ key: string }> & ResolvedPdfImageAsset
 
 export interface LoadPdfImageAssetOptions {
   roots: readonly string[]
@@ -94,7 +98,6 @@ export interface PdfImageResolutionState {
 
 type ImageTarget = {
   node: PdfElementNode
-  prop: 'source' | 'src'
 }
 
 const hasOwn = (value: object, key: PropertyKey): boolean =>
@@ -175,6 +178,14 @@ const formatFromExtension = (key: string): PdfImageFormat => {
   if (extension === '.jpg' || extension === '.jpeg') return 'jpg'
 
   return invalid('PDF images must be PNG or JPEG files.')
+}
+
+/** Format for a discovered asset key, validated at module setup time. */
+export const pdfImageFormatFromKey = (key: string): PdfImageFormat => {
+  const extension = extname(key).toLowerCase()
+  if (extension === '.png') return 'png'
+  if (extension === '.jpg' || extension === '.jpeg') return 'jpg'
+  throw new TypeError(`PDF images must be PNG or JPEG files: "${key}".`)
 }
 
 const claimedFormat = (value: unknown): PdfImageFormat | undefined => {
@@ -475,13 +486,56 @@ export const loadPdfImageAsset = async (
   )
 }
 
-const resolveLocalImage = (
+// Resolved local images are immutable per (entry, file version), so a small
+// process-wide cache lets hot paths skip disk reads, base64 decoding, and
+// re-validation. Disk entries key on mtimeMs + size so an edited image is
+// picked up on the next render without a server restart. The cache is bounded
+// by total bytes; the oldest entries evict first. Every caller receives a
+// fresh copy of the cached bytes so renders never share mutable state.
+const RESOLVED_IMAGE_CACHE_BYTES = 32 * 1024 * 1024
+
+const resolvedImageCache = new Map<string, ResolvedPdfImageAsset>()
+let resolvedImageCacheBytes = 0
+
+// Identity-keyed cache for embedded production entries (see resolveLocalImage).
+const embeddedImageCache = new WeakMap<object, ResolvedPdfImageAsset>()
+
+const rememberResolvedImage = (
+  cacheKey: string,
+  image: ResolvedPdfImageAsset,
+): void => {
+  if (resolvedImageCache.has(cacheKey)) return
+
+  resolvedImageCache.set(cacheKey, image)
+  resolvedImageCacheBytes += image.data.byteLength
+
+  while (
+    resolvedImageCacheBytes > RESOLVED_IMAGE_CACHE_BYTES
+    && resolvedImageCache.size > 1
+  ) {
+    const oldest = resolvedImageCache.keys().next().value
+    if (oldest === undefined) break
+    resolvedImageCacheBytes -= resolvedImageCache.get(oldest)!.data.byteLength
+    resolvedImageCache.delete(oldest)
+  }
+}
+
+const cachedResolvedImage = (cacheKey: string): ResolvedPdfImageAsset | undefined => {
+  const cached = resolvedImageCache.get(cacheKey)
+  if (!cached) return undefined
+  return {
+    ...cached,
+    data: Buffer.from(cached.data),
+  }
+}
+
+const resolveLocalImage = async (
   source: string,
   assets: PdfImageAssetMap,
   maxBytes: number,
   maxPixels: number,
   declaredFormat?: unknown,
-): ResolvedPdfImageAsset => {
+): Promise<ResolvedPdfImageAsset> => {
   const key = canonicalAssetKey(source)
   const pathFormat = formatFromExtension(key)
   const sourceFormat = claimedFormat(declaredFormat)
@@ -492,17 +546,17 @@ const resolveLocalImage = (
 
   if (!hasOwn(assets, key)) {
     return invalid(
-      'The local PDF image was not included in the generated asset map.',
+      `The local PDF image "${key}" was not found under pdfs/assets. Add the file or fix the path.`,
     )
   }
 
-  const asset = assets[key]
+  const entry = assets[key]!
 
-  if (!asset || typeof asset !== 'object') {
+  if (!entry || typeof entry !== 'object') {
     return invalid('The generated PDF image asset is invalid.')
   }
 
-  const assetFormat = claimedFormat(asset.format)
+  const assetFormat = claimedFormat(entry.format)
 
   if (!assetFormat || assetFormat !== pathFormat) {
     return invalid(
@@ -510,7 +564,59 @@ const resolveLocalImage = (
     )
   }
 
-  return validateImageBytes(asset.data, maxBytes, assetFormat, maxPixels)
+  if ('dataB64' in entry) {
+    // Embedded production bytes are immutable for the life of the process and
+    // the generated registry freezes exactly one entry object per asset, so
+    // identity is a safe cache key. Decoded results are retained (bounded by
+    // the project's own asset set) but every caller gets a private copy.
+    const cached = embeddedImageCache.get(entry)
+    if (cached) return { ...cached, data: Buffer.from(cached.data) }
+
+    const resolved = validateImageBytes(
+      Buffer.from(entry.dataB64, 'base64'),
+      maxBytes,
+      assetFormat,
+      maxPixels,
+    )
+    embeddedImageCache.set(entry, resolved)
+    return { ...resolved, data: Buffer.from(resolved.data) }
+  }
+
+  // Development entries read from disk. The stat keeps edited files fresh
+  // without a restart and versions the cache entry per file content state.
+  let fileStat
+  try {
+    fileStat = await stat(resolve(entry.root, ...key.split('/')))
+  }
+  catch (error) {
+    if (isMissingFileError(error)) {
+      return invalid(`The local PDF image "${key}" was not found under pdfs/assets.`)
+    }
+    return invalid('The local PDF image cannot be inspected.', error)
+  }
+  if (!fileStat.isFile()) {
+    return invalid('The local PDF image is not a regular file.')
+  }
+
+  const cacheKey = `disk\0${key}\0${fileStat.mtimeMs}\0${fileStat.size}`
+  const cached = cachedResolvedImage(cacheKey)
+  if (cached) return cached
+
+  const loaded = await loadPdfImageAsset(key, {
+    roots: [entry.root],
+    maxBytes,
+    maxPixels,
+  })
+
+  const resolved = Object.freeze({
+    data: loaded.data,
+    format: assetFormat,
+    height: loaded.height,
+    pixels: loaded.pixels,
+    width: loaded.width,
+  }) satisfies ResolvedPdfImageAsset
+  rememberResolvedImage(cacheKey, resolved)
+  return { ...resolved, data: Buffer.from(resolved.data) }
 }
 
 const isRemoteCandidate = (source: string): boolean =>
@@ -582,7 +688,6 @@ const resolveImageSource = async (
       ? resolveRemoteImage(source, remote, remoteState, inflight, maxBytes, maxPixels)
       : resolveLocalImage(source, assets, maxBytes, maxPixels)
   }
-
   const bytes = asBuffer(source)
   if (bytes) return validateImageBytes(bytes, maxBytes, undefined, maxPixels)
 
@@ -741,15 +846,11 @@ export const resolvePdfImageAssets = async (
       return blocked('PDF image srcSet sources are blocked.')
     }
 
-    const hasSrc = hasOwn(node.props, 'src') && node.props.src !== undefined
-    const hasSource = hasOwn(node.props, 'source')
-      && node.props.source !== undefined
-
-    if (hasSrc === hasSource) {
-      return invalid('Each PDF image must have exactly one src or source prop.')
+    if (!hasOwn(node.props, 'src') || node.props.src === undefined) {
+      return invalid('Each PDF image must have a src prop.')
     }
 
-    targets.push({ node, prop: hasSrc ? 'src' : 'source' })
+    targets.push({ node })
   }
 
   if (targets.length > limits.maxImages) {
@@ -762,7 +863,7 @@ export const resolvePdfImageAssets = async (
   try {
     resolved = await Promise.all(targets.map(target =>
       resolveImageBuffer(
-        target.node.props[target.prop],
+        target.node.props.src,
         options.assets,
         limits,
         options.remote,
@@ -780,7 +881,7 @@ export const resolvePdfImageAssets = async (
 
   targets.forEach((target, index) => {
     const data = resolved[index]!
-    target.node.props[target.prop] = data
+    target.node.props.src = data
     // Vue can leave this resolved Buffer on the host node when an authored
     // image prop is unchanged on the next feedback pass. Alias it to the
     // already-admitted result so render-wide budgets charge the image once.

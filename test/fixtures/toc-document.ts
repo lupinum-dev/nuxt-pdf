@@ -39,7 +39,7 @@ const tocEntry = (
   section: TocSection,
   page: number | undefined,
 ): VNode =>
-  h(PdfLink, { src: `#${section.id}`, style: { color: '#18251D', textDecoration: 'none', marginBottom: 12 } }, {
+  h(PdfLink, { href: `#${section.id}`, style: { color: '#18251D', textDecoration: 'none', marginBottom: 12 } }, {
     default: () =>
       h(PdfView, { style: { flexDirection: 'row', alignItems: 'flex-end' } }, {
         default: () => [

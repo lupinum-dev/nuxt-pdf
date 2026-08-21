@@ -28,7 +28,7 @@ import {
   resolvePdfRenderLimits,
 } from './render-limits'
 import type { BundledPdfFontDescriptor } from '../fonts'
-import { createPdfFontStore } from './engine/fonts'
+import { getSharedPdfFontStore } from './engine/fonts'
 import { createPdfRenderResult } from './result'
 
 export type { PdfRenderDiagnostics } from '../shared/template'
@@ -252,7 +252,7 @@ const renderTemplate = async <Props extends object>(
       component,
       props as Record<string, unknown>,
     )
-    const fontStore = createPdfFontStore(options.fonts)
+    const fontStore = getSharedPdfFontStore(options.fonts)
 
     // Gate: only a template that reads `usePdfPageNumbers()` consumes resolved
     // page numbers, so only it runs the fixed-point layout loop. Internal `#id`

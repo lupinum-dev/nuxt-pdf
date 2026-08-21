@@ -94,7 +94,7 @@ const NormalDoc = defineComponent({
             default: () => [
               h(PdfText, { style: { fontSize: 22, marginBottom: 16 } }, { default: () => 'Contents' }),
               ...SECTIONS.map(s =>
-                h(PdfLink, { src: `#${s.id}`, style: { fontSize: 13, marginBottom: 8, color: 'black', textDecoration: 'none' } }, {
+                h(PdfLink, { href: `#${s.id}`, style: { fontSize: 13, marginBottom: 8, color: 'black', textDecoration: 'none' } }, {
                   default: () => `${s.title} ..... ${resolved()[s.id] ?? ''}`,
                 }),
               ),
@@ -178,7 +178,7 @@ const BookmarkDoc = defineComponent({
             default: () => [
               h(PdfText, { style: { fontSize: 20, marginBottom: 12 } }, { default: () => 'Contents' }),
               ...SECTIONS.map(s =>
-                h(PdfLink, { src: `#${s.id}`, style: { fontSize: 12, marginBottom: 6 } }, {
+                h(PdfLink, { href: `#${s.id}`, style: { fontSize: 12, marginBottom: 6 } }, {
                   default: () => `${s.title} ..... ${resolved()[s.id] ?? ''}`,
                 }),
               ),
@@ -236,7 +236,7 @@ const StableStyleDoc = defineComponent({
           h(PdfPage, { size: 'A4', style: { padding: 48 } }, {
             default: () => [
               h(PdfText, { style: { fontSize: 22 } }, { default: () => 'Contents' }),
-              h(PdfLink, { src: '#s', style: { fontSize: 13 } }, { default: () => `S ..... ${resolved().s ?? ''}` }),
+              h(PdfLink, { href: '#s', style: { fontSize: 13 } }, { default: () => `S ..... ${resolved().s ?? ''}` }),
               h(PdfText, { fixed: true, style: STABLE_FOOTER_STYLE, render: ({ pageNumber }: { pageNumber: number }) => `Page ${pageNumber}` }),
             ],
           }),
@@ -282,7 +282,7 @@ const SplitDoc = defineComponent({
         default: () => [
           h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
             default: () => [
-              h(PdfLink, { src: '#big', style: { fontSize: 14 } }, {
+              h(PdfLink, { href: '#big', style: { fontSize: 14 } }, {
                 default: () => `Big Section ..... ${resolved().big ?? ''}`,
               }),
             ],
