@@ -27,7 +27,7 @@
 </p>
 
 > [!IMPORTANT]
-> Nuxt PDF is an external alpha. Its tested behavior is stable within each
+> Nuxt PDF is in public beta. Its tested behavior is stable within each
 > release, but a minor release can contain documented breaking changes before
 > version 1.0.
 

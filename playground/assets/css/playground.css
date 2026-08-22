@@ -452,7 +452,7 @@ code {
   }
 
   .release-mark::after {
-    content: "Alpha";
+    content: "Beta";
     font-size: 0.7rem;
   }
 
