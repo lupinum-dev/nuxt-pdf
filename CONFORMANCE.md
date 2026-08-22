@@ -158,7 +158,9 @@ claimed.
 **Images** (`test/corpus/images.test.ts`):
 
 - JPEG file paths, base64 `data:` URLs, and `{ data, format }` buffer sources all
-  decode and render;
+  decode in the lower-engine paired fixture. The public resource boundary
+  accepts bundled paths, admitted byte sources, and allowlisted HTTPS images;
+  it blocks `data:` URL strings on every public render path;
 - explicit width+height, single-dimension aspect scaling, and percent width
   against the page content box size the laid-out box (reviewed baseline);
 - `objectFit` `contain` letterboxes and `cover` crops while the box stays fixed
@@ -449,7 +451,7 @@ failure messages, in `test/test-utils-public.test.ts`.
 - Nuxt 3, Node 20, or versions outside the table above.
 - Authenticated remote fetches, request headers/bodies, credentialed requests,
   proxies, or private-IP/DNS-rebinding protection. Opt-in allowlisted remote
-  images and fonts are claimed above under "Opt-in remote resources".
+  images are claimed above. Remote fonts are not supported.
 - SVG image files (as an image source), SVG `Marker`, alternate gradient
   coordinate systems/transforms/inheritance, and `preserveAspectRatio` modes.
   Radial-gradient inner radius (`fr`) is also absent because the pinned renderer
