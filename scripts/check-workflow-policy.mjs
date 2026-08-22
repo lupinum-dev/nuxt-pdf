@@ -118,6 +118,11 @@ assert(
   'The npm publish job must publish only the validated shell variable.',
 )
 assert(publishJob.includes('dist.shasum'), 'The npm publish job must verify exact registry bytes.')
+assert(
+  publishJob.includes('read_published_sha1()')
+  && publishJob.includes('typeof value===\'string\'&&/^[a-f0-9]{40}$/i.test(value)'),
+  'The npm publish job must ignore npm JSON errors for missing versions.',
+)
 assert(publishJob.includes('dist.attestations'), 'The npm publish job must require provenance.')
 assert(
   extractRunSources(publishJob).every(run => !run.includes('${{')),
