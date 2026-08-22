@@ -136,7 +136,19 @@ export default defineEventHandler(async () => {
 })
 ```
 
-Start Nuxt. Open these development routes:
+Start Nuxt:
+
+```bash
+pnpm dev
+```
+
+Download the PDF from a second terminal:
+
+```bash
+curl -o invoice.pdf http://localhost:3000/api/invoice
+```
+
+Open these development routes:
 
 - `/_pdf` lists the discovered templates.
 - `/_pdf/invoice` shows the document preview.
@@ -209,6 +221,10 @@ Read the [Nuxt PDF documentation](https://nuxt-pdf.lupinum.com) for authoring,
 assets, links, bookmarks, tables of contents, testing, and the complete API
 reference. Read [CONFORMANCE.md](./CONFORMANCE.md) for the exact tested behavior
 and known limitations.
+
+Coding agents should start with
+[`/llms.txt`](https://nuxt-pdf.lupinum.com/llms.txt). It links to concise raw
+Markdown for common tasks, reference pages, errors, and compatibility evidence.
 
 ## Contributing and development
 
