@@ -73,7 +73,7 @@ const SVG_PRESENTATION_PROP_NAMES = [
 ] as const satisfies readonly StringKeys<PdfSvgPresentationProps>[]
 
 /** Closed runtime prop surface; TypeScript alone cannot reject Vue attrs. */
-const PDF_PROP_KEYS: Record<PdfElementType, ReadonlySet<string>> = {
+export const PDF_PROP_KEYS: Record<PdfElementType, ReadonlySet<string>> = {
   [PDF_PRIMITIVES.Document]: exactPropNames<PdfDocumentProps>()([
     'author',
     'creationDate',
