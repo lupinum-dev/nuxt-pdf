@@ -14,9 +14,22 @@ ASD-STE100 Issue 9. It does not claim formal ASD-STE100 compliance.
 - Put a warning before the affected action.
 - Use sentence-case headings.
 - Use American English spelling.
+- State behavior. Do not claim virtues such as honesty, rigor, trustworthiness,
+  or transparency.
+- Put the consequence next to the instruction.
+- Use task-based headings in tutorials and guides.
+- Use noun headings in reference and explanation pages.
+- Give one recommended path before alternatives.
+- Tell the user what to inspect or change after every documented error.
+- Keep sentences short without making the prose robotic.
 
 Do not use filler such as `simply`, `just`, `obviously`, `easy`, `seamless`, or
 `powerful`.
+
+Use `deliberate` or `intentional` only when a user could reasonably expect
+React PDF or browser behavior instead. Do not use internal test terms such as
+`sidecar` or `canary` in public pages. Use `artifact` only for a retained build
+or test output, not as a synonym for a package, file, or server output.
 
 ## Use the approved terms
 
@@ -58,6 +71,23 @@ unbranded.
 - Show one concept in each example.
 - Use a specific final section. Do not add generic `Summary`, `Conclusion`,
   `Related`, or `Next steps` sections.
+
+Use these page types:
+
+- A **tutorial** leads a newcomer through one complete successful result.
+- A **guide** helps an existing user complete one task.
+- A **reference** page lists exact types, defaults, accepted values, return
+  values, and failure behavior.
+- An **explanation** page describes the runtime model, limits, or design
+  decisions without hiding a procedure inside it.
+
+Do not put long architecture explanations in the first-render tutorial. Do not
+put complete task procedures in a neutral API table. Link between page types
+when the user needs both.
+
+Match examples to the repository's TypeScript and Vue formatting. A complete
+example must use public APIs and be safe to copy. Partial examples can omit
+surrounding code only when the omission is clear from the page.
 
 ## Keep public and internal content separate
 
