@@ -13,11 +13,10 @@ import { bundlePdfFonts } from '../build/fonts'
 import { compilePdfSfc } from '../build/pdf-sfc-plugin'
 import type { ModuleOptions } from '../module'
 import { normalizeRemoteAssetPolicy } from '../runtime/server/assets/remote'
-import { loadPdfImageAsset } from '../runtime/server/assets/resolve-asset'
 import {
-  normalizePdfLimits,
-  resolvePdfRenderLimits,
-} from '../runtime/server/render-limits'
+  pdfImageFormatFromKey,
+} from '../runtime/server/assets/resolve-asset'
+import { normalizePdfLimits } from '../runtime/server/render-limits'
 import {
   assertRenderOptionKeys,
   renderPreparedPdfTemplate,
@@ -138,19 +137,16 @@ export async function renderPdfSfc<Props extends object>(
     throw new Error(`PDF SFC ${JSON.stringify(entry)} must be a template directly inside pdfs/ or one of its feature directories.`)
   }
   const normalizedLimits = normalizePdfLimits(options.limits)
-  const limits = resolvePdfRenderLimits(normalizedLimits)
   const [component, imageFiles, fonts] = await Promise.all([
     loadPdfSfc(entry),
     discoverPdfImageFiles([{ name: 'test', rootDir }]),
     bundlePdfFonts(options.fonts ?? [], { fontRoots: [join(rootDir, 'pdfs', 'fonts')] }),
   ])
-  const loadedAssets = await Promise.all(imageFiles.map(image =>
-    loadPdfImageAsset(image.key, {
-      roots: [image.rootDir],
-      maxBytes: limits.maxImageBytes,
-      maxPixels: limits.maxImagePixels,
-    })))
-  const assets = Object.fromEntries(loadedAssets.map(asset => [asset.key, asset]))
+  // Test renders resolve from disk exactly like development Nuxt renders.
+  const assets = Object.fromEntries(imageFiles.map(image => [
+    image.key,
+    Object.freeze({ format: pdfImageFormatFromKey(image.key), root: image.rootDir }),
+  ]))
 
   return renderPreparedPdfTemplate(component, props, {
     assets,

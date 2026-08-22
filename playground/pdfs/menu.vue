@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Menu, MenuCourse } from '../shared/menu'
 import { formatMenuPrice, formatWinePrice, sampleMenu, winterMenu } from '../shared/menu'
+import DotLeader from './components/common/DotLeader.vue'
 
 defineOptions({ name: 'AlpenroseMenuPdf' })
 
@@ -62,14 +63,6 @@ const headRuleStyle = {
 // Dish row shared by every course.
 const dishRowStyle = { alignItems: 'flex-end', flexDirection: 'row' } as const
 const dishNameStyle = { color: ink, fontFamily: 'Inter', fontSize: 10, fontWeight: 600 } as const
-const dishLeaderStyle = {
-  borderBottomColor: leader,
-  borderBottomStyle: 'dotted',
-  borderBottomWidth: 0.75,
-  flex: 1,
-  marginBottom: 2,
-  marginHorizontal: 7,
-} as const
 const dishPriceStyle = {
   color: ink,
   fontFamily: 'Inter',
@@ -232,7 +225,12 @@ definePdf<MenuProps>({
               <PdfText :style="dishNameStyle">
                 {{ dish.name }}
               </PdfText>
-              <PdfView :style="dishLeaderStyle" />
+              <DotLeader
+                :baseline="2"
+                :gap="7"
+                :color="leader"
+                :width="0.75"
+              />
               <PdfText :style="dishPriceStyle">
                 {{ formatMenuPrice(dish.price) }}
               </PdfText>
@@ -297,7 +295,12 @@ definePdf<MenuProps>({
             <PdfText :style="dishNameStyle">
               {{ dish.name }}
             </PdfText>
-            <PdfView :style="dishLeaderStyle" />
+            <DotLeader
+              :baseline="2"
+              :gap="7"
+              :color="leader"
+              :width="0.75"
+            />
             <PdfText :style="dishPriceStyle">
               {{ formatMenuPrice(dish.price) }}
             </PdfText>

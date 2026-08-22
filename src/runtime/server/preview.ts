@@ -218,7 +218,7 @@ const indexPage = (
   if (templates.length === 0) {
     return htmlResponse(
       'PDF templates',
-      '<header><h1>PDF templates</h1></header><p>No templates found. Add <code>pdfs/invoice.vue</code> and restart the development server.</p>',
+      '<header><h1>PDF templates</h1></header><p>No templates found. Add <code>pdfs/invoice.vue</code>; Nuxt PDF restarts and registers it automatically.</p>',
     )
   }
 
@@ -405,7 +405,12 @@ const viewerPage = async (
   return htmlResponse(
     title,
     `<header><h1>${escapeHtml(title)}</h1>${actions}</header>${nav}${body}`
-    + `<script type="module">import { createHotContext } from ${JSON.stringify(hmrClientPath)};createHotContext('/_pdf').on('nuxt-pdf:update',()=>location.reload());</script>`,
+    + `<script type="module">import { createHotContext } from ${JSON.stringify(hmrClientPath)};`
+    + `createHotContext('/_pdf').on('nuxt-pdf:update',()=>{`
+    + `const frame=document.querySelector('iframe');`
+    + `if(frame&&frame.contentWindow){frame.contentWindow.location.reload();}`
+    + `else{location.reload();}`
+    + `});</script>`,
   )
 }
 

@@ -916,7 +916,7 @@ describe('development PDF preview', () => {
             h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
               default: () => h(
                 PdfLink,
-                { src: '#sec', style: { color: 'black' } },
+                { href: '#sec', style: { color: 'black' } },
                 () => `Section ..... ${pages.sec ?? ''}`,
               ),
             }),

@@ -36,7 +36,7 @@ const createReactDoc = (): React.ReactElement => rh(
   rh(
     ReactPage,
     { size: 'A4', style: { padding: 40 } },
-    ...TARGETS.map(id => rh(ReactLink, { key: id, src: `#${id}`, style: { fontSize: 14, marginBottom: 8 } }, `Jump to ${id}`)),
+    ...TARGETS.map(id => rh(ReactLink, { key: id, href: `#${id}`, style: { fontSize: 14, marginBottom: 8 } }, `Jump to ${id}`)),
   ),
   ...TARGETS.map(id => rh(
     ReactPage,
@@ -53,7 +53,7 @@ const VueDoc = defineComponent({
         default: () => [
           h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
             default: () => TARGETS.map(id =>
-              h(PdfLink, { src: `#${id}`, style: { fontSize: 14, marginBottom: 8 } }, { default: () => `Jump to ${id}` }),
+              h(PdfLink, { href: `#${id}`, style: { fontSize: 14, marginBottom: 8 } }, { default: () => `Jump to ${id}` }),
             ),
           }),
           ...TARGETS.map(id =>
@@ -146,7 +146,7 @@ describe('single-pass destination anchoring', () => {
           h(PdfDocument, {}, {
             default: () => [
               h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
-                default: () => h(PdfLink, { src: '#long', style: { fontSize: 14 } }, { default: () => 'Jump to long' }),
+                default: () => h(PdfLink, { href: '#long', style: { fontSize: 14 } }, { default: () => 'Jump to long' }),
               }),
               h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
                 default: () => h(PdfView, { id: 'long' }, {
@@ -184,7 +184,7 @@ describe('single-pass destination anchoring', () => {
                   h(PdfView, { id: 'brand', fixed: true, style: { position: 'absolute', top: 12, left: 40 } }, {
                     default: () => h(PdfText, { style: { fontSize: 9 } }, { default: () => 'Fieldnote Studio' }),
                   }),
-                  h(PdfLink, { src: '#brand', style: { fontSize: 14, marginTop: 40 } }, { default: () => 'Jump to brand header' }),
+                  h(PdfLink, { href: '#brand', style: { fontSize: 14, marginTop: 40 } }, { default: () => 'Jump to brand header' }),
                   ...Array.from({ length: 60 }, (_, i) =>
                     h(PdfText, { style: { fontSize: 12, marginBottom: 4 } }, { default: () => `body line ${i + 1}` }),
                   ),
@@ -210,7 +210,7 @@ describe('single-pass destination anchoring', () => {
         return () =>
           h(PdfDocument, {}, {
             default: () => h(PdfPage, { size: 'A4' }, {
-              default: () => h(PdfLink, { src: '#missing' }, { default: () => 'Broken' }),
+              default: () => h(PdfLink, { href: '#missing' }, { default: () => 'Broken' }),
             }),
           })
       },

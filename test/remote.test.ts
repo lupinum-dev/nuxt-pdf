@@ -322,7 +322,7 @@ describe('remote images', () => {
   })
 
   it('accepts the { uri } source form', async () => {
-    const node = image({ source: { uri: `${origin}/png` } })
+    const node = image({ src: { uri: `${origin}/png` } })
     await resolvePdfImageAssets(documentWith(node), { assets: {}, remote: policyFor() })
     expect(resolvedSource(node).equals(PNG)).toBe(true)
   })

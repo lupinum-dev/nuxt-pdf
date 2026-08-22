@@ -313,19 +313,16 @@ const validatePage = (node: PdfElementNode): void => {
 
 const validateLinkAndImageSources = (node: PdfElementNode): void => {
   if (node.type === PDF_PRIMITIVES.Image) {
-    if (hasProp(node, 'src') === hasProp(node, 'source')) {
-      treeInvalid('<PdfImage> requires exactly one of "src" or "source".')
+    if (!hasProp(node, 'src')) {
+      treeInvalid('<PdfImage> requires a "src" prop.')
     }
   }
 
   if (node.type === PDF_PRIMITIVES.Link) {
-    const hasHref = hasProp(node, 'href')
-    const hasSrc = hasProp(node, 'src')
-    if (hasHref === hasSrc) {
-      treeInvalid('<PdfLink> requires exactly one of "href" or "src".')
+    if (!hasProp(node, 'href')) {
+      treeInvalid('<PdfLink> requires an "href" prop.')
     }
-    const target = hasHref ? node.props.href : node.props.src
-    if (typeof target !== 'string' || target.trim() === '') {
+    if (typeof node.props.href !== 'string' || node.props.href.trim() === '') {
       treeInvalid('<PdfLink> targets must be non-empty strings.')
     }
   }

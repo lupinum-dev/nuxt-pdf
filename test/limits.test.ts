@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import { Buffer } from 'node:buffer'
 import { fileURLToPath } from 'node:url'
 import { defineComponent, h, type Component } from 'vue'
 import { describe, expect, it } from 'vitest'
@@ -224,7 +225,7 @@ describe('render limits', () => {
     const template = createPdfTemplate('late-image', lateImageDocument('sample.png'), {
       assets: {
         'sample.png': {
-          data: lateImageBytes,
+          dataB64: Buffer.from(lateImageBytes).toString('base64'),
           format: 'png',
         },
       },
@@ -258,7 +259,7 @@ describe('render limits', () => {
     const template = createPdfTemplate('multi-pass-image', MultiPassImageDoc, {
       assets: {
         'sample.png': {
-          data: lateImageBytes,
+          dataB64: Buffer.from(lateImageBytes).toString('base64'),
           format: 'png',
         },
       },

@@ -1,0 +1,85 @@
+name: upstream-drift
+
+# Weekly tripwire for the pinned @react-pdf/* engine packages. The module pins
+# exact versions because its layout, serialization, and font seams depend on
+# documented upstream internals (see src/runtime/server/engine/CONTRACTS.md).
+# This workflow answers "when did upstream move?", not "should we merge?".
+# It never publishes and never opens pull requests; a human reads the report.
+
+on:
+  schedule:
+    - cron: '43 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CI: 'true'
+
+jobs:
+  probe:
+    name: Probe engine drift
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24.18.0
+      - run: npm install --global pnpm@11.21.0
+      - run: pnpm install --frozen-lockfile
+      - name: Record pinned engine versions
+        run: |
+          node --input-type=module <<'EOF'
+          import { readFileSync } from 'node:fs'
+          const pkg = JSON.parse(readFileSync('package.json', 'utf8'))
+          for (const [name, version] of Object.entries(pkg.dependencies)) {
+            if (name.startsWith('@react-pdf/')) console.log(`${name} ${version}`)
+          }
+          EOF
+      - name: Bump engine packages to latest
+        run: >
+          pnpm update --latest
+          @react-pdf/font @react-pdf/layout @react-pdf/pdfkit
+          @react-pdf/primitives @react-pdf/render
+      - name: Record drifted engine versions
+        run: |
+          node --input-type=module <<'EOF'
+          import { readFileSync } from 'node:fs'
+          const lock = readFileSync('pnpm-lock.yaml', 'utf8')
+          for (const match of lock.matchAll(/'(@react-pdf\/[^@]+)@([^']+)':/g)) {
+            console.log(`${match[1]} ${match[2]}`)
+          }
+          EOF
+      - name: Run the conformance corpus against latest upstream
+        id: probe
+        continue-on-error: true
+        run: |
+          pnpm test:prepare
+          npx vitest run \
+            test/conformance.test.ts \
+            test/corpus \
+            test/svg-conformance.test.ts \
+            test/toc-conformance.test.ts \
+            test/engine.test.ts \
+            test/fonts.test.ts
+      - name: Run raster evidence against latest upstream
+        continue-on-error: true
+        run: pnpm test:raster
+      - name: Summarize drift
+        if: always()
+        run: |
+          {
+            echo '## Upstream engine drift probe'
+            echo ''
+            if [ "${{ steps.probe.outcome }}" = 'failure' ]; then
+              echo 'The conformance corpus FAILED against the latest @react-pdf/* releases.'
+              echo 'Upstream internals moved. Compare failures against CONTRACTS.md before planning an upgrade.'
+            else
+              echo 'The conformance corpus passed against the latest @react-pdf/* releases.'
+              echo 'An upgrade may be safe; review the changelogs and the full suite first.'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

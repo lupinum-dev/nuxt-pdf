@@ -18,14 +18,8 @@ const nestedStyle = [
       <PdfView :min-presence-ahead="24">
         <PdfImage :src="image" />
 
-        <!-- @vue-expect-error PdfImage requires exactly one source alias. -->
+        <!-- @vue-expect-error PdfImage requires a src prop. -->
         <PdfImage />
-
-        <!-- @vue-expect-error PdfImage source aliases are mutually exclusive. -->
-        <PdfImage
-          :src="image"
-          :source="image"
-        />
 
         <PdfSvg view-box="0 0 10 10">
           <PdfDefs>

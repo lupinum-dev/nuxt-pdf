@@ -1,4 +1,3 @@
-import { Buffer } from 'node:buffer'
 import { joinURL } from 'ufo'
 import type { RemoteAssetPolicy } from '../runtime/server/assets/remote'
 import type { PdfRenderLimits } from '../runtime/server/render-limits'
@@ -8,12 +7,17 @@ export type PdfRegistryTypeGenerationOptions = {
   runtimeImport: string
 }
 
+export type PdfRegistryAssetEntry = {
+  key: string
+  format: 'jpg' | 'png'
+  /** Development: absolute pdfs/assets root holding the file. */
+  root?: string
+  /** Production: validated base64 bytes embedded in the server bundle. */
+  dataB64?: string
+}
+
 export type PdfRegistryGenerationOptions = PdfRegistryTypeGenerationOptions & {
-  assets?: readonly {
-    data: Uint8Array
-    format: 'jpg' | 'png'
-    key: string
-  }[]
+  assets?: PdfRegistryAssetEntry[]
   fonts?: readonly {
     family: string
     fontStyle?: 'italic' | 'normal' | 'oblique'
@@ -52,6 +56,14 @@ const runtimeOptionsSource = (
   const fonts = options.fonts ?? []
   const { remote, limits } = options
 
+  for (const asset of assets) {
+    if ((asset.root !== undefined) === (asset.dataB64 !== undefined)) {
+      throw new TypeError(
+        `PDF image asset "${asset.key}" must declare exactly one of root or dataB64.`,
+      )
+    }
+  }
+
   if (assets.length === 0 && fonts.length === 0 && !remote && !limits) return []
 
   const lines = ['', 'const __pdfRuntimeOptions = Object.freeze({']
@@ -59,9 +71,10 @@ const runtimeOptionsSource = (
   if (assets.length > 0) {
     lines.push('  assets: Object.freeze({')
     for (const asset of assets) {
-      lines.push(
-        `    ${quote(asset.key)}: Object.freeze({ data: __pdfBuffer.from(${quote(Buffer.from(asset.data).toString('base64'))}, 'base64'), format: ${quote(asset.format)} }),`,
-      )
+      const entry = asset.root !== undefined
+        ? `{ format: ${quote(asset.format)}, root: ${quote(asset.root)} }`
+        : `{ dataB64: ${quote(asset.dataB64 ?? '')}, format: ${quote(asset.format)} }`
+      lines.push(`    ${quote(asset.key)}: Object.freeze(${entry}),`)
     }
     lines.push('  }),')
   }
@@ -125,10 +138,6 @@ export const generatePdfRuntimeRegistry = (
   const lines = [
     `import { ${runtimeImports} } from ${quote(options.runtimeImport)}`,
   ]
-
-  if ((options.assets?.length ?? 0) > 0) {
-    lines.push('import { Buffer as __pdfBuffer } from \'node:buffer\'')
-  }
 
   ordered.forEach((template, index) => {
     lines.push(

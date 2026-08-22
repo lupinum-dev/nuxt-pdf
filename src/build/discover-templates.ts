@@ -58,10 +58,11 @@ export const classifyPdfWatchEvent = (
     if (PDF_STRUCTURE_EVENTS.has(event)) return 'restart'
     if (event !== 'change') return 'ignore'
 
+    // Fonts are bundled into the registry at setup, so a change needs a
+    // restart. Images resolve from disk on every dev render, so an edited
+    // image only needs a preview refresh.
     const [rootDirectory] = pathWithinPdfs.split(/[\\/]/)
-    return rootDirectory === 'assets' || rootDirectory === 'fonts'
-      ? 'restart'
-      : 'refresh'
+    return rootDirectory === 'fonts' ? 'restart' : 'refresh'
   }
 
   return 'ignore'

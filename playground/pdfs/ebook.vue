@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Ebook } from '../shared/ebook'
 import { sampleEbook, shortEbook, splitLeadIn } from '../shared/ebook'
+import DotLeader from './components/common/DotLeader.vue'
 
 defineOptions({ name: 'EbookPdf' })
 
@@ -289,7 +290,7 @@ definePdf<EbookProps>({
       <PdfLink
         v-for="chapter in ebook.chapters"
         :key="chapter.id"
-        :src="`#${chapter.id}`"
+        :href="`#${chapter.id}`"
         :style="{ color: ink, marginBottom: 20, textDecoration: 'none' }"
       >
         <PdfView :style="{ alignItems: 'flex-end', flexDirection: 'row' }">
@@ -301,15 +302,11 @@ definePdf<EbookProps>({
           <PdfText :style="{ color: ink, fontFamily: 'Lora', fontSize: 12.5 }">
             {{ chapter.title }}
           </PdfText>
-          <PdfView
-            :style="{
-              borderBottomColor: '#C9CFCB',
-              borderBottomStyle: 'dotted',
-              borderBottomWidth: 0.75,
-              flex: 1,
-              marginBottom: 3.5,
-              marginHorizontal: 8,
-            }"
+          <DotLeader
+            :baseline="3.5"
+            :gap="8"
+            color="#C9CFCB"
+            :width="0.75"
           />
           <PdfText :style="{ color: softInk, fontFamily: 'Inter', fontSize: 10 }">
             {{ pageNumbers[chapter.id] ?? '' }}

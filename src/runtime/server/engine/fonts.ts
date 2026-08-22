@@ -36,3 +36,37 @@ export const createPdfFontStore = (
 
   return fontStore as unknown as PdfFontStore
 }
+
+const sameFontList = (
+  left: readonly BundledPdfFontDescriptor[],
+  right: readonly BundledPdfFontDescriptor[],
+): boolean =>
+  left.length === right.length
+  && left.every((font, index) => {
+    const other = right[index]!
+    return font.family === other.family
+      && font.src === other.src
+      && font.fontStyle === other.fontStyle
+      && font.fontWeight === other.fontWeight
+  })
+
+// Font declarations are immutable build artifacts (validated data URLs baked
+// into the generated registry), so the parsed-font cache inside one FontStore
+// holds no render data and can be shared across renders. Re-parsing every TTF
+// per render is pure CPU waste on hot paths. One cached store keyed by the
+// exact descriptor list keeps behavior identical when the list changes.
+let sharedFontStore:
+  | { fonts: readonly BundledPdfFontDescriptor[], store: PdfFontStore }
+  | undefined
+
+export const getSharedPdfFontStore = (
+  fonts: readonly BundledPdfFontDescriptor[] = [],
+): PdfFontStore => {
+  if (sharedFontStore && sameFontList(sharedFontStore.fonts, fonts)) {
+    return sharedFontStore.store
+  }
+
+  const store = createPdfFontStore(fonts)
+  sharedFontStore = { fonts, store }
+  return store
+}

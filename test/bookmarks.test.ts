@@ -224,7 +224,7 @@ const TocBookmarkDoc = defineComponent({
             default: () => [
               h(PdfText, { style: { fontSize: 20, marginBottom: 12 } }, { default: () => 'Contents' }),
               ...CHAPTERS.map(chapter =>
-                h(PdfLink, { src: `#${chapter.title}`, style: { fontSize: 12, marginBottom: 6 } }, {
+                h(PdfLink, { href: `#${chapter.title}`, style: { fontSize: 12, marginBottom: 6 } }, {
                   default: () => `${chapter.title} ..... ${resolved()[chapter.title] ?? ''}`,
                 }),
               ),
@@ -286,7 +286,7 @@ const AncestryShiftDoc = defineComponent({
         default: () => [
           h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
             default: () => [
-              h(PdfLink, { src: '#t', style: { fontSize: 12 } }, { default: () => `Go ..... ${resolved().t ?? ''}` }),
+              h(PdfLink, { href: '#t', style: { fontSize: 12 } }, { default: () => `Go ..... ${resolved().t ?? ''}` }),
               h(PdfView, { bookmark: resolved().t ? 'Parent' : undefined }, {
                 default: () => h(PdfText, { bookmark: STABLE_CHILD_BOOKMARK, style: { fontSize: 12 } }, { default: () => STABLE_CHILD_BOOKMARK }),
               }),
@@ -372,7 +372,7 @@ describe('multi-pass + bookmarks', () => {
           h(PdfDocument, {}, {
             default: () => [
               h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
-                default: () => h(PdfLink, { src: '#late', style: { fontSize: 13 } }, {
+                default: () => h(PdfLink, { href: '#late', style: { fontSize: 13 } }, {
                   default: () => `Late section ..... ${props.resolved.late ?? ''}`,
                 }),
               }),

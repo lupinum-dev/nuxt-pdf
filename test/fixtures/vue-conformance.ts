@@ -99,7 +99,7 @@ export const VueConformanceDocument = defineComponent({
               ),
               h(
                 PdfLink,
-                { src: 'https://nuxt.com', style: styles.link },
+                { href: 'https://nuxt.com', style: styles.link },
                 { default: () => 'Nuxt documentation' },
               ),
             ],

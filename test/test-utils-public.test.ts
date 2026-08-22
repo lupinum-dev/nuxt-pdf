@@ -36,8 +36,8 @@ const InvoiceDoc = defineComponent({
           h(PdfPage, { size: 'A4', style: { padding: 40, fontFamily: 'Helvetica' } }, {
             default: () => [
               h(PdfText, { style: { fontSize: 20, marginBottom: 12 } }, { default: () => `Invoice for ${props.customer}` }),
-              h(PdfLink, { src: '#terms', style: { fontSize: 12, marginBottom: 6 } }, { default: () => 'See the terms' }),
-              h(PdfLink, { src: 'https://example.com', style: { fontSize: 12 } }, { default: () => 'Visit example.com' }),
+              h(PdfLink, { href: '#terms', style: { fontSize: 12, marginBottom: 6 } }, { default: () => 'See the terms' }),
+              h(PdfLink, { href: 'https://example.com', style: { fontSize: 12 } }, { default: () => 'Visit example.com' }),
             ],
           }),
           h(PdfPage, { size: 'A4', style: { padding: 40, fontFamily: 'Helvetica' } }, {

@@ -10,6 +10,7 @@ import {
 } from '../shared/invoice'
 import InvoiceLine from './components/invoice/InvoiceLine.vue'
 import InvoiceSection from './components/invoice/InvoiceSection.vue'
+import { INVOICE_COLUMNS as columns } from './components/invoice/columns'
 
 defineOptions({ name: 'FieldnoteInvoicePdf' })
 
@@ -201,19 +202,19 @@ definePdf<InvoiceProps>({
           }"
           :wrap="false"
         >
-          <PdfText :style="{ color: '#758078', fontSize: 7, width: 28 }">
+          <PdfText :style="{ color: '#758078', fontSize: 7, width: columns.sequence.width }">
             #
           </PdfText>
-          <PdfText :style="{ color: '#758078', fontSize: 7, width: 246 }">
+          <PdfText :style="{ color: '#758078', fontSize: 7, width: columns.description.width }">
             Description
           </PdfText>
-          <PdfText :style="{ color: '#758078', fontSize: 7, textAlign: 'right', width: 52 }">
+          <PdfText :style="{ color: '#758078', fontSize: 7, textAlign: 'right', width: columns.quantity.width }">
             Qty
           </PdfText>
-          <PdfText :style="{ color: '#758078', fontSize: 7, textAlign: 'right', width: 78 }">
+          <PdfText :style="{ color: '#758078', fontSize: 7, textAlign: 'right', width: columns.rate.width }">
             Rate
           </PdfText>
-          <PdfText :style="{ color: '#758078', fontSize: 7, textAlign: 'right', width: 86 }">
+          <PdfText :style="{ color: '#758078', fontSize: 7, textAlign: 'right', width: columns.amount.width }">
             Amount
           </PdfText>
         </PdfView>

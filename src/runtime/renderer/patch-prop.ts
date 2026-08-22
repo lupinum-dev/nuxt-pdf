@@ -114,14 +114,12 @@ const PDF_PROP_KEYS: Record<PdfElementType, ReadonlySet<string>> = {
   [PDF_PRIMITIVES.Image]: exactPropNames<PdfImageProps>()([
     ...BASE_PROP_NAMES,
     ...BOOKMARK_PROP_NAMES,
-    'source',
     'src',
   ]),
   [PDF_PRIMITIVES.Link]: exactPropNames<PdfLinkProps>()([
     ...BASE_PROP_NAMES,
     'hitSlop',
     'href',
-    'src',
     'wrap',
   ]),
   [PDF_PRIMITIVES.Note]: exactPropNames<PdfNoteProps>()(BASE_PROP_NAMES),

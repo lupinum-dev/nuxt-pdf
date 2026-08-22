@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { InvoiceLineItem } from '../../../shared/invoice'
 import { formatInvoiceMoney } from '../../../shared/invoice'
+import { INVOICE_COLUMNS as columns } from './columns'
 
 const props = defineProps<{
   currency: string
@@ -28,10 +29,10 @@ const rate = formatInvoiceMoney(props.line.unitPrice, props.currency)
     }"
     :wrap="false"
   >
-    <PdfText :style="{ color: '#758078', fontSize: 8, width: 28 }">
+    <PdfText :style="{ color: '#758078', fontSize: 8, width: columns.sequence.width }">
       {{ String(index + 1).padStart(2, '0') }}
     </PdfText>
-    <PdfView :style="{ paddingRight: 16, width: 246 }">
+    <PdfView :style="{ paddingRight: 16, width: columns.description.width }">
       <PdfText :style="{ color: '#18251D', fontSize: 9.5, marginBottom: 4 }">
         {{ line.description }}
       </PdfText>
@@ -39,13 +40,13 @@ const rate = formatInvoiceMoney(props.line.unitPrice, props.currency)
         {{ line.detail }}
       </PdfText>
     </PdfView>
-    <PdfText :style="{ color: '#566159', fontSize: 8.5, textAlign: 'right', width: 52 }">
+    <PdfText :style="{ color: '#566159', fontSize: 8.5, textAlign: 'right', width: columns.quantity.width }">
       {{ line.quantity }}
     </PdfText>
-    <PdfText :style="{ color: '#566159', fontSize: 8.5, textAlign: 'right', width: 78 }">
+    <PdfText :style="{ color: '#566159', fontSize: 8.5, textAlign: 'right', width: columns.rate.width }">
       {{ rate }}
     </PdfText>
-    <PdfText :style="{ color: '#18251D', fontSize: 8.5, textAlign: 'right', width: 86 }">
+    <PdfText :style="{ color: '#18251D', fontSize: 8.5, textAlign: 'right', width: columns.amount.width }">
       {{ amount }}
     </PdfText>
   </PdfView>

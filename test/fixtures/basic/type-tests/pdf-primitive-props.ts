@@ -15,24 +15,17 @@ import type {
 } from '../../../../src/module'
 
 const imageFromSrc: PdfImageProps = { src: 'images/logo.png' }
-const imageFromSource: PdfImageProps = { source: new Uint8Array() }
+const imageFromBytes: PdfImageProps = { src: new Uint8Array() }
 
 // @ts-expect-error An image without a source cannot render.
 const imageWithoutSource: PdfImageProps = {}
-// @ts-expect-error src and source are mutually exclusive.
-const imageWithTwoSources: PdfImageProps = {
-  src: 'images/logo.png',
-  source: 'images/other.png',
-}
 // @ts-expect-error Decoded-image caching is not part of the isolated render contract.
 const imageCachePassthrough: PdfImageProps = { src: 'images/logo.png', cache: false }
 
-const internalLink: PdfLinkProps = { src: '#details' }
+const internalLink: PdfLinkProps = { href: '#details' }
 const externalLink: PdfLinkProps = { href: 'https://example.com' }
 // @ts-expect-error A link without a target cannot create an annotation.
 const linkWithoutTarget: PdfLinkProps = {}
-// @ts-expect-error href and src are mutually exclusive target aliases.
-const linkWithTwoTargets: PdfLinkProps = { href: 'https://example.com', src: '#details' }
 
 const standardPage: PdfPageSize = 'A4'
 const lessCommonStandardPage: PdfPageSize = 'SRA4'
@@ -146,9 +139,8 @@ void [
   documentPageMode,
   documentPermissions,
   imageCachePassthrough,
-  imageFromSource,
+  imageFromBytes,
   imageFromSrc,
-  imageWithTwoSources,
   imageWithoutSource,
   incompletePage,
   inheritedGradient,
@@ -161,7 +153,6 @@ void [
   internalLink,
   externalLink,
   linkWithoutTarget,
-  linkWithTwoTargets,
   metricPage,
   oneValuePage,
   outlineBookmark,

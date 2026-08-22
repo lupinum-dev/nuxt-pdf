@@ -67,7 +67,7 @@ describe('PDF template discovery', () => {
     expect(classifyPdfWatchEvent('unlink', '/project/pdfs/old.vue', layers))
       .toBe('restart')
     expect(classifyPdfWatchEvent('change', '/project/pdfs/assets/logo.png', layers))
-      .toBe('restart')
+      .toBe('refresh')
     expect(classifyPdfWatchEvent('change', '/project/pdfs/fonts/body.ttf', layers))
       .toBe('restart')
     expect(classifyPdfWatchEvent('change', '/project/pdfs/private.vue', layers,
@@ -307,10 +307,10 @@ export { NuxtPdfError, PDF_ERROR_CODES } from "#pdf-runtime"
     )
   })
 
-  it('embeds validated assets and fonts without source-tree paths', () => {
+  it('embeds production asset bytes and fonts without source-tree paths', () => {
     const source = generatePdfRuntimeRegistry(templates, {
       assets: [{
-        data: new Uint8Array([1, 2, 3]),
+        dataB64: 'AQID',
         format: 'png',
         key: 'brand/logo.png',
       }],
@@ -322,9 +322,7 @@ export { NuxtPdfError, PDF_ERROR_CODES } from "#pdf-runtime"
       runtimeImport: '#pdf-runtime',
     })
 
-    expect(source).toContain('Buffer as __pdfBuffer')
-    expect(source).toContain('__pdfBuffer.from("AQID", \'base64\')')
-    expect(source).toContain('"brand/logo.png"')
+    expect(source).toContain('"brand/logo.png": Object.freeze({ dataB64: "AQID", format: "png" })')
     expect(source).toContain('"Invoice Sans"')
     expect(source).toContain(
       '"invoice": createPdfTemplate("invoice", __pdfTemplate0, __pdfRuntimeOptions)',
@@ -332,6 +330,42 @@ export { NuxtPdfError, PDF_ERROR_CODES } from "#pdf-runtime"
     expect(source).not.toContain('file:')
     expect(source).not.toContain('/project/pdfs/assets')
     expect(source).not.toContain('/project/pdfs/fonts')
+  })
+
+  it('points development assets at their disk roots for edit-fresh renders', () => {
+    const source = generatePdfRuntimeRegistry(templates, {
+      assets: [{
+        format: 'png',
+        key: 'brand/logo.png',
+        root: '/project/pdfs/assets',
+      }],
+      development: true,
+      runtimeImport: '#pdf-runtime',
+    })
+
+    expect(source).toContain(
+      '"brand/logo.png": Object.freeze({ format: "png", root: "/project/pdfs/assets" })',
+    )
+    expect(source).not.toContain('dataB64')
+  })
+
+  it('rejects asset entries without exactly one source form', () => {
+    expect(() => generatePdfRuntimeRegistry(templates, {
+      assets: [{ format: 'png', key: 'brand/logo.png' }],
+      development: true,
+      runtimeImport: '#pdf-runtime',
+    })).toThrow(/exactly one of root or dataB64/)
+
+    expect(() => generatePdfRuntimeRegistry(templates, {
+      assets: [{
+        dataB64: 'AQID',
+        format: 'png',
+        key: 'brand/logo.png',
+        root: '/project/pdfs/assets',
+      }],
+      development: true,
+      runtimeImport: '#pdf-runtime',
+    })).toThrow(/exactly one of root or dataB64/)
   })
 
   it('generates typed key access and an explicit dynamic escape hatch', () => {

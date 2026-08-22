@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Report } from '../shared/report'
 import { sampleReport } from '../shared/report'
+import DotLeader from './components/common/DotLeader.vue'
 
 defineOptions({ name: 'FieldnoteReportPdf' })
 
@@ -79,22 +80,17 @@ definePdf<ReportProps>({
       <PdfLink
         v-for="entry in entries"
         :key="entry.id"
-        :src="`#${entry.id}`"
+        :href="`#${entry.id}`"
         :style="{ color: '#18251D', marginBottom: 11, textDecoration: 'none' }"
       >
         <PdfView :style="{ alignItems: 'flex-end', flexDirection: 'row', marginLeft: entry.depth * 18 }">
           <PdfText :style="{ color: entry.depth ? '#4A554E' : '#18251D', fontSize: entry.depth ? 10 : 11.5 }">
             {{ entry.title }}
           </PdfText>
-          <PdfView
-            :style="{
-              borderBottomColor: '#CDD5CF',
-              borderBottomStyle: 'dotted',
-              borderBottomWidth: 1,
-              flex: 1,
-              marginBottom: 3,
-              marginHorizontal: 7,
-            }"
+          <DotLeader
+            :baseline="3"
+            :gap="7"
+            color="#CDD5CF"
           />
           <PdfText :style="{ color: '#4A554E', fontSize: 10 }">
             {{ pageNumbers[entry.id] ?? '' }}

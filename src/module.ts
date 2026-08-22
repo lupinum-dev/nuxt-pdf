@@ -1,6 +1,9 @@
 import { stat } from 'node:fs/promises'
-import { isAbsolute, join, resolve as resolvePath } from 'node:path'
+import { Buffer } from 'node:buffer'
+import { isAbsolute, join, relative, resolve as resolvePath } from 'node:path'
+import { version as moduleVersion } from '../package.json'
 import {
+  addComponent,
   addImports,
   addServerHandler,
   addServerTemplate,
@@ -10,7 +13,9 @@ import {
   createResolver,
   defineNuxtModule,
   getLayerDirectories,
+  logger,
 } from '@nuxt/kit'
+import { joinURL } from 'ufo'
 import {
   discoverPdfComponentFiles,
   discoverPdfImageFiles,
@@ -20,16 +25,21 @@ import {
 } from './build/discover-templates'
 import { bundlePdfFonts } from './build/fonts'
 import {
+  loadPdfImageAsset,
+  pdfImageFormatFromKey,
+} from './runtime/server/assets/resolve-asset'
+import {
   generatePdfPreviewConfig,
   generatePdfRegistryTypes,
   generatePdfRuntimeRegistry,
+  type PdfRegistryAssetEntry,
 } from './build/generate-registry'
 import { createPdfSfcPlugin } from './build/pdf-sfc-plugin'
+import { PDF_STUB_NAMES } from './runtime/components/stubs'
 import {
   normalizeRemoteAssetPolicy,
   type RemoteAssetOptions,
 } from './runtime/server/assets/remote'
-import { loadPdfImageAsset } from './runtime/server/assets/resolve-asset'
 import {
   DEFAULT_PDF_RENDER_LIMITS,
   normalizePdfLimits,
@@ -156,10 +166,12 @@ export {}
 
 export default defineNuxtModule<ModuleOptions>({
   meta: {
-    name: 'nuxt-pdf',
+    name: '@lupinum/nuxt-pdf',
+    version: moduleVersion,
     configKey: 'pdf',
+    docs: 'https://nuxt-pdf.lupinum.com',
     compatibility: {
-      nuxt: '^4.4.8',
+      nuxt: '>=4.4.8',
     },
   },
   defaults: {
@@ -185,13 +197,28 @@ export default defineNuxtModule<ModuleOptions>({
     const limits = normalizePdfLimits(options.limits)
     const resolvedLimits = limits ?? DEFAULT_PDF_RENDER_LIMITS
     const imageFiles = await discoverPdfImageFiles(layers, isIgnored)
-    const assets = await Promise.all(imageFiles.map(image =>
-      loadPdfImageAsset(image.key, {
-        roots: [image.rootDir],
-        maxBytes: resolvedLimits.maxImageBytes,
-        maxPixels: resolvedLimits.maxImagePixels,
-      }),
-    ))
+    // Development entries point at the source file so edits render without a
+    // restart. Production embeds validated base64 bytes so every Nitro output
+    // stays self-contained; validation here fails the build on bad assets.
+    const assetEntries: PdfRegistryAssetEntry[] = []
+    for (const image of imageFiles) {
+      const format = pdfImageFormatFromKey(image.key)
+      if (nuxt.options.dev) {
+        assetEntries.push({ format, key: image.key, root: image.rootDir })
+      }
+      else {
+        const loaded = await loadPdfImageAsset(image.key, {
+          roots: [image.rootDir],
+          maxBytes: resolvedLimits.maxImageBytes,
+          maxPixels: resolvedLimits.maxImagePixels,
+        })
+        assetEntries.push({
+          dataB64: Buffer.from(loaded.data).toString('base64'),
+          format,
+          key: image.key,
+        })
+      }
+    }
     const fontRoots = await existingDirectories(
       layers.map(layer => join(layer.rootDir, 'pdfs', 'fonts')),
     )
@@ -212,7 +239,7 @@ export default defineNuxtModule<ModuleOptions>({
     addServerTemplate({
       filename: '#pdf',
       getContents: () => generatePdfRuntimeRegistry(templates, {
-        assets,
+        assets: assetEntries,
         development: nuxt.options.dev,
         fonts,
         remote,
@@ -306,6 +333,10 @@ export default defineNuxtModule<ModuleOptions>({
           isIgnored,
         )
         if (action === 'restart') {
+          // A restart wipes bundler state, so say why it is happening.
+          logger.info(
+            `nuxt-pdf: ${relative(nuxt.options.rootDir, absolutePath) || absolutePath} changed; restarting to rebuild the PDF registry…`,
+          )
           await nuxt.callHook('restart')
           return
         }
@@ -327,6 +358,27 @@ export default defineNuxtModule<ModuleOptions>({
       })
       addServerHandler({ route: '/_pdf', handler: previewHandler })
       addServerHandler({ route: '/_pdf/**', handler: previewHandler })
+
+      // Surface the existing /_pdf preview in Nuxt DevTools, mirroring the
+      // iframe-tab pattern used by @nuxthub/core and vueuse.
+      nuxt.hook('devtools:customTabs', (tabs) => {
+        tabs.push({
+          name: 'nuxt-pdf',
+          title: 'PDF',
+          icon: 'i-lucide-file-text',
+          view: { type: 'iframe', src: joinURL(nuxt.options.app.baseURL || '/', '_pdf') },
+        })
+      })
+
+      // Global Pdf* types make misuse outside pdfs/ typecheck; these stubs
+      // turn the silent runtime failure into an immediate, actionable error.
+      for (const name of PDF_STUB_NAMES) {
+        addComponent({
+          name,
+          export: name,
+          filePath: resolver.resolve('./runtime/components/stubs'),
+        })
+      }
     }
   },
 })

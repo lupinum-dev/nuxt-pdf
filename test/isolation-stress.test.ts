@@ -88,7 +88,7 @@ describe('render isolation stress', () => {
         : stressComponent(index, mode === 1 || mode === 2)
       const template = createPdfTemplate<StressProps>(`stress/${index}`, component, {
         assets: {
-          [`images/unique-${index}.png`]: { data: PNG, format: 'png' },
+          [`images/unique-${index}.png`]: { dataB64: PNG.toString('base64'), format: 'png' },
         },
         fonts: [{ family: `Stress Font ${index}`, src: FONT_DATA }],
         limits: mode === 4

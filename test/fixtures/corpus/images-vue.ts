@@ -30,7 +30,7 @@ export const VueSourcesDocument = defineComponent({
           h(PdfText, { style: styles.caption }, () => 'JPEG file, data URL, and buffer sources.'),
           h(PdfImage, { src: props.jpegPath, style: styles.jpegExplicit }),
           h(PdfImage, { src: pngDataUri, style: styles.pngAspectWidth }),
-          h(PdfImage, { source: pngBufferSource, style: styles.pngPercentWidth }),
+          h(PdfImage, { src: pngBufferSource, style: styles.pngPercentWidth }),
         ],
       }),
     })
