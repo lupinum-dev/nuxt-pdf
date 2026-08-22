@@ -110,7 +110,7 @@ export default defineEventHandler(async () => {
           class="release-dot"
           aria-hidden="true"
         />
-        External alpha
+        Public beta
       </div>
     </header>
 

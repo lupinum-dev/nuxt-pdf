@@ -4,6 +4,34 @@ All notable changes to `@lupinum/nuxt-pdf` are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.4.0-beta.1 - 2026-08-22
+
+### Added
+
+- Add strict PDF primitive stubs so invalid props fail during authoring instead
+  of reaching the renderer.
+- Add safer local and remote image admission, configured-font validation, and
+  clearer development preview diagnostics.
+- Add source-derived documentation checks for primitive props, error codes,
+  page sizes, render limits, public exports, routes, and complete examples.
+
+### Changed
+
+- Rebuild the documentation around a first-render tutorial, focused task
+  guides, complete API reference, production guidance, and compatibility
+  evidence.
+- Expand the playground with reusable invoice components, production document
+  recipes, and stronger preview scenarios.
+- Refresh the documentation design with stable Ginko packages and the Nuxt
+  visual language.
+
+### Fixed
+
+- Keep release workflows tied to the exact verified artifact and independent
+  of unnecessary GitHub tokens.
+- Build documentation when no previous Vercel deployment baseline exists.
+- Prepare Nuxt-generated types before clean package and documentation builds.
+
 ## 0.3.1 - 2026-08-13
 
 ### Fixed
