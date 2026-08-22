@@ -5,11 +5,17 @@ import process from 'node:process'
 import { compileScript, compileTemplate, parse } from '@vue/compiler-sfc'
 import { transform } from 'esbuild'
 
+import {
+  findUnsupportedPrimitiveProps,
+  loadPdfDocumentationContracts,
+} from './docs-contracts.mjs'
+
 const repositoryRoot = resolve(import.meta.dirname, '..')
 const contentRoot = join(repositoryRoot, 'docs/content')
 const supportedLanguages = new Set(['bash', 'ts', 'vue'])
 
 const markdownFiles = await findMarkdownFiles(contentRoot)
+const { primitiveProps } = await loadPdfDocumentationContracts(repositoryRoot)
 const failures = []
 let snippetCount = 0
 
@@ -104,6 +110,9 @@ function checkVueSnippet(source, filename) {
     if (result.errors.length > 0) {
       throw new Error(result.errors.map(formatError).join('; '))
     }
+
+    const propErrors = findUnsupportedPrimitiveProps(result.ast, primitiveProps)
+    if (propErrors.length > 0) throw new Error(propErrors.join('; '))
   }
 }
 
