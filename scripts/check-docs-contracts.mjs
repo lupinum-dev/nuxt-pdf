@@ -29,7 +29,7 @@ else {
 }
 
 function checkErrorCodes() {
-  const file = 'docs/content/docs/2.guides/5.errors-and-debugging.md'
+  const file = 'docs/content/docs/4.reference/8.errors-and-limits.md'
   const content = requiredContent(file)
   for (const code of Object.values(contracts.PDF_ERROR_CODES)) {
     if (!content.includes(`\`${code}\``)) failures.push(`${file}: missing error code ${code}.`)
@@ -37,7 +37,7 @@ function checkErrorCodes() {
 }
 
 function checkPageSizes() {
-  const file = 'docs/content/docs/3.reference/8.page-sizes.md'
+  const file = 'docs/content/docs/4.reference/6.page-sizes.md'
   const content = requiredContent(file)
   for (const size of contracts.PDF_PAGE_SIZE_NAMES) {
     if (!content.includes(`\`${size}\``)) failures.push(`${file}: missing page size ${size}.`)
@@ -45,7 +45,7 @@ function checkPageSizes() {
 }
 
 function checkRenderLimits() {
-  const file = 'docs/content/docs/3.reference/3.module-options.md'
+  const file = 'docs/content/docs/4.reference/8.errors-and-limits.md'
   const content = requiredContent(file)
   const rows = content.split('\n')
 
