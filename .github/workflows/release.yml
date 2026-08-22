@@ -104,7 +104,10 @@ jobs:
           test "${tarballs[0]}" = "$tarball"
           if [[ "$package_version" == *-* ]]; then dist_tag=next; else dist_tag=latest; fi
           expected_sha1="$(sha1sum "$tarball" | cut -d' ' -f1)"
-          published_sha1="$(npm view "$package_name@$package_version" dist.shasum --json 2>/dev/null | tr -d '"' || true)"
+          read_published_sha1() {
+            npm view "$package_name@$package_version" dist.shasum --json 2>/dev/null | node -e "let input='';process.stdin.on('data',chunk=>input+=chunk);process.stdin.on('end',()=>{try{const value=JSON.parse(input);if(typeof value==='string'&&/^[a-f0-9]{40}$/i.test(value))process.stdout.write(value)}catch{}})"
+          }
+          published_sha1="$(read_published_sha1)"
           if [[ -n "$published_sha1" && "$published_sha1" != "$expected_sha1" ]]; then
             echo 'npm already contains different bytes for this version.' >&2
             exit 1
@@ -113,7 +116,7 @@ jobs:
             npm publish "$tarball" --provenance --access public --tag "$dist_tag" --ignore-scripts
           fi
           for _ in $(seq 1 240); do
-            published_sha1="$(npm view "$package_name@$package_version" dist.shasum --json 2>/dev/null | tr -d '"' || true)"
+            published_sha1="$(read_published_sha1)"
             provenance="$(npm view "$package_name@$package_version" dist.attestations --json 2>/dev/null | node -e "let input='';process.stdin.on('data',c=>input+=c);process.stdin.on('end',()=>{try{const p=JSON.parse(input);process.stdout.write(p?.provenance?.predicateType?'yes':'')}catch{}})" || true)"
             active_tag="$(npm view "$package_name" "dist-tags.$dist_tag" --json 2>/dev/null | tr -d '"' || true)"
             if [[ "$published_sha1" = "$expected_sha1" && "$provenance" = yes && "$active_tag" = "$package_version" ]]; then
