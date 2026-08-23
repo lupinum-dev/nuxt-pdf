@@ -80,7 +80,7 @@
     "test:quickstart": "node scripts/test-package-quickstart.mjs",
     "test:raster": "vitest run --config vitest.raster.config.ts",
     "test:version-headings": "node scripts/check-version-headings.mjs",
-    "test:workflows": "node scripts/check-workflow-policy.mjs",
+    "test:workflows": "node scripts/check-workflow-policy.mjs && node scripts/test-npm-recovery.mjs && node scripts/test-release-recovery.mjs",
     "check:vercel": "node scripts/check-vercel-config.mjs",
     "test:serverless": "vitest run --config vitest.serverless.config.ts",
     "test:watch": "vitest watch",

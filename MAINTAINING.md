@@ -100,10 +100,15 @@ repository scripts.
 
 If npm already contains the same version, rerun the current workflow only when
 the registry SHA-1 matches the certified tarball and npm exposes provenance.
-The workflow repairs a missing matching GitHub release without republishing.
-Different bytes always stop the release. Dispatch a new run from updated
-`main` after a workflow fix. Do not rerun an old failed run because it keeps
-the old workflow definition.
+The unprivileged verifier checks the signed npm attestation and derives the
+original source commit from it. It then downloads the retained CI artifact for
+that commit. It never assumes that current `main` created an older package.
+The protected job rejects any registry change after this verification. The
+workflow repairs a missing matching tag or GitHub Release from the original
+source and retained bytes without republishing. If the exact artifact expired,
+the signed source differs, or the registry bytes differ, stop. Do not rebuild
+or guess. Dispatch a new run from updated `main` after a workflow fix. Do not
+rerun an old failed run because it keeps the old workflow definition.
 
 Do not use `changelogen --release`, `--push`, or `--publish`. Those options
 bypass the protected pull request, retained artifact, and trusted-publication
