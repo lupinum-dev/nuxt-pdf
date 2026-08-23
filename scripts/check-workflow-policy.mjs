@@ -42,6 +42,15 @@ const ci = workflows.get('ci.yml')
 const ciConfig = parse(ci)
 const release = workflows.get('release.yml')
 const allWorkflows = [...workflows.values()].join('\n')
+const recoverySource = await readFile(join(rootDir, 'scripts/verify-npm-recovery.mjs'), 'utf8')
+const packageJson = JSON.parse(await readFile(join(rootDir, 'package.json'), 'utf8'))
+const lockSource = await readFile(join(rootDir, 'pnpm-lock.yaml'), 'utf8')
+const sigstoreManifest = JSON.parse(
+  await readFile(join(rootDir, 'scripts/sigstore-verifier/package.json'), 'utf8'),
+)
+const sigstoreLock = JSON.parse(
+  await readFile(join(rootDir, 'scripts/sigstore-verifier/package-lock.json'), 'utf8'),
+)
 
 assert(
   (allWorkflows.match(/id-token: write/gu) ?? []).length === 1
@@ -96,13 +105,66 @@ for (const scenario of [
 
 const publishJob = extractJob(release, 'publish')
 const verifyCandidateJob = extractJob(release, 'verify-candidate')
-assert(release.includes('head_sha=$GITHUB_SHA'), 'The release workflow must find successful CI for the exact main commit.')
+assert(
+  release.includes('head_sha=$GITHUB_SHA'),
+  'The current main workflow definition must have successful push CI.',
+)
+assert(
+  release.includes('head_sha=$RELEASE_SOURCE_SHA'),
+  'The release workflow must find successful CI for the exact certified source.',
+)
 assert(verifyCandidateJob.includes('actions: read'), 'Candidate verification must read the selected CI artifact.')
 assert(verifyCandidateJob.includes('release-candidate'), 'Candidate verification must download the main CI artifact.')
 assert(verifyCandidateJob.includes('verified-release'), 'Candidate verification must retain the same verified bytes.')
-assert(!verifyCandidateJob.includes('actions/checkout'), 'Candidate verification must not check out source.')
 assert(!/\bpnpm\b/u.test(verifyCandidateJob), 'Candidate verification must not rebuild the package.')
-assert(!/npm (?:install|ci|exec|run)\b/u.test(verifyCandidateJob), 'Candidate verification must not install or run package code.')
+assert(
+  verifyCandidateJob.includes('scripts/sigstore-verifier/package.json')
+  && verifyCandidateJob.includes('scripts/sigstore-verifier/package-lock.json')
+  && verifyCandidateJob.includes('npm ci --prefix "$SIGSTORE_PREFIX"')
+  && verifyCandidateJob.includes('--ignore-scripts --no-audit --no-fund'),
+  'Candidate verification must install only the isolated locked Sigstore verifier.',
+)
+assert(!/npm (?:install|exec|run)\b/u.test(verifyCandidateJob), 'Candidate verification must not install or run package code.')
+assert(
+  verifyCandidateJob.includes('node scripts/verify-npm-recovery.mjs --resolve-source')
+  && verifyCandidateJob.includes('compare/$RELEASE_SOURCE_SHA...$GITHUB_SHA')
+  && verifyCandidateJob.includes('m.commit!==process.env.RELEASE_SOURCE_SHA'),
+  'Recovery must derive the signed source, require it on main, and select its exact artifact.',
+)
+assert(packageJson.devDependencies?.sigstore === undefined, 'Sigstore must stay outside the workspace graph.')
+assert(!lockSource.includes('sigstore@5.0.0'), 'Sigstore must not enter the workspace lockfile.')
+assert(
+  sigstoreManifest.private === true && sigstoreManifest.dependencies?.sigstore === '5.0.0',
+  'The isolated verifier manifest must pin Sigstore 5.0.0.',
+)
+assert(
+  sigstoreLock.lockfileVersion === 3
+  && sigstoreLock.packages?.['']?.dependencies?.sigstore === '5.0.0'
+  && sigstoreLock.packages?.['node_modules/sigstore']?.version === '5.0.0',
+  'The isolated verifier lockfile must pin Sigstore 5.0.0.',
+)
+for (const [path, dependency] of Object.entries(sigstoreLock.packages ?? {})) {
+  if (!path) continue
+  assert(
+    typeof dependency.resolved === 'string'
+    && dependency.resolved.startsWith('https://registry.npmjs.org/')
+    && dependency.integrity?.startsWith('sha512-'),
+    `The isolated verifier dependency ${path} must have registry and integrity pins.`,
+  )
+}
+for (const required of [
+  `version !== '5.0.0'`,
+  'verifyBundle ?? loadSigstoreVerifier()',
+  'certificateIdentityURI',
+  `'1.3.6.1.4.1.57264.1.3': sourceSha`,
+  'subjects[0]?.digest?.sha512 !== tarballSha512',
+  'url.origin !== REGISTRY_URL',
+  'url.username',
+  `redirect: 'error'`,
+  'AbortSignal.timeout(15_000)',
+]) {
+  assert(recoverySource.includes(required), `Cryptographic recovery is missing ${required}.`)
+}
 assert(publishJob.includes('environment: npm'), 'The npm publish job must use the npm environment.')
 assert(publishJob.includes('id-token: write'), 'The npm publish job must request OIDC authority.')
 assert(!publishJob.includes('actions/checkout'), 'The npm publish job must not check out repository code.')
@@ -110,20 +172,39 @@ assert(!/\bpnpm\b/u.test(publishJob), 'The npm publish job must not run pnpm.')
 assert(!/npm (?:install|ci|exec|run)\b/u.test(publishJob), 'The npm publish job must not install or run package code.')
 assert(!/node scripts\//u.test(publishJob), 'The npm publish job must not run repository scripts.')
 assert(
-  publishJob.includes('test "${tarballs[0]}" = "$tarball"'),
+  publishJob.includes('manifest.tarball !== expectedTarball'),
   'The npm publish job must require the canonical tarball filename.',
 )
 assert(
-  publishJob.includes('npm publish "$tarball"'),
-  'The npm publish job must publish only the validated shell variable.',
+  publishJob.includes(`run(['publish', tarball`),
+  'The npm publish job must publish only the validated tarball variable.',
 )
 assert(publishJob.includes('dist.shasum'), 'The npm publish job must verify exact registry bytes.')
 assert(
-  publishJob.includes('read_published_sha1()')
-  && publishJob.includes('typeof value===\'string\'&&/^[a-f0-9]{40}$/i.test(value)'),
+  publishJob.includes('/E404|404 Not Found/.test(result.stderr)'),
   'The npm publish job must ignore npm JSON errors for missing versions.',
 )
 assert(publishJob.includes('dist.attestations'), 'The npm publish job must require provenance.')
+assert(
+  publishJob.includes('registry-verification.json')
+  && publishJob.includes('record.sourceSha !== manifest.commit')
+  && publishJob.includes('existing !== record.registryShasum')
+  && publishJob.includes('registry existence or bytes changed after verification'),
+  'The protected job must enforce the unprivileged registry record and reject races.',
+)
+for (const forbidden of ['sigstore', 'signedAccessSignatureUrl', 'dsseEnvelope']) {
+  assert(!publishJob.includes(forbidden), `The privileged job must not contain ${forbidden}.`)
+}
+assert(
+  publishJob.includes(`url.origin !== 'https://registry.npmjs.org'`)
+  && publishJob.includes(`url.pathname.startsWith('/-/npm/v1/attestations/')`)
+  && publishJob.includes('url.username || url.password || url.search || url.hash')
+  && publishJob.includes(`redirect: 'error'`)
+  && publishJob.includes('AbortSignal.timeout(15000)')
+  && publishJob.includes(`createHash('sha256').update(JSON.stringify(candidates[0].bundle))`)
+  && publishJob.includes('registry provenance changed after verification'),
+  'The protected job must bind current registry provenance to the verified bundle.',
+)
 assert(
   extractRunSources(publishJob).every(run => !run.includes('${{')),
   'The npm publish job must not interpolate GitHub expressions into shell source.',
@@ -142,6 +223,20 @@ assert(githubReleaseJob.includes('needs: publish'), 'The GitHub release must wai
 assert(githubReleaseJob.includes('sha256sum --check SHA256SUMS'), 'The GitHub release must verify retained checksums.')
 assert(githubReleaseJob.includes('gh release create'), 'The protected workflow must create the GitHub release.')
 assert(githubReleaseJob.includes('gh release edit'), 'The protected workflow must safely repair an existing matching release.')
+assert(
+  githubReleaseJob.includes('registry-verification.json')
+  && githubReleaseJob.includes('manifest_source')
+  && githubReleaseJob.includes('while test "$tag_type" = tag')
+  && githubReleaseJob.includes('prerelease_edit=(--prerelease=false)'),
+  'GitHub release repair must use the certified source, peel tags, and repair channel state.',
+)
+assert(
+  githubReleaseJob.includes('gh api --silent --method POST')
+  && githubReleaseJob.includes('-f sha="$manifest_source"')
+  && githubReleaseJob.includes('--verify-tag')
+  && !githubReleaseJob.includes('--target'),
+  'Missing tags must be atomically created and verified before Release creation.',
+)
 
 if (errors.length > 0) {
   console.error(errors.join('\n'))
