@@ -103,9 +103,11 @@ the registry SHA-1 matches the certified tarball and npm exposes provenance.
 The unprivileged verifier checks the signed npm attestation and derives the
 original source commit from it. It then downloads the retained CI artifact for
 that commit. It never assumes that current `main` created an older package.
-The protected job rejects any registry change after this verification. The
-workflow repairs a missing matching tag or GitHub Release from the original
-source and retained bytes without republishing. If the exact artifact expired,
+The protected npm environment is skipped when the verified registry bytes
+already exist. The workflow repairs a missing matching tag or GitHub Release
+from the original source and retained bytes without republishing. If GitHub
+rejects historical tag creation, the failed job prints the exact `gh api`
+command a maintainer must run before retrying only the GitHub Release job. If the exact artifact expired,
 the signed source differs, or the registry bytes differ, stop. Do not rebuild
 or guess. Dispatch a new run from updated `main` after a workflow fix. Do not
 rerun an old failed run because it keeps the old workflow definition.

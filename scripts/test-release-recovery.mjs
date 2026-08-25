@@ -223,6 +223,10 @@ if (args[0] === 'api') {
   const methodIndex = args.indexOf('--method');
   const method = methodIndex === -1 ? 'GET' : args[methodIndex + 1];
   if (method === 'POST' && endpoint.endsWith('/git/refs')) {
+    if (fixture.postForbidden) {
+      process.stderr.write('Resource not accessible by integration (HTTP 403)\\n');
+      process.exit(1);
+    }
     if (fixture.postConflict) {
       fixture.tag = fixture.postConflict;
       writeFileSync(process.env.GH_FIXTURE, JSON.stringify(fixture));
@@ -280,6 +284,7 @@ const runGithubRelease = ({
   tag,
   peeled = {},
   postConflict,
+  postForbidden = false,
   releaseExists,
   releaseStatus,
 }) => {
@@ -310,6 +315,7 @@ const runGithubRelease = ({
       tag,
       peeled,
       postConflict,
+      postForbidden,
       releaseExists,
       releaseStatus,
     }))
@@ -415,6 +421,20 @@ const orphanedRelease = runGithubRelease({
 })
 assert.notEqual(orphanedRelease.result.status, 0, 'Release repair requires its existing tag.')
 assert(!orphanedRelease.calls.some(args => args[0] === 'release' && ['edit', 'upload'].includes(args[1])))
+
+const historicalTagForbidden = runGithubRelease({
+  version: releaseVersion,
+  tag: null,
+  postForbidden: true,
+  releaseExists: false,
+})
+assert.notEqual(historicalTagForbidden.result.status, 0)
+assert.match(historicalTagForbidden.result.stdout, /HUMAN-ONLY:/u)
+assert.match(historicalTagForbidden.result.stdout, /refs\/tags\/v1\.2\.3-beta\.1/u)
+assert.match(historicalTagForbidden.result.stdout, new RegExp(sourceSha, 'u'))
+assert(!historicalTagForbidden.calls.some(
+  args => args[0] === 'release' && ['create', 'edit', 'upload'].includes(args[1]),
+))
 
 const unknownReleaseState = runGithubRelease({
   version: releaseVersion,

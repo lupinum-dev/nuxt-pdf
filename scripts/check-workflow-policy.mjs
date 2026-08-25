@@ -41,6 +41,7 @@ for (const [name, source] of workflows) {
 const ci = workflows.get('ci.yml')
 const ciConfig = parse(ci)
 const release = workflows.get('release.yml')
+const releaseConfig = parse(release)
 const allWorkflows = [...workflows.values()].join('\n')
 const recoverySource = await readFile(join(rootDir, 'scripts/verify-npm-recovery.mjs'), 'utf8')
 const packageJson = JSON.parse(await readFile(join(rootDir, 'package.json'), 'utf8'))
@@ -166,6 +167,14 @@ for (const required of [
   assert(recoverySource.includes(required), `Cryptographic recovery is missing ${required}.`)
 }
 assert(publishJob.includes('environment: npm'), 'The npm publish job must use the npm environment.')
+assert(
+  Object.keys(releaseConfig.on?.workflow_dispatch?.inputs ?? {}).join(',') === 'version',
+  'Release dispatch must accept only the explicit version.',
+)
+assert(
+  releaseConfig.jobs?.publish?.if === 'needs.verify-candidate.outputs.publish-required == \'true\'',
+  'The npm environment must be skipped when the certified bytes already exist.',
+)
 assert(publishJob.includes('id-token: write'), 'The npm publish job must request OIDC authority.')
 assert(!publishJob.includes('actions/checkout'), 'The npm publish job must not check out repository code.')
 assert(!/\bpnpm\b/u.test(publishJob), 'The npm publish job must not run pnpm.')
@@ -219,7 +228,11 @@ assert(
   extractRunSources(githubReleaseJob).every(run => !run.includes('${{')),
   'The GitHub release job must not interpolate GitHub expressions into shell source.',
 )
-assert(githubReleaseJob.includes('needs: publish'), 'The GitHub release must wait for npm publication.')
+assert(
+  githubReleaseJob.includes('needs: [verify-candidate, publish]')
+  && githubReleaseJob.includes('needs.publish.result == \'skipped\''),
+  'The GitHub release must support repair after a verified npm no-op.',
+)
 assert(githubReleaseJob.includes('sha256sum --check SHA256SUMS'), 'The GitHub release must verify retained checksums.')
 assert(githubReleaseJob.includes('gh release create'), 'The protected workflow must create the GitHub release.')
 assert(githubReleaseJob.includes('gh release edit'), 'The protected workflow must safely repair an existing matching release.')
@@ -234,6 +247,8 @@ assert(
   githubReleaseJob.includes('gh api --silent --method POST')
   && githubReleaseJob.includes('-f sha="$manifest_source"')
   && githubReleaseJob.includes('--verify-tag')
+  && githubReleaseJob.includes('HUMAN-ONLY:')
+  && githubReleaseJob.includes('HTTP 403')
   && !githubReleaseJob.includes('--target'),
   'Missing tags must be atomically created and verified before Release creation.',
 )
