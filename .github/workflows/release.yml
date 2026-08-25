@@ -22,6 +22,8 @@ jobs:
     permissions:
       actions: read
       contents: read
+    outputs:
+      publish-required: ${{ steps.registry.outputs.publish-required }}
     steps:
       - name: Require current main
         env:
@@ -122,11 +124,19 @@ jobs:
           test -s release-notes.md
 
       - name: Verify registry recovery state
+        id: registry
         env:
           RELEASE_DIR: release-artifacts
           RELEASE_VERSION: ${{ inputs.version }}
           SIGSTORE_PREFIX: ${{ runner.temp }}/sigstore
-        run: node scripts/verify-npm-recovery.mjs
+        run: |
+          node scripts/verify-npm-recovery.mjs
+          node --input-type=module <<'NODE'
+          import { appendFileSync, readFileSync } from 'node:fs'
+
+          const record = JSON.parse(readFileSync('release-artifacts/registry-verification.json', 'utf8'))
+          appendFileSync(process.env.GITHUB_OUTPUT, `publish-required=${record.registryState === 'absent'}\n`)
+          NODE
 
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
@@ -138,6 +148,7 @@ jobs:
   publish:
     name: Publish to npm
     needs: verify-candidate
+    if: needs.verify-candidate.outputs.publish-required == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: npm
@@ -261,7 +272,8 @@ jobs:
 
   github-release:
     name: Create GitHub release
-    needs: publish
+    needs: [verify-candidate, publish]
+    if: always() && needs.verify-candidate.result == 'success' && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -308,9 +320,16 @@ jobs:
           esac
           if test "$tag_exists" = false; then
             test "$release_exists" = false
-            gh api --silent --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
-              -f ref="$tag_ref" \
-              -f sha="$manifest_source"
+            if ! tag_error="$(gh api --silent --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="$tag_ref" -f sha="$manifest_source" 2>&1)"; then
+              if grep -Eq 'HTTP 403|Resource not accessible by integration' <<< "$tag_error"; then
+                echo "::error::HUMAN-ONLY: GitHub cannot create this historical tag with GITHUB_TOKEN."
+                echo "HUMAN-ONLY: gh api --method POST \"repos/$GITHUB_REPOSITORY/git/refs\" -f ref=\"$tag_ref\" -f sha=\"$manifest_source\""
+              else
+                printf '%s\n' "$tag_error" >&2
+              fi
+              exit 1
+            fi
           fi
           tag_object="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" --jq '[.object.type, .object.sha] | @tsv')"
           IFS=$'\t' read -r tag_type tag_sha <<< "$tag_object"
