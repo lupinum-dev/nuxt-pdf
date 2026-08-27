@@ -4,6 +4,26 @@ All notable changes to `@lupinum/nuxt-pdf` are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.4.0-beta.2 - 2026-08-27
+
+[compare changes](https://github.com/lupinum-dev/nuxt-pdf/compare/v0.4.0-beta.1...v0.4.0-beta.2)
+
+### Added
+
+- **fonts:** Support WOFF2 assets ([ad50390](https://github.com/lupinum-dev/nuxt-pdf/commit/ad50390))
+- **diagnostics:** Explain unbreakable layout overflow ([a5ff0b7](https://github.com/lupinum-dev/nuxt-pdf/commit/a5ff0b7))
+
+### Fixed
+
+- **ci:** Harden on-demand Vercel reporting ([#35](https://github.com/lupinum-dev/nuxt-pdf/pull/35))
+- **release:** Repair from certified source evidence ([#36](https://github.com/lupinum-dev/nuxt-pdf/pull/36))
+- **release:** Separate publication from repair ([#37](https://github.com/lupinum-dev/nuxt-pdf/pull/37))
+- **types:** Expose PDF authoring globals ([c427310](https://github.com/lupinum-dev/nuxt-pdf/commit/c427310))
+
+### CI
+
+- **vercel:** Cut library preview build usage ([#34](https://github.com/lupinum-dev/nuxt-pdf/pull/34))
+
 ## 0.4.0-beta.1 - 2026-08-22
 
 ### Added
