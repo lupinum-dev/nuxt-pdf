@@ -12,7 +12,7 @@ export type PdfFontStore = {
 }
 
 const isBundledFontSource = (src: string): src is PdfFontDataUrl =>
-  /^data:font\/(?:otf|ttf);base64,[A-Za-z0-9+/]+={0,2}$/.test(src)
+  /^data:font\/(?:otf|ttf|woff2);base64,[A-Za-z0-9+/]+={0,2}$/.test(src)
 
 export const createPdfFontStore = (
   fonts: readonly BundledPdfFontDescriptor[] = [],

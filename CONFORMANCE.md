@@ -326,7 +326,7 @@ point at the source files and re-read them per render, so an edited image
 shows up without a restart. The tested boundary includes:
 
 - PNG and JPEG extension/signature validation and source byte limits;
-- TTF and OTF signature/extension/SFNT table-directory validation,
+- TTF, OTF, and WOFF2 signature/extension/structure validation,
   registration validation, source byte limits, and source-removal rendering;
 - explicit local `pdfs/assets` and `pdfs/fonts` roots;
 - rejection of absolute paths, traversal, missing assets, ambiguous sources,

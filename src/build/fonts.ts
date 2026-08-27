@@ -23,6 +23,7 @@ import type {
 } from '../runtime/fonts'
 
 export const DEFAULT_MAX_PDF_FONT_BYTES = 5 * 1024 * 1024
+const DEFAULT_MAX_PDF_DECOMPRESSED_FONT_BYTES = 20 * 1024 * 1024
 
 export interface BundlePdfFontsOptions {
   fontRoots: readonly string[]
@@ -254,8 +255,10 @@ const validateDeclaration = (
   }
 }
 
-const detectFontFormat = (bytes: Uint8Array): 'otf' | 'ttf' | undefined => {
-  if (bytes.byteLength < 12) return undefined
+type PdfFontFormat = 'otf' | 'ttf' | 'woff2'
+
+const detectFontFormat = (bytes: Uint8Array): PdfFontFormat | undefined => {
+  if (bytes.byteLength < 4) return undefined
 
   const isTrueType = bytes[0] === 0x00
     && bytes[1] === 0x01
@@ -265,10 +268,78 @@ const detectFontFormat = (bytes: Uint8Array): 'otf' | 'ttf' | undefined => {
     && bytes[1] === 0x54
     && bytes[2] === 0x54
     && bytes[3] === 0x4F
+  const isWoff2 = bytes[0] === 0x77
+    && bytes[1] === 0x4F
+    && bytes[2] === 0x46
+    && bytes[3] === 0x32
 
   if (isTrueType) return 'ttf'
   if (isOpenType) return 'otf'
+  if (isWoff2) return 'woff2'
   return undefined
+}
+
+const validateWoff2Structure = (
+  source: string,
+  bytes: Uint8Array,
+): void => {
+  if (bytes.byteLength < 48) {
+    throw fontError(source, 'the WOFF2 header is corrupt or truncated.')
+  }
+
+  const data = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  const flavor = data.readUInt32BE(4)
+  const declaredLength = data.readUInt32BE(8)
+  const tableCount = data.readUInt16BE(12)
+  const reserved = data.readUInt16BE(14)
+  const decompressedSize = data.readUInt32BE(16)
+  const compressedSize = data.readUInt32BE(20)
+  const isTrueType = flavor === 0x00010000
+  const isOpenType = flavor === 0x4F54544F
+
+  if (!isTrueType && !isOpenType) {
+    throw fontError(source, 'the WOFF2 font must wrap a TTF or OTF font.')
+  }
+  if (
+    declaredLength !== bytes.byteLength
+    || tableCount < 1
+    || tableCount > 4096
+    || reserved !== 0
+    || compressedSize < 1
+    || compressedSize > bytes.byteLength - 48
+  ) {
+    throw fontError(source, 'the WOFF2 header is corrupt or truncated.')
+  }
+  if (
+    decompressedSize < 12
+    || decompressedSize > DEFAULT_MAX_PDF_DECOMPRESSED_FONT_BYTES
+  ) {
+    throw fontError(
+      source,
+      `the decompressed WOFF2 font exceeds the ${DEFAULT_MAX_PDF_DECOMPRESSED_FONT_BYTES}-byte limit.`,
+    )
+  }
+
+  const metadataOffset = data.readUInt32BE(28)
+  const metadataLength = data.readUInt32BE(32)
+  const metadataOriginalLength = data.readUInt32BE(36)
+  const privateOffset = data.readUInt32BE(40)
+  const privateLength = data.readUInt32BE(44)
+  const metadataAbsent = metadataOffset === 0
+    && metadataLength === 0
+    && metadataOriginalLength === 0
+  const metadataPresent = metadataOffset >= 48
+    && metadataLength > 0
+    && metadataOriginalLength > 0
+    && metadataOffset + metadataLength <= bytes.byteLength
+  const privateAbsent = privateOffset === 0 && privateLength === 0
+  const privatePresent = privateOffset >= 48
+    && privateLength > 0
+    && privateOffset + privateLength <= bytes.byteLength
+
+  if ((!metadataAbsent && !metadataPresent) || (!privateAbsent && !privatePresent)) {
+    throw fontError(source, 'the WOFF2 optional data blocks are corrupt.')
+  }
 }
 
 const validateSfntStructure = (
@@ -318,23 +389,24 @@ const validateSfntStructure = (
 const fontFormat = (
   source: string,
   bytes: Uint8Array,
-): 'otf' | 'ttf' => {
+): PdfFontFormat => {
   const extension = extname(source).toLowerCase()
-  if (extension !== '.otf' && extension !== '.ttf') {
-    throw fontError(source, 'only .ttf and .otf files are supported.')
+  if (extension !== '.otf' && extension !== '.ttf' && extension !== '.woff2') {
+    throw fontError(source, 'only .ttf, .otf, and .woff2 files are supported.')
   }
-  if (bytes.byteLength < 12) {
-    throw fontError(source, 'the file is too small to be a TTF or OTF font.')
+  if (bytes.byteLength < 4) {
+    throw fontError(source, 'the file is too small to be a supported font.')
   }
 
   const format = detectFontFormat(bytes)
   if (!format) {
-    throw fontError(source, 'the file has an unsupported TTF or OTF signature.')
+    throw fontError(source, 'the file has an unsupported font signature.')
   }
   if (`.${format}` !== extension) {
-    throw fontError(source, 'the file extension does not match its TTF or OTF signature.')
+    throw fontError(source, 'the file extension does not match its font signature.')
   }
-  validateSfntStructure(source, bytes, format)
+  if (format === 'woff2') validateWoff2Structure(source, bytes)
+  else validateSfntStructure(source, bytes, format)
 
   return format
 }
