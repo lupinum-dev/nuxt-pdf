@@ -215,7 +215,7 @@ jobs:
           if (!/^[a-z0-9._-]+\.tgz$/.test(manifest.tarball)) fail('Unsafe tarball filename.')
           const expectedTarball = `lupinum-nuxt-pdf-${manifest.packageVersion}.tgz`
           if (manifest.tarball !== expectedTarball) fail('The tarball filename is not canonical.')
-          const tarball = `release-artifacts/${expectedTarball}`
+          const tarball = `./release-artifacts/${expectedTarball}`
           const bytes = readFileSync(tarball)
           const shasum = createHash('sha1').update(bytes).digest('hex')
           const sha512 = createHash('sha512').update(bytes).digest('hex')

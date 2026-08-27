@@ -188,6 +188,10 @@ assert(
   publishJob.includes(`run(['publish', tarball`),
   'The npm publish job must publish only the validated tarball variable.',
 )
+assert(
+  publishJob.includes('const tarball = `./release-artifacts/${expectedTarball}`'),
+  'The npm publish tarball must be an explicit local path, not a Git shorthand.',
+)
 assert(publishJob.includes('dist.shasum'), 'The npm publish job must verify exact registry bytes.')
 assert(
   publishJob.includes('/E404|404 Not Found/.test(result.stderr)'),
