@@ -25,6 +25,8 @@ import type {
   PdfElementNode,
   PdfNode,
 } from '../../renderer'
+import { PDF_PRIMITIVE_NAMES } from '../../renderer'
+import type { PdfLayoutWarning } from '../../shared/template'
 import {
   enforceMaxPages,
   type RenderLimits,
@@ -223,6 +225,84 @@ const documentPages = (layout: SafeDocumentNode): PdfNode[] =>
 /** The number of laid-out pages in a serialized document. */
 export const countPages = (layout: SafeDocumentNode): number =>
   documentPages(layout).length
+
+const NON_WRAPPING_NODE_TYPES = new Set<string>([
+  PDF_PRIMITIVES.Image,
+  PDF_PRIMITIVES.Note,
+  PDF_PRIMITIVES.Svg,
+])
+
+const WARNING_NODE_TYPES = new Set<string>([
+  PDF_PRIMITIVES.Image,
+  PDF_PRIMITIVES.Link,
+  PDF_PRIMITIVES.Note,
+  PDF_PRIMITIVES.Svg,
+  PDF_PRIMITIVES.Text,
+  PDF_PRIMITIVES.View,
+])
+
+const finiteNumber = (value: unknown): number | undefined =>
+  typeof value === 'number' && Number.isFinite(value) ? value : undefined
+
+const roundedPoints = (value: number): number => Math.round(value * 100) / 100
+
+const pageContentHeight = (page: PdfElementNode): number | undefined => {
+  const style = page.style as Record<string, unknown> | undefined
+  const pageHeight = finiteNumber(style?.height) ?? finiteNumber(page.box.height)
+  if (pageHeight === undefined) return undefined
+
+  const paddingTop = finiteNumber(page.box.paddingTop)
+    ?? finiteNumber(style?.paddingTop)
+    ?? 0
+  const paddingBottom = finiteNumber(page.box.paddingBottom)
+    ?? finiteNumber(style?.paddingBottom)
+    ?? 0
+
+  return pageHeight - paddingTop - paddingBottom
+}
+
+const cannotWrap = (node: PdfElementNode): boolean =>
+  NON_WRAPPING_NODE_TYPES.has(node.type) || node.props.wrap === false
+
+/**
+ * Find blocks that cannot fit on any ordinary page because pagination is not
+ * allowed to split them. No text, ids, or other authored content enters the
+ * public diagnostics object.
+ */
+export const collectLayoutWarnings = (
+  layout: SafeDocumentNode,
+): PdfLayoutWarning[] => {
+  const warnings: PdfLayoutWarning[] = []
+
+  documentPages(layout).forEach((pageNode, pageIndex) => {
+    if (!('props' in pageNode)) return
+    const page = pageNode as PdfElementNode
+    const availableHeight = pageContentHeight(page)
+    if (availableHeight === undefined || availableHeight <= 0) return
+
+    visitPageNodes(page, (node) => {
+      if (
+        node === page
+        || node.props.fixed === true
+        || !WARNING_NODE_TYPES.has(node.type)
+        || !cannotWrap(node)
+      ) return
+
+      const nodeHeight = finiteNumber(node.box.height)
+      if (nodeHeight === undefined || nodeHeight <= availableHeight + 0.001) return
+
+      warnings.push({
+        code: 'PDF_UNBREAKABLE_NODE_OVERFLOW',
+        pageNumber: pageIndex + 1,
+        nodeType: PDF_PRIMITIVE_NAMES[node.type] as PdfLayoutWarning['nodeType'],
+        nodeHeight: roundedPoints(nodeHeight),
+        availableHeight: roundedPoints(availableHeight),
+      })
+    })
+  })
+
+  return warnings
+}
 
 const nodeId = (node: PdfElementNode): string | undefined => {
   const id = node.props?.id

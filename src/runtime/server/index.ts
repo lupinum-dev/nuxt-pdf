@@ -15,6 +15,7 @@ export type {
   PdfRegistryEntries,
 } from './registry'
 export type {
+  PdfLayoutWarning,
   PdfRenderDiagnostics,
   PdfRenderResult,
   PdfComponentProps,

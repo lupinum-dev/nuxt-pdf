@@ -63,7 +63,16 @@ export interface PdfRenderDiagnostics {
   readonly byteLength: number
   readonly pageCount: number
   readonly passes: number
+  readonly layoutWarnings: readonly PdfLayoutWarning[]
   readonly registeredFontFaces: readonly PdfRegisteredFontFace[]
+}
+
+export interface PdfLayoutWarning {
+  readonly code: 'PDF_UNBREAKABLE_NODE_OVERFLOW'
+  readonly pageNumber: number
+  readonly nodeType: 'PdfImage' | 'PdfLink' | 'PdfNote' | 'PdfSvg' | 'PdfText' | 'PdfView'
+  readonly nodeHeight: number
+  readonly availableHeight: number
 }
 
 export interface PdfRegisteredFontFace {

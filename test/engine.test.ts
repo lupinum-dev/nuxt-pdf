@@ -1,7 +1,10 @@
 import type { DocumentNode, SafeDocumentNode } from '@react-pdf/layout'
 import * as P from '@react-pdf/primitives'
-import { describe, expect, it } from 'vitest'
-import { renderDocument } from '../src/runtime/server/engine/render-document'
+import { describe, expect, it, vi } from 'vitest'
+import {
+  collectLayoutWarnings,
+  renderDocument,
+} from '../src/runtime/server/engine/render-document'
 import { parsePdf } from '../src/test/pdf'
 
 const createDocument = (fontFamily = 'Helvetica'): DocumentNode => ({
@@ -29,6 +32,30 @@ const createDocument = (fontFamily = 'Helvetica'): DocumentNode => ({
       ],
     },
   ],
+} as DocumentNode)
+
+const createOversizedUnbreakableDocument = (): DocumentNode => ({
+  type: P.Document,
+  props: {},
+  children: [{
+    type: P.Page,
+    box: {},
+    style: { paddingBottom: 40, paddingTop: 40 },
+    props: { size: 'A4' },
+    children: [{
+      type: P.View,
+      box: {},
+      style: { minHeight: 800 },
+      props: { wrap: false },
+      children: [{
+        type: P.Text,
+        box: {},
+        style: { fontFamily: 'Helvetica', fontSize: 12 },
+        props: {},
+        children: [{ type: P.TextInstance, value: 'Too tall to keep together' }],
+      }],
+    }],
+  }],
 } as DocumentNode)
 
 interface DynamicDocumentOptions {
@@ -170,6 +197,7 @@ describe('React PDF engine pipeline', () => {
     expect(result.bytes.byteLength).toBeGreaterThan(500)
     expect(result.layout.children).toHaveLength(1)
     expect(result.layout.children[0]?.box?.width).toBeGreaterThan(0)
+    expect(collectLayoutWarnings(result.layout)).toEqual([])
   })
 
   it('rejects a non-document root before layout', async () => {
@@ -179,6 +207,24 @@ describe('React PDF engine pipeline', () => {
       code: 'PDF_TREE_INVALID',
       message: 'Expected a DOCUMENT root, received PAGE.',
     })
+  })
+
+  it('reports an oversized unbreakable block without exposing its content', async () => {
+    const upstreamWarning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const { layout } = await renderDocument(createOversizedUnbreakableDocument())
+      expect(collectLayoutWarnings(layout)).toEqual([{
+        availableHeight: 761.89,
+        code: 'PDF_UNBREAKABLE_NODE_OVERFLOW',
+        nodeHeight: 800,
+        nodeType: 'PdfView',
+        pageNumber: 1,
+      }])
+      expect(JSON.stringify(collectLayoutWarnings(layout))).not.toContain('Too tall')
+    }
+    finally {
+      upstreamWarning.mockRestore()
+    }
   })
 
   it('surfaces font-resolution failures as a layout error with the upstream message', async () => {
