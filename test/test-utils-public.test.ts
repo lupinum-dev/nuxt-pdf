@@ -131,6 +131,7 @@ describe('@lupinum/nuxt-pdf/test public surface', () => {
     expect(bytes.length).toBeGreaterThan(0)
     expect(result.diagnostics).toMatchObject({
       byteLength: bytes.byteLength,
+      layoutWarnings: [],
       pageCount: 2,
       passes: 1,
       registeredFontFaces: [],

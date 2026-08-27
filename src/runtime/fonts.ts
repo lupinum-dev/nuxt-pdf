@@ -26,7 +26,7 @@ export interface PdfFontDeclaration {
 }
 
 export type PdfFontDataUrl
-  = `data:font/${'otf' | 'ttf'};base64,${string}`
+  = `data:font/${'otf' | 'ttf' | 'woff2'};base64,${string}`
 
 export interface BundledPdfFontDescriptor {
   family: string

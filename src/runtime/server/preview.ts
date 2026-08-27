@@ -173,6 +173,10 @@ const htmlResponse = (
       .font-faces .label { color: #8b948b; font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 8px; }
       .font-faces ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
       .font-faces li { color: #d7ddd7; font-size: 0.85rem; line-height: 1.5; }
+      .layout-warnings { border: 1px solid #765b23; background: #211b0f; border-left: 3px solid #e2b653; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; }
+      .layout-warnings .label { color: #e8c977; font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 8px; }
+      .layout-warnings ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+      .layout-warnings li { color: #f0dfb2; font-size: 0.85rem; line-height: 1.5; }
       .error { border: 1px solid #6b2f2b; background: #1d1210; border-left: 3px solid #ef786f; border-radius: 10px; padding: 18px 20px; }
       .error h2 { margin: 0 0 12px; font-size: 1.1rem; color: #f3d7d3; }
       .error dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0 0 12px; }
@@ -306,8 +310,17 @@ const diagnosticsPanel = (diagnostics: PdfRenderDiagnostics): string => {
     stat('Size', formatBytes(diagnostics.byteLength)),
     stat('Pages', String(diagnostics.pageCount)),
     stat('Layout passes', String(diagnostics.passes)),
+    stat('Layout warnings', String(diagnostics.layoutWarnings.length)),
     stat('Font faces', String(diagnostics.registeredFontFaces.length)),
   ].join('')
+
+  const warnings = diagnostics.layoutWarnings.length > 0
+    ? `<div class="layout-warnings"><div class="label">Layout warnings</div><ul>${
+      diagnostics.layoutWarnings.map(warning =>
+        `<li><strong>${escapeHtml(warning.nodeType)}</strong> on page ${warning.pageNumber} is ${warning.nodeHeight} pt tall, but only ${warning.availableHeight} pt is available. Allow it to wrap or make it smaller.</li>`,
+      ).join('')
+    }</ul></div>`
+    : ''
 
   const fonts = diagnostics.registeredFontFaces.length > 0
     ? `<div class="font-faces"><div class="label">Registered font faces</div><ul>${
@@ -318,7 +331,7 @@ const diagnosticsPanel = (diagnostics: PdfRenderDiagnostics): string => {
     }</ul></div>`
     : ''
 
-  return `<div class="diagnostics">${stats}</div>${fonts}`
+  return `<div class="diagnostics">${stats}</div>${warnings}${fonts}`
 }
 
 const errorDetails = (

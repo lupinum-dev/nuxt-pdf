@@ -82,6 +82,7 @@ const renderDiagnostics = (
   overrides: Partial<DiagnosticsInput> = {},
 ): DiagnosticsInput => ({
   durationMs: 12,
+  layoutWarnings: [],
   pageCount: 1,
   passes: 1,
   registeredFontFaces: [],
@@ -177,8 +178,18 @@ describe('PDF render result', () => {
     const faces: Array<{ family: string, fontWeight?: number }> = [
       { family: 'Roboto', fontWeight: 400 },
     ]
+    const warnings = [{
+      availableHeight: 761.89,
+      code: 'PDF_UNBREAKABLE_NODE_OVERFLOW' as const,
+      nodeHeight: 800,
+      nodeType: 'PdfView' as const,
+      pageNumber: 1,
+    }]
     const measurements = {
-      ...renderDiagnostics({ registeredFontFaces: faces }),
+      ...renderDiagnostics({
+        layoutWarnings: warnings,
+        registeredFontFaces: faces,
+      }),
       content: 'must not escape',
       props: { secret: true },
       url: 'https://private.example/asset.png',
@@ -193,6 +204,7 @@ describe('PDF render result', () => {
     source.fill(0)
     metadata.title = 'Late mutation'
     faces.push({ family: 'Late', fontWeight: 700 })
+    warnings[0]!.nodeHeight = 900
 
     const bytes = await result.toUint8Array()
     bytes.fill(1)
@@ -206,10 +218,19 @@ describe('PDF render result', () => {
     expect(Object.isFrozen(result)).toBe(true)
     expect(Object.isFrozen(result.metadata)).toBe(true)
     expect(Object.isFrozen(result.diagnostics)).toBe(true)
+    expect(Object.isFrozen(result.diagnostics.layoutWarnings)).toBe(true)
+    expect(Object.isFrozen(result.diagnostics.layoutWarnings[0])).toBe(true)
     expect(Object.isFrozen(result.diagnostics.registeredFontFaces)).toBe(true)
     expect(result.diagnostics).toEqual({
       byteLength: expected.byteLength,
       durationMs: 12,
+      layoutWarnings: [{
+        availableHeight: 761.89,
+        code: 'PDF_UNBREAKABLE_NODE_OVERFLOW',
+        nodeHeight: 800,
+        nodeType: 'PdfView',
+        pageNumber: 1,
+      }],
       pageCount: 1,
       passes: 1,
       registeredFontFaces: [{ family: 'Roboto', fontWeight: 400 }],
@@ -369,6 +390,7 @@ describe('PDF runtime registry', () => {
     expect(Object.keys(result.diagnostics).sort()).toEqual([
       'byteLength',
       'durationMs',
+      'layoutWarnings',
       'pageCount',
       'passes',
       'registeredFontFaces',
@@ -759,6 +781,28 @@ describe('development PDF preview', () => {
     expect(page).not.toContain('/pdfs/fonts/')
   })
 
+  it('explains structured layout warnings without authored content', async () => {
+    const { template } = createPreviewTemplate({
+      sampleData: { id: 'sample' },
+      render: async () => previewResult({
+        diagnostics: {
+          layoutWarnings: [{
+            availableHeight: 761.89,
+            code: 'PDF_UNBREAKABLE_NODE_OVERFLOW',
+            nodeHeight: 800,
+            nodeType: 'PdfView',
+            pageNumber: 2,
+          }],
+        },
+      }),
+    })
+    const page = await (await renderPdfPreview({ invoice: template }, { path: 'invoice' })).text()
+
+    expect(page).toContain('Layout warnings')
+    expect(page).toContain('<strong>PdfView</strong> on page 2 is 800 pt tall')
+    expect(page).toContain('Allow it to wrap or make it smaller.')
+  })
+
   it('uses opaque, non-sequential parked-render tokens', async () => {
     const { template } = createPreviewTemplate({ sampleData: { id: 'sample' } })
     const registry = { invoice: template }
@@ -948,6 +992,7 @@ describe('development PDF preview', () => {
     expect(diagnostics.byteLength).toBeGreaterThan(0)
     expect(diagnostics.durationMs).toBeGreaterThan(0)
     expect(Object.isFrozen(diagnostics)).toBe(true)
+    expect(Object.isFrozen(diagnostics.layoutWarnings)).toBe(true)
     expect(Object.isFrozen(diagnostics.registeredFontFaces)).toBe(true)
     expect((await result.toUint8Array()).byteLength).toBe(
       diagnostics.byteLength,

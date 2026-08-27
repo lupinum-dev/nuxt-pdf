@@ -28,6 +28,12 @@ const fixtureOpenTypeFont = resolve(
 const fixtureLayerFont = resolve(
   'node_modules/source-code-pro/TTF/SourceCodePro-Regular.ttf',
 )
+const fixtureTrueTypeWoff2Font = resolve(
+  'node_modules/source-code-pro/WOFF2/TTF/SourceCodePro-Regular.ttf.woff2',
+)
+const fixtureOpenTypeWoff2Font = resolve(
+  'node_modules/source-code-pro/WOFF2/OTF/SourceCodePro-Regular.otf.woff2',
+)
 const temporaryDirectories: string[] = []
 
 const createFontRoot = async (): Promise<string> => {
@@ -150,6 +156,27 @@ describe('local PDF fonts', () => {
   })
 
   it.each([
+    ['TTF-flavoured', fixtureTrueTypeWoff2Font],
+    ['OTF-flavoured', fixtureOpenTypeWoff2Font],
+  ])('embeds and renders a validated %s WOFF2 font', async (_, fixture) => {
+    const fontRoot = await createFontRoot()
+    const target = join(fontRoot, 'SourceCodePro-Regular.woff2')
+    await copyFile(fixture, target)
+    const descriptors = await bundlePdfFonts([{
+      family: 'Bundled Source Code WOFF2',
+      src: 'SourceCodePro-Regular.woff2',
+    }], { fontRoots: [fontRoot] })
+
+    expect(descriptors[0]?.src).toMatch(/^data:font\/woff2;base64,/)
+    await rm(target)
+    const result = await renderDocument(
+      createFontDocument('Bundled Source Code WOFF2'),
+      { fontStore: createPdfFontStore(descriptors) },
+    )
+    expect(Buffer.from(result.bytes.subarray(0, 5)).toString('ascii')).toBe('%PDF-')
+  })
+
+  it.each([
     '../Roboto-Regular.ttf',
     '/tmp/Roboto-Regular.ttf',
     'C:\\fonts\\Roboto-Regular.ttf',
@@ -197,7 +224,7 @@ describe('local PDF fonts', () => {
     )).rejects.toThrow('resolves outside its pdfs directory')
   })
 
-  it('requires a regular, signature-valid TTF or OTF within the byte limit', async () => {
+  it('requires a regular, signature-valid TTF, OTF, or WOFF2 within the byte limit', async () => {
     const fontRoot = await createFontRoot()
     await installFixtureFont(fontRoot, 'large.ttf')
     await writeFile(join(fontRoot, 'invalid.ttf'), 'not-a-font!!')
@@ -212,6 +239,7 @@ describe('local PDF fonts', () => {
     await copyFile(fixtureFont, join(fontRoot, 'mismatch.otf'))
     await writeFile(join(fontRoot, 'collection.ttf'), 'ttcf00000000')
     await writeFile(join(fontRoot, 'font.woff'), 'wOFF00000000')
+    await writeFile(join(fontRoot, 'font.woff2'), 'wOF200000000')
     await mkdir(join(fontRoot, 'directory.ttf'))
 
     await expect(bundlePdfFonts(
@@ -221,7 +249,7 @@ describe('local PDF fonts', () => {
     await expect(bundlePdfFonts(
       [{ family: 'Invalid', src: 'invalid.ttf' }],
       { fontRoots: [fontRoot] },
-    )).rejects.toThrow('unsupported TTF or OTF signature')
+    )).rejects.toThrow('unsupported font signature')
     await expect(bundlePdfFonts(
       [{ family: 'Corrupt', src: 'corrupt.otf' }],
       { fontRoots: [fontRoot] },
@@ -233,11 +261,15 @@ describe('local PDF fonts', () => {
     await expect(bundlePdfFonts(
       [{ family: 'Collection', src: 'collection.ttf' }],
       { fontRoots: [fontRoot] },
-    )).rejects.toThrow('unsupported TTF or OTF signature')
+    )).rejects.toThrow('unsupported font signature')
     await expect(bundlePdfFonts(
       [{ family: 'WebFont', src: 'font.woff' }],
       { fontRoots: [fontRoot] },
-    )).rejects.toThrow('only .ttf and .otf files are supported')
+    )).rejects.toThrow('only .ttf, .otf, and .woff2 files are supported')
+    await expect(bundlePdfFonts(
+      [{ family: 'Truncated WOFF2', src: 'font.woff2' }],
+      { fontRoots: [fontRoot] },
+    )).rejects.toThrow('WOFF2 header is corrupt or truncated')
     await expect(bundlePdfFonts(
       [{ family: 'Directory', src: 'directory.ttf' }],
       { fontRoots: [fontRoot] },

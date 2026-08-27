@@ -1,4 +1,5 @@
 export { mountPdfComponent } from './render-component'
+export { PDF_PRIMITIVE_NAMES } from './types'
 export type {
   MountedPdfComponent,
   PdfComponentProps,

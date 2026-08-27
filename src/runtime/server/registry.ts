@@ -18,7 +18,11 @@ import {
   type PdfImageAssetMap,
 } from './assets/resolve-asset'
 import type { RemoteAssetPolicy } from './assets/remote'
-import { countPages, renderDocument } from './engine/render-document'
+import {
+  collectLayoutWarnings,
+  countPages,
+  renderDocument,
+} from './engine/render-document'
 import { renderDocumentMultiPass } from './engine/layout-passes'
 import {
   createRenderLimits,
@@ -31,7 +35,10 @@ import type { BundledPdfFontDescriptor } from '../fonts'
 import { getSharedPdfFontStore } from './engine/fonts'
 import { createPdfRenderResult } from './result'
 
-export type { PdfRenderDiagnostics } from '../shared/template'
+export type {
+  PdfLayoutWarning,
+  PdfRenderDiagnostics,
+} from '../shared/template'
 
 const EMPTY_SCENARIOS: Readonly<Record<string, never>> = Object.freeze({})
 const EMPTY_ASSETS = Object.freeze({})
@@ -203,6 +210,7 @@ const applyDocumentMetadata = (
 
 interface TemplateRenderOutput {
   bytes: Uint8Array
+  layoutWarnings: ReturnType<typeof collectLayoutWarnings>
   metadata: ResolvedPdfMetadata
   /** Layout passes actually run: 1 for the single-pass path, ≥ 2 for multi-pass. */
   passes: number
@@ -278,6 +286,7 @@ const renderTemplate = async <Props extends object>(
       )
       return {
         bytes: result.bytes,
+        layoutWarnings: collectLayoutWarnings(result.layout),
         metadata: completedMetadata(live.document, metadata),
         passes: result.passes,
         pageCount: countPages(result.layout),
@@ -289,6 +298,7 @@ const renderTemplate = async <Props extends object>(
     const result = await renderDocument(document, { fontStore, limits })
     return {
       bytes: result.bytes,
+      layoutWarnings: collectLayoutWarnings(result.layout),
       metadata: completedMetadata(mounted.document, metadata),
       passes: 1,
       pageCount: countPages(result.layout),
@@ -328,6 +338,7 @@ export const createPdfTemplate = <Props extends object>(
     const definitionMetadata = resolveMetadata(ref, definition, props)
     const {
       bytes,
+      layoutWarnings,
       metadata,
       passes,
       pageCount,
@@ -341,6 +352,7 @@ export const createPdfTemplate = <Props extends object>(
     )
     const result = createPdfRenderResult(bytes, metadata, {
       durationMs: performance.now() - start,
+      layoutWarnings,
       pageCount,
       passes,
       registeredFontFaces: (options.fonts ?? []).map(font => ({

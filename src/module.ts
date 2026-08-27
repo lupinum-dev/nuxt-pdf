@@ -134,7 +134,14 @@ const existingDirectories = async (directories: readonly string[]) => {
 
 const generateAuthoringTypes = (
   componentsImport: string,
-): string => `declare module 'vue' {
+  composablesImport: string,
+  definePdfImport: string,
+): string => `declare global {
+  const definePdf: typeof import(${quote(definePdfImport)})['definePdf']
+  const usePdfPageNumbers: typeof import(${quote(composablesImport)})['usePdfPageNumbers']
+}
+
+declare module 'vue' {
   interface GlobalComponents {
     PdfDocument: typeof import(${quote(componentsImport)})['PdfDocument']
     PdfImage: typeof import(${quote(componentsImport)})['PdfImage']
@@ -292,6 +299,8 @@ export default defineNuxtModule<ModuleOptions>({
       filename: 'types/nuxt-pdf-authoring.d.ts',
       getContents: () => generateAuthoringTypes(
         componentsImport,
+        composablesImport,
+        definePdfImport,
       ),
       write: true,
     }, { nitro: true, node: true, nuxt: true })

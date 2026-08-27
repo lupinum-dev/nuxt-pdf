@@ -14,6 +14,7 @@ export type {
   PdfComponentProps,
   PdfDefinition,
   PdfDisposition,
+  PdfLayoutWarning,
   PdfMetadataValue,
   PdfRenderDiagnostics,
   PdfRenderResult,
