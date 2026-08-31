@@ -97,7 +97,7 @@
     "@react-pdf/pdfkit": "5.1.1",
     "@react-pdf/primitives": "4.3.0",
     "@react-pdf/render": "4.5.1",
-    "@vue/compiler-sfc": "3.5.40",
+    "@vue/compiler-sfc": "3.5.42",
     "esbuild": "0.28.1",
     "h3": "1.15.11",
     "ufo": "1.6.4",
@@ -139,7 +139,7 @@
     "source-code-pro": "2.42.0",
     "typescript": "~5.9.3",
     "vitest": "^4.1.8",
-    "vue": "3.5.40",
+    "vue": "3.5.42",
     "vue-tsc": "^3.3.3",
     "yaml": "2.9.0"
   }

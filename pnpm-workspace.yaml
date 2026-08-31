@@ -6,9 +6,9 @@ minimumReleaseAge: 1440
 minimumReleaseAgeStrict: true
 minimumReleaseAgeIgnoreMissingTime: false
 # Exact first-party release certified in lupinum-dev/ginko-docs Actions run
-# 32347200553. Remove after 2026-08-21 10:20 Europe/Vienna.
+# 33392984677. Remove after 2026-09-01 15:00 Europe/Vienna.
 minimumReleaseAgeExclude:
-  - '@lupinum/ginko-docs@0.3.0'
+  - '@lupinum/ginko-docs@0.4.0-rc.4'
 trustLockfile: false
 blockExoticSubdeps: true
 storeDir: .pnpm-store
