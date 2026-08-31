@@ -37,7 +37,10 @@ if (/theme\.css/.test(nuxtConfig)) {
 
 const copiedThemeExists = await access(resolve(docsDir, 'app/assets/css/theme.css')).then(
   () => true,
-  () => false,
+  (error) => {
+    if (error?.code === 'ENOENT') return false
+    throw error
+  },
 )
 if (copiedThemeExists) {
   failures.push('Delete the copied theme.css; Ginko Docs owns the Nuxt preset.')
