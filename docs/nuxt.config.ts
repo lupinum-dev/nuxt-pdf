@@ -6,7 +6,6 @@ import site from "./site.json" with { type: "json" };
 export default defineNuxtConfig({
   extends: ["@lupinum/ginko-docs"],
 
-  css: ["~/assets/css/theme.css"],
 
   ginkoDocs: {
     syntaxHighlighting: {
