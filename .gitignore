@@ -33,6 +33,7 @@ dist
 .env
 
 # Testing
+.ginko
 reports
 coverage
 /output
