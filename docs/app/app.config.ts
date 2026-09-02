@@ -49,6 +49,7 @@ export default {
       hero: {
         media: {
           type: "code-tabs",
+          layout: "wide",
           tabs: [
             {
               label: { en: "Template" },
