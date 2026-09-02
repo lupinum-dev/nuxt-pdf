@@ -5,10 +5,10 @@ packages:
 minimumReleaseAge: 1440
 minimumReleaseAgeStrict: true
 minimumReleaseAgeIgnoreMissingTime: false
-# Exact first-party release certified in lupinum-dev/ginko-docs Actions run
-# 33416335298. Remove after 2026-09-01 19:00 Europe/Vienna.
+# Exact first-party prerelease certified in lupinum-dev/ginko-docs Actions run
+# 33624551862. Remove after 2026-09-03 14:00 Europe/Vienna.
 minimumReleaseAgeExclude:
-  - '@lupinum/ginko-docs@0.4.0-rc.5'
+  - '@lupinum/ginko-docs@0.4.0-rc.8'
 trustLockfile: false
 blockExoticSubdeps: true
 storeDir: .pnpm-store
@@ -19,6 +19,7 @@ overrides:
   '@hono/node-server': 1.19.15
   'brace-expansion@>=2.0.0 <3.0.0': 2.1.4
   'brace-expansion@>=4.0.0 <5.0.9': 5.0.9
+  browserslist: 4.28.7
   esbuild: 0.28.1
   fast-uri: 3.1.5
   hono: 4.12.34
