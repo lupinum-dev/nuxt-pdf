@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
@@ -106,13 +106,39 @@ pdf.unknown.render({})
     await expect(buildPdfRegistry(options)).rejects.toThrow('no templates')
   })
 
+  it('resolves relative output from rootDir', async () => {
+    const options = await fixture()
+    await buildPdfRegistry({ ...options, outDir: 'generated', fonts })
+    expect(await readFile(join(options.rootDir, 'generated/index.mjs'), 'utf8')).toContain(
+      'createPdfRegistry',
+    )
+  }, 60_000)
+
+  it('refuses output paths that are files or symbolic links', async () => {
+    const fileOptions = await fixture()
+    await writeFile(fileOptions.outDir, 'User-owned file')
+    await expect(buildPdfRegistry(fileOptions)).rejects.toThrow(
+      'directory, not a file or symlink',
+    )
+
+    const linkOptions = await fixture()
+    const target = join(linkOptions.rootDir, 'user-owned')
+    await mkdir(target)
+    await symlink(target, linkOptions.outDir)
+    await expect(buildPdfRegistry(linkOptions)).rejects.toThrow(
+      'directory, not a file or symlink',
+    )
+  })
+
   it('preserves previous output on failure and refuses unowned output directories', async () => {
     const options = await fixture()
     await mkdir(options.outDir)
     await writeFile(join(options.outDir, 'keep.txt'), 'User-owned file')
+    await writeFile(join(options.outDir, '.nuxt-pdf-generated'), 'not an ownership marker\n')
     await expect(buildPdfRegistry(options)).rejects.toThrow('did not generate')
     expect(await readFile(join(options.outDir, 'keep.txt'), 'utf8')).toBe('User-owned file')
     await rm(join(options.outDir, 'keep.txt'))
+    await rm(join(options.outDir, '.nuxt-pdf-generated'))
     await buildPdfRegistry({ ...options, fonts })
     const original = await readFile(join(options.outDir, 'index.mjs'), 'utf8')
     await writeFile(join(options.rootDir, 'pdfs/broken.vue'), '<script setup lang="ts">const value: string = 1; definePdf({})</script><template><PdfDocument><PdfPage><PdfText>{{ value }}</PdfText></PdfPage></PdfDocument></template>')
