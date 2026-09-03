@@ -260,3 +260,39 @@ declare function comparePdfSnapshot(input: PdfInput, baselineDir: string, option
 export { PdfAssertionError, comparePdfSnapshot, expectPdf, loadPdfSfc, parsePdf, rasterizePdf, renderPdfSfc, renderPdfTemplate, toPdfBytes };
 export type { ComparePdfSnapshotOptions, LinkQuery, OutlineShape, ParsedPdf, ParsedPdfLink, ParsedPdfPage, ParsedPdfTextRun, PdfExpectation, PdfInput, PdfOutlineItem, PdfPageImage, PdfSnapshotResult, RasterizePdfOptions, RenderPdfSfcOptions, RenderPdfTemplateOptions, RenderedPdfTemplate, ToContainTextOptions };
 ```
+
+## Standalone build entry
+
+Source: `dist/build.d.mts`
+
+```ts
+import { PdfFontDeclaration } from '../dist/runtime/fonts.js';
+import { RemoteAssetOptions } from '../dist/runtime/server/assets/remote.js';
+import { PdfLimitsOptions } from '../dist/runtime/server/render-limits.js';
+
+interface BuildPdfRegistryOptions {
+    /** Trusted application root containing pdfs/. Not request input. */
+    rootDir: string;
+    /** Dedicated generated directory, outside pdfs/. Existing output files are replaced. */
+    outDir: string;
+    fonts?: readonly PdfFontDeclaration[];
+    limits?: PdfLimitsOptions;
+    remote?: RemoteAssetOptions;
+}
+/** Compile trusted templates and embed admitted resources before deployment. */
+declare function buildPdfRegistry(options: BuildPdfRegistryOptions): Promise<void>;
+
+export { buildPdfRegistry };
+export type { BuildPdfRegistryOptions };
+```
+
+## Standalone server entry
+
+Source: `dist/server.d.mts`
+
+```ts
+export { PdfRegistry, PdfRegistryEntries, createPdfRegistry, createPdfTemplate } from '../dist/runtime/server/registry.js';
+export { NuxtPdfError, PDF_ERROR_CODES, PdfErrorCode } from '../dist/runtime/shared/errors.js';
+export { usePdfPageNumbers } from '../dist/runtime/composables/index.js';
+export { PdfComponentProps, PdfDefinition, PdfRenderResult, PdfTemplate } from '../dist/runtime/shared/template.js';
+```

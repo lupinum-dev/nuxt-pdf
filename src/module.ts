@@ -1,5 +1,4 @@
 import { stat } from 'node:fs/promises'
-import { Buffer } from 'node:buffer'
 import { isAbsolute, join, relative, resolve as resolvePath } from 'node:path'
 import { version as moduleVersion } from '../package.json'
 import {
@@ -24,15 +23,12 @@ import {
   type PdfTemplateLayer,
 } from './build/discover-templates'
 import { bundlePdfFonts } from './build/fonts'
-import {
-  loadPdfImageAsset,
-  pdfImageFormatFromKey,
-} from './runtime/server/assets/resolve-asset'
+import { preparePdfImageAssets } from './build/image-assets'
+import { generateAuthoringTypes } from './build/generate-authoring-types'
 import {
   generatePdfPreviewConfig,
   generatePdfRegistryTypes,
   generatePdfRuntimeRegistry,
-  type PdfRegistryAssetEntry,
 } from './build/generate-registry'
 import { createPdfSfcPlugin } from './build/pdf-sfc-plugin'
 import { PDF_STUB_NAMES } from './runtime/components/stubs'
@@ -115,8 +111,6 @@ export interface ModuleOptions {
   limits?: PdfLimitsOptions
 }
 
-const quote = (value: string): string => JSON.stringify(value)
-
 const existingDirectories = async (directories: readonly string[]) => {
   const result: string[] = []
 
@@ -131,45 +125,6 @@ const existingDirectories = async (directories: readonly string[]) => {
 
   return result
 }
-
-const generateAuthoringTypes = (
-  componentsImport: string,
-  composablesImport: string,
-  definePdfImport: string,
-): string => `declare global {
-  const definePdf: typeof import(${quote(definePdfImport)})['definePdf']
-  const usePdfPageNumbers: typeof import(${quote(composablesImport)})['usePdfPageNumbers']
-}
-
-declare module 'vue' {
-  interface GlobalComponents {
-    PdfDocument: typeof import(${quote(componentsImport)})['PdfDocument']
-    PdfImage: typeof import(${quote(componentsImport)})['PdfImage']
-    PdfLink: typeof import(${quote(componentsImport)})['PdfLink']
-    PdfNote: typeof import(${quote(componentsImport)})['PdfNote']
-    PdfPage: typeof import(${quote(componentsImport)})['PdfPage']
-    PdfText: typeof import(${quote(componentsImport)})['PdfText']
-    PdfView: typeof import(${quote(componentsImport)})['PdfView']
-    PdfSvg: typeof import(${quote(componentsImport)})['PdfSvg']
-    PdfG: typeof import(${quote(componentsImport)})['PdfG']
-    PdfPath: typeof import(${quote(componentsImport)})['PdfPath']
-    PdfRect: typeof import(${quote(componentsImport)})['PdfRect']
-    PdfCircle: typeof import(${quote(componentsImport)})['PdfCircle']
-    PdfEllipse: typeof import(${quote(componentsImport)})['PdfEllipse']
-    PdfLine: typeof import(${quote(componentsImport)})['PdfLine']
-    PdfPolyline: typeof import(${quote(componentsImport)})['PdfPolyline']
-    PdfPolygon: typeof import(${quote(componentsImport)})['PdfPolygon']
-    PdfDefs: typeof import(${quote(componentsImport)})['PdfDefs']
-    PdfClipPath: typeof import(${quote(componentsImport)})['PdfClipPath']
-    PdfLinearGradient: typeof import(${quote(componentsImport)})['PdfLinearGradient']
-    PdfRadialGradient: typeof import(${quote(componentsImport)})['PdfRadialGradient']
-    PdfStop: typeof import(${quote(componentsImport)})['PdfStop']
-    PdfTspan: typeof import(${quote(componentsImport)})['PdfTspan']
-  }
-}
-
-export {}
-`
 
 export default defineNuxtModule<ModuleOptions>({
   meta: {
@@ -207,25 +162,7 @@ export default defineNuxtModule<ModuleOptions>({
     // Development entries point at the source file so edits render without a
     // restart. Production embeds validated base64 bytes so every Nitro output
     // stays self-contained; validation here fails the build on bad assets.
-    const assetEntries: PdfRegistryAssetEntry[] = []
-    for (const image of imageFiles) {
-      const format = pdfImageFormatFromKey(image.key)
-      if (nuxt.options.dev) {
-        assetEntries.push({ format, key: image.key, root: image.rootDir })
-      }
-      else {
-        const loaded = await loadPdfImageAsset(image.key, {
-          roots: [image.rootDir],
-          maxBytes: resolvedLimits.maxImageBytes,
-          maxPixels: resolvedLimits.maxImagePixels,
-        })
-        assetEntries.push({
-          dataB64: Buffer.from(loaded.data).toString('base64'),
-          format,
-          key: image.key,
-        })
-      }
-    }
+    const assetEntries = await preparePdfImageAssets(imageFiles, resolvedLimits, nuxt.options.dev)
     const fontRoots = await existingDirectories(
       layers.map(layer => join(layer.rootDir, 'pdfs', 'fonts')),
     )

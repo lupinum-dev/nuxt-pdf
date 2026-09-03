@@ -30,6 +30,14 @@
     "./test": {
       "types": "./dist/test.d.mts",
       "import": "./dist/test.mjs"
+    },
+    "./build": {
+      "types": "./dist/build.d.mts",
+      "import": "./dist/build.mjs"
+    },
+    "./server": {
+      "types": "./dist/server.d.mts",
+      "import": "./dist/server.mjs"
     }
   },
   "main": "./dist/module.mjs",
@@ -76,7 +84,7 @@
     "test:package-metadata": "node scripts/check-api-report.mjs",
     "test:performance": "node --expose-gc ./node_modules/vitest/vitest.mjs run --config vitest.performance.config.ts",
     "test:prepare": "pnpm dev:prepare && nuxt prepare test/fixtures/layers",
-    "test:production": "vitest run --config vitest.production.config.ts",
+    "test:production": "pnpm build && vitest run --config vitest.production.config.ts",
     "test:quickstart": "node scripts/test-package-quickstart.mjs",
     "test:raster": "vitest run --config vitest.raster.config.ts",
     "test:version-headings": "node scripts/check-version-headings.mjs",
@@ -101,7 +109,9 @@
     "esbuild": "0.28.1",
     "h3": "1.15.11",
     "ufo": "1.6.4",
-    "unimport": "6.3.0"
+    "unimport": "6.3.0",
+    "typescript": "~5.9.3",
+    "vue-tsc": "^3.3.3"
   },
   "peerDependencies": {
     "@napi-rs/canvas": "^0.1.97",
@@ -137,10 +147,8 @@
     "publint": "^0.3.21",
     "react": "19.2.0",
     "source-code-pro": "2.42.0",
-    "typescript": "~5.9.3",
     "vitest": "^4.1.8",
     "vue": "3.5.42",
-    "vue-tsc": "^3.3.3",
     "yaml": "2.9.0"
   }
 }

@@ -22,6 +22,19 @@ any of them changes.
 
 ## Verified corpus
 
+### Standalone registry (unreleased)
+
+`test/standalone-build.test.ts` compiles the production registry and removes
+template, font, and image sources before rendering. It checks custom fonts,
+Unicode, embedded images, long text, pagination, equivalent extracted content,
+and concurrent prop isolation. Plain NodeNext TypeScript checks inferred inline
+and imported props without Vue source. Invalid resources, output limits, failed
+build preservation, and generated-directory ownership have focused tests.
+
+This is local Node evidence, not a deployed Convex or serverless certification.
+Largest-realistic-document sizing, cold/warm timing, and platform memory limits
+remain application deployment checks. The existing Nitro path is unchanged.
+
 ### Compatibility kernel
 
 The paired React/Vue fixture verifies:

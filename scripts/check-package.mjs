@@ -32,6 +32,10 @@ const requiredFiles = [
   'dist/test.d.mts',
   'dist/test.mjs',
   'dist/types.d.mts',
+  'dist/build.d.mts',
+  'dist/build.mjs',
+  'dist/server.d.mts',
+  'dist/server.mjs',
   'package.json',
 ]
 

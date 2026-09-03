@@ -1,0 +1,162 @@
+import { execFile } from 'node:child_process'
+import { lstat, mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises'
+import { createRequire } from 'node:module'
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
+import { promisify } from 'node:util'
+import { fileURLToPath } from 'node:url'
+import { build } from 'esbuild'
+import { discoverPdfImageFiles, discoverPdfTemplates, type PdfTemplate } from './discover-templates'
+import { normalizeDeclarationImports } from './declaration-imports'
+import { bundlePdfFonts } from './fonts'
+import { generateAuthoringTypes } from './generate-authoring-types'
+import { generatePdfRegistryTypes, generatePdfRuntimeRegistry } from './generate-registry'
+import { preparePdfImageAssets } from './image-assets'
+import { compilePdfSfc } from './pdf-sfc-plugin'
+import type { PdfFontDeclaration } from '../runtime/fonts'
+import { normalizeRemoteAssetPolicy, type RemoteAssetOptions } from '../runtime/server/assets/remote'
+import { DEFAULT_PDF_RENDER_LIMITS, normalizePdfLimits, type PdfLimitsOptions } from '../runtime/server/render-limits'
+
+export interface BuildPdfRegistryOptions {
+  /** Trusted application root containing pdfs/. Not request input. */
+  rootDir: string
+  /** Dedicated generated directory, outside pdfs/. Existing output files are replaced. */
+  outDir: string
+  fonts?: readonly PdfFontDeclaration[]
+  limits?: PdfLimitsOptions
+  remote?: RemoteAssetOptions
+}
+
+const runtimeImport = '@lupinum/nuxt-pdf/server'
+const execute = promisify(execFile)
+const ownershipMarker = '.nuxt-pdf-generated'
+
+function contains(parent: string, child: string): boolean {
+  const path = relative(parent, child)
+  return path === '' || (path !== '..' && !path.startsWith('../') && !path.startsWith('..\\') && !isAbsolute(path))
+}
+
+async function checkOutputDirectory(outDir: string): Promise<void> {
+  const info = await lstat(outDir).catch((error: unknown) => {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return undefined
+    throw error
+  })
+  if (!info) return
+  if (info.isSymbolicLink()) throw new TypeError('buildPdfRegistry outDir must not be a symlink.')
+  if ((await readdir(outDir)).length === 0) return
+  try {
+    await readFile(join(outDir, ownershipMarker), 'utf8')
+  }
+  catch (error) {
+    throw new TypeError('buildPdfRegistry refuses to replace a nonempty directory it did not generate.', { cause: error })
+  }
+}
+
+/** Compile trusted templates and embed admitted resources before deployment. */
+export async function buildPdfRegistry(options: BuildPdfRegistryOptions): Promise<void> {
+  const allowed = new Set(['rootDir', 'outDir', 'fonts', 'limits', 'remote'])
+  for (const key of Object.keys(options)) {
+    if (!allowed.has(key)) throw new TypeError(`buildPdfRegistry: unsupported option ${JSON.stringify(key)}.`)
+  }
+  if (!options.rootDir?.trim() || !options.outDir?.trim()) {
+    throw new TypeError('buildPdfRegistry requires rootDir and outDir.')
+  }
+  const rootDir = resolve(options.rootDir)
+  const outDir = resolve(options.outDir)
+  const pdfRoot = join(rootDir, 'pdfs')
+  if (contains(pdfRoot, outDir) || contains(outDir, rootDir)) {
+    throw new TypeError('buildPdfRegistry outDir must be a dedicated directory outside pdfs/.')
+  }
+  await checkOutputDirectory(outDir)
+  const layers = [{ rootDir }]
+  const templates = await discoverPdfTemplates(layers)
+  if (templates.length === 0) throw new TypeError('buildPdfRegistry found no templates in pdfs/.')
+  const limits = normalizePdfLimits(options.limits)
+  const [assets, fonts] = await Promise.all([
+    discoverPdfImageFiles(layers).then(images => preparePdfImageAssets(images, limits ?? DEFAULT_PDF_RENDER_LIMITS, false)),
+    bundlePdfFonts(options.fonts ?? [], { fontRoots: [join(pdfRoot, 'fonts')] }),
+  ])
+  const source = generatePdfRuntimeRegistry(templates, {
+    assets, fonts, limits,
+    remote: normalizeRemoteAssetPolicy(options.remote),
+    runtimeImport,
+    development: false,
+  })
+  const entries = new Set(templates.map(template => template.filePath))
+  const result = await build({
+    absWorkingDir: rootDir,
+    stdin: { contents: source, resolveDir: rootDir, sourcefile: 'pdf-registry.js' },
+    bundle: true,
+    packages: 'external',
+    platform: 'node',
+    format: 'esm',
+    target: 'node22',
+    tsconfigRaw: {},
+    write: false,
+    plugins: [{
+      name: 'nuxt-pdf:standalone',
+      setup(builder) {
+        builder.onLoad({ filter: /\.vue$/ }, async ({ path }) => ({
+          contents: (await compilePdfSfc(await readFile(path, 'utf8'), path, entries.has(path) ? 'template' : 'component', true, runtimeImport)).code,
+          loader: 'js',
+          resolveDir: dirname(path),
+        }))
+      },
+    }],
+  })
+  const output = result.outputFiles[0]
+  if (!output) throw new Error('PDF registry compilation produced no output.')
+  await mkdir(dirname(outDir), { recursive: true })
+  const staging = await mkdtemp(join(dirname(outDir), '.nuxt-pdf-build-'))
+  try {
+    await emitDeclarations(rootDir, staging, templates)
+    await writeFile(join(staging, 'index.mjs'), output.contents)
+    await writeFile(join(staging, ownershipMarker), 'Generated by @lupinum/nuxt-pdf/build. Do not edit.\n')
+    // Failed compilation preserves the previous output. Replace only a checked,
+    // dedicated generated directory; never merge stale template declarations.
+    await checkOutputDirectory(outDir)
+    await rm(outDir, { recursive: true, force: true })
+    await rename(staging, outDir)
+  }
+  finally {
+    await rm(staging, { recursive: true, force: true })
+  }
+}
+
+async function emitDeclarations(rootDir: string, outDir: string, templates: PdfTemplate[]): Promise<void> {
+  // Vue owns prop inference. Only the build uses vue-tsc; backend consumers use tsc.
+  const temporary = await mkdtemp(join(outDir, '.types-'))
+  try {
+    const globals = join(temporary, 'authoring.d.ts')
+    const runtimeDirectory = join(dirname(fileURLToPath(import.meta.resolve(runtimeImport))), 'runtime')
+    await writeFile(globals, generateAuthoringTypes(
+      join(runtimeDirectory, 'components/index'),
+      join(runtimeDirectory, 'composables/index'),
+      join(runtimeDirectory, 'define-pdf'),
+    ))
+    const config = join(temporary, 'tsconfig.json')
+    await writeFile(config, JSON.stringify({
+      compilerOptions: {
+        target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler',
+        strict: true, skipLibCheck: true, declaration: true, emitDeclarationOnly: true, noEmitOnError: true,
+        rootDir, declarationDir: join(outDir, 'types'), types: [],
+      },
+      files: [...templates.map(template => template.filePath), globals],
+    }))
+    try {
+      await execute(process.execPath, [createRequire(import.meta.url).resolve('vue-tsc/bin/vue-tsc.js'), '--project', config], { cwd: rootDir, maxBuffer: 4 * 1024 * 1024 })
+    }
+    catch (error) {
+      const diagnostics = error instanceof Error && 'stdout' in error ? String(error.stdout) : ''
+      throw new Error(`PDF template type checking failed.\n${diagnostics}`, { cause: error })
+    }
+    await normalizeDeclarationImports(join(outDir, 'types'))
+    const declarationTemplates = templates.map(template => ({
+      ...template,
+      filePath: `./types/${relative(rootDir, template.filePath).replaceAll('\\', '/')}.js`,
+    }))
+    await writeFile(join(outDir, 'index.d.mts'), generatePdfRegistryTypes(declarationTemplates, { runtimeImport }))
+  }
+  finally {
+    await rm(temporary, { recursive: true, force: true })
+  }
+}
