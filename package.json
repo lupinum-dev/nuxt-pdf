@@ -92,7 +92,7 @@
     "check:vercel": "node scripts/check-vercel-config.mjs",
     "test:serverless": "vitest run --config vitest.serverless.config.ts",
     "test:watch": "vitest watch",
-    "typecheck": "nuxt prepare && vue-tsc --noEmit && nuxt prepare test/fixtures/basic && vue-tsc --noEmit -p test/fixtures/basic/tsconfig.json && pnpm test:prepare && pnpm --dir playground exec vue-tsc --noEmit",
+    "typecheck": "pnpm test:prepare && nuxt prepare && vue-tsc --noEmit && nuxt prepare test/fixtures/basic && vue-tsc --noEmit -p test/fixtures/basic/tsconfig.json && pnpm --dir playground exec vue-tsc --noEmit",
     "audit:all": "pnpm audit",
     "verify": "pnpm audit:all && pnpm check",
     "check": "pnpm format:check && pnpm check:vercel && pnpm typecheck && pnpm test:docs && pnpm test:version-headings && pnpm test:workflows && pnpm test:dependencies && pnpm test && pnpm test:production && pnpm test:serverless && pnpm build && pnpm test:package-metadata && pnpm dev:build && pnpm test:artifact"
