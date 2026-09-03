@@ -1,11 +1,11 @@
-# Nuxt PDF 0.4.0-beta.2 conformance
+# Nuxt PDF 0.4.0-beta.3 conformance
 
 Nuxt PDF claims behavioral compatibility for a deliberately small, tested
 corpus. It does not claim full React PDF API or test-suite compatibility.
 
 ## Version boundary
 
-| Layer | 0.4.0-beta.2 boundary |
+| Layer | 0.4.0-beta.3 boundary |
 |---|---|
 | Node.js | `^22.14.0`, `^24.0.0`, or `^26.0.0` |
 | Nuxt | `^4.4.8` |
@@ -22,7 +22,7 @@ any of them changes.
 
 ## Verified corpus
 
-### Standalone registry (unreleased)
+### Standalone registry
 
 `test/standalone-build.test.ts` compiles the production registry and removes
 template, font, and image sources before rendering. It checks custom fonts,
