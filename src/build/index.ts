@@ -58,6 +58,7 @@ async function replaceOutputDirectory(staging: string, outDir: string): Promise<
   const parent = dirname(outDir)
   const previousRoot = await mkdtemp(join(parent, '.nuxt-pdf-previous-'))
   const previous = join(previousRoot, 'output')
+  let removePreviousRoot = true
   try {
     const exists = await lstat(outDir).then(() => true, (error: unknown) => {
       if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return false
@@ -68,12 +69,24 @@ async function replaceOutputDirectory(staging: string, outDir: string): Promise<
       await rename(staging, outDir)
     }
     catch (error) {
-      if (exists) await rename(previous, outDir)
+      if (exists) {
+        try {
+          await rename(previous, outDir)
+        }
+        catch (restoreError) {
+          removePreviousRoot = false
+          throw new AggregateError(
+            [error, restoreError],
+            `Failed to replace generated PDF output and restore it. The prior output remains at ${previous}.`,
+            { cause: restoreError },
+          )
+        }
+      }
       throw error
     }
   }
   finally {
-    await rm(previousRoot, { recursive: true, force: true })
+    if (removePreviousRoot) await rm(previousRoot, { recursive: true, force: true })
   }
 }
 
