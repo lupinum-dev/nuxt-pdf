@@ -8,6 +8,8 @@ const declarations = [
   ['Package root', 'dist/types.d.mts'],
   ['Nuxt module', 'dist/module.d.mts'],
   ['Test entry', 'dist/test.d.mts'],
+  ['Standalone build entry', 'dist/build.d.mts'],
+  ['Standalone server entry', 'dist/server.d.mts'],
 ]
 
 const sections = await Promise.all(declarations.map(async ([label, path]) => {

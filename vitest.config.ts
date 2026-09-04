@@ -5,6 +5,7 @@ export default defineConfig({
     exclude: [
       ...configDefaults.exclude,
       'test/production.test.ts',
+      'test/standalone-build.test.ts',
       'test/performance.test.ts',
       'test/serverless-build.test.ts',
       'test/toc-raster.test.ts',

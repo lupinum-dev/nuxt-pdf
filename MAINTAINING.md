@@ -155,6 +155,15 @@ For each update:
 
 Do not bypass the 24-hour dependency release-age policy for convenience.
 
+## Review package size changes
+
+Build the package, then measure it with `npm pack --ignore-scripts --dry-run --json`.
+For an approved additive feature, update only `packageTarballBytes` and
+`packageUnpackedBytes` in `test/fixtures/performance/linux-node24.json` from that
+report. Keep the 10% regression guard. Do not replace Linux rendering metrics
+with measurements from another platform. Review the packed file list and
+compiler/runtime separation, then rerun `pnpm test:artifact`.
+
 ## Publish the documentation site
 
 Vercel deploys the documentation application as the `nuxt-pdf-docs` project. `main`

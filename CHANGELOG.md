@@ -4,6 +4,21 @@ All notable changes to `@lupinum/nuxt-pdf` are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.4.0-beta.3 - 2026-09-03
+
+### Added
+
+- Add a standalone registry build and Node production runtime entry. Reuse the
+  existing PDF compiler, embedded resource admission, and rendering engine.
+- Emit backend-consumable TypeScript declarations without requiring Vue source
+  or a Vue type checker during backend compilation.
+
+### Fixed
+
+- Keep the registry documentation example compatible with strict Markdown style
+  validation and update vulnerable documentation parser dependencies.
+- Prepare the package build export before clean-checkout type checking.
+
 ## 0.4.0-beta.2 - 2026-08-27
 
 [compare changes](https://github.com/lupinum-dev/nuxt-pdf/compare/v0.4.0-beta.1...v0.4.0-beta.2)

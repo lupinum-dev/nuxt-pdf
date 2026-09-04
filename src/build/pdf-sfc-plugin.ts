@@ -1,5 +1,5 @@
 import { Buffer } from 'node:buffer'
-import { existsSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { dirname, extname, isAbsolute, resolve } from 'node:path'
 import {
@@ -33,6 +33,13 @@ export type PdfSfcPluginOptions = {
 }
 
 const authoringImportContexts = new Map<string, Unimport>()
+
+// Vue cannot detect Node's filesystem in every ESM build. Imported prop types
+// need the same explicit filesystem in metadata validation and compilation.
+const compilerFileSystem = {
+  fileExists: (file: string) => statSync(file, { throwIfNoEntry: false })?.isFile() ?? false,
+  readFile: (file: string) => readFileSync(file, 'utf8'),
+}
 
 export type PdfSfcTransformResult = {
   code: string
@@ -617,6 +624,7 @@ function assertMetadataHoistable(
   try {
     const validation = parsePdfSfc(validationSource, filename)
     compileScript(validation, {
+      fs: compilerFileSystem,
       id: 'nuxt-pdf-metadata-hoist',
       sourceMap: false,
     })
@@ -746,6 +754,7 @@ function compileComponent(
   if (descriptor.scriptSetup) {
     try {
       const result = compileScript(descriptor, {
+        fs: compilerFileSystem,
         genDefaultAs: COMPONENT_VARIABLE,
         id: 'nuxt-pdf',
         inlineTemplate: true,
@@ -776,6 +785,7 @@ function compileComponent(
   if (descriptor.script) {
     try {
       const script = compileScript(descriptor, {
+        fs: compilerFileSystem,
         genDefaultAs: COMPONENT_VARIABLE,
         id: 'nuxt-pdf',
         isProd: isProduction,

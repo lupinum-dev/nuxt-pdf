@@ -1,11 +1,11 @@
-# Nuxt PDF 0.4.0-beta.2 conformance
+# Nuxt PDF 0.4.0-beta.3 conformance
 
 Nuxt PDF claims behavioral compatibility for a deliberately small, tested
 corpus. It does not claim full React PDF API or test-suite compatibility.
 
 ## Version boundary
 
-| Layer | 0.4.0-beta.2 boundary |
+| Layer | 0.4.0-beta.3 boundary |
 |---|---|
 | Node.js | `^22.14.0`, `^24.0.0`, or `^26.0.0` |
 | Nuxt | `^4.4.8` |
@@ -21,6 +21,19 @@ The engine packages are exact pins. Compatibility must be re-evaluated when
 any of them changes.
 
 ## Verified corpus
+
+### Standalone registry
+
+`test/standalone-build.test.ts` compiles the production registry and removes
+template, font, and image sources before rendering. It checks custom fonts,
+Unicode, embedded images, long text, pagination, equivalent extracted content,
+and concurrent prop isolation. Plain NodeNext TypeScript checks inferred inline
+and imported props without Vue source. Invalid resources, output limits, failed
+build preservation, and generated-directory ownership have focused tests.
+
+This is local Node evidence, not a deployed Convex or serverless certification.
+Largest-realistic-document sizing, cold/warm timing, and platform memory limits
+remain application deployment checks. The existing Nitro path is unchanged.
 
 ### Compatibility kernel
 
