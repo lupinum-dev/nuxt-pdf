@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { lstat, mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises'
+import { lstat, mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { promisify } from 'node:util'
@@ -19,7 +19,7 @@ import { DEFAULT_PDF_RENDER_LIMITS, normalizePdfLimits, type PdfLimitsOptions } 
 export interface BuildPdfRegistryOptions {
   /** Trusted application root containing pdfs/. Not request input. */
   rootDir: string
-  /** Dedicated generated directory, outside pdfs/. Existing output files are replaced. */
+  /** Dedicated generated directory inside rootDir and outside pdfs/. */
   outDir: string
   fonts?: readonly PdfFontDeclaration[]
   limits?: PdfLimitsOptions
@@ -45,13 +45,35 @@ async function checkOutputDirectory(outDir: string): Promise<void> {
   if (!info.isDirectory() || info.isSymbolicLink()) {
     throw new TypeError('buildPdfRegistry outDir must be a directory, not a file or symlink.')
   }
-  if ((await readdir(outDir)).length === 0) return
   try {
     const marker = await readFile(join(outDir, ownershipMarker), 'utf8')
     if (marker !== ownershipContent) throw new Error('invalid ownership marker')
   }
   catch (error) {
-    throw new TypeError('buildPdfRegistry refuses to replace a nonempty directory it did not generate.', { cause: error })
+    throw new TypeError('buildPdfRegistry refuses to replace a directory it did not generate.', { cause: error })
+  }
+}
+
+async function replaceOutputDirectory(staging: string, outDir: string): Promise<void> {
+  const parent = dirname(outDir)
+  const previousRoot = await mkdtemp(join(parent, '.nuxt-pdf-previous-'))
+  const previous = join(previousRoot, 'output')
+  try {
+    const exists = await lstat(outDir).then(() => true, (error: unknown) => {
+      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return false
+      throw error
+    })
+    if (exists) await rename(outDir, previous)
+    try {
+      await rename(staging, outDir)
+    }
+    catch (error) {
+      if (exists) await rename(previous, outDir)
+      throw error
+    }
+  }
+  finally {
+    await rm(previousRoot, { recursive: true, force: true })
   }
 }
 
@@ -67,8 +89,8 @@ export async function buildPdfRegistry(options: BuildPdfRegistryOptions): Promis
   const rootDir = resolve(options.rootDir)
   const outDir = resolve(rootDir, options.outDir)
   const pdfRoot = join(rootDir, 'pdfs')
-  if (contains(pdfRoot, outDir) || contains(outDir, rootDir)) {
-    throw new TypeError('buildPdfRegistry outDir must be a dedicated directory outside pdfs/.')
+  if (!contains(rootDir, outDir) || contains(pdfRoot, outDir) || contains(outDir, pdfRoot)) {
+    throw new TypeError('buildPdfRegistry outDir must be a dedicated directory inside rootDir and outside pdfs/.')
   }
   await checkOutputDirectory(outDir)
   const layers = [{ rootDir }]
@@ -118,8 +140,7 @@ export async function buildPdfRegistry(options: BuildPdfRegistryOptions): Promis
     // Failed compilation preserves the previous output. Replace only a checked,
     // dedicated generated directory; never merge stale template declarations.
     await checkOutputDirectory(outDir)
-    await rm(outDir, { recursive: true, force: true })
-    await rename(staging, outDir)
+    await replaceOutputDirectory(staging, outDir)
   }
   finally {
     await rm(staging, { recursive: true, force: true })

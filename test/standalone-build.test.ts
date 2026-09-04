@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process'
 import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
@@ -137,8 +138,7 @@ pdf.unknown.render({})
     await writeFile(join(options.outDir, '.nuxt-pdf-generated'), 'not an ownership marker\n')
     await expect(buildPdfRegistry(options)).rejects.toThrow('did not generate')
     expect(await readFile(join(options.outDir, 'keep.txt'), 'utf8')).toBe('User-owned file')
-    await rm(join(options.outDir, 'keep.txt'))
-    await rm(join(options.outDir, '.nuxt-pdf-generated'))
+    await rm(options.outDir, { recursive: true })
     await buildPdfRegistry({ ...options, fonts })
     const original = await readFile(join(options.outDir, 'index.mjs'), 'utf8')
     await writeFile(join(options.rootDir, 'pdfs/broken.vue'), '<script setup lang="ts">const value: string = 1; definePdf({})</script><template><PdfDocument><PdfPage><PdfText>{{ value }}</PdfText></PdfPage></PdfDocument></template>')
@@ -149,4 +149,14 @@ pdf.unknown.render({})
     await buildPdfRegistry({ ...options, fonts })
     await expect(readFile(join(options.outDir, 'types/stale.d.ts'))).rejects.toMatchObject({ code: 'ENOENT' })
   }, 60_000)
+
+  it('refuses empty or external output directories it does not own', async () => {
+    const options = await fixture()
+    await mkdir(options.outDir)
+    await expect(buildPdfRegistry(options)).rejects.toThrow('did not generate')
+    const external = await mkdtemp(join(tmpdir(), 'nuxt-pdf-external-'))
+    directories.push(external)
+    await expect(buildPdfRegistry({ ...options, outDir: join(external, 'generated') }))
+      .rejects.toThrow('inside rootDir')
+  })
 })
