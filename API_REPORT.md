@@ -273,7 +273,7 @@ import { PdfLimitsOptions } from '../dist/runtime/server/render-limits.js';
 interface BuildPdfRegistryOptions {
     /** Trusted application root containing pdfs/. Not request input. */
     rootDir: string;
-    /** Dedicated generated directory, outside pdfs/. Existing output files are replaced. */
+    /** Dedicated generated directory inside rootDir and outside pdfs/. */
     outDir: string;
     fonts?: readonly PdfFontDeclaration[];
     limits?: PdfLimitsOptions;
