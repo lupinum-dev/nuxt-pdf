@@ -2,9 +2,10 @@ import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse } from 'yaml'
+import { spawnSync } from 'node:child_process'
 
 const rootDir = resolve(fileURLToPath(new URL('..', import.meta.url)))
-const workflowNames = ['ci.yml', 'release.yml']
+const workflowNames = ['ci.yml', 'package-preview.yml', 'release.yml']
 const workflows = new Map(await Promise.all(workflowNames.map(async name => [
   name,
   await readFile(join(rootDir, '.github/workflows', name), 'utf8'),
@@ -40,6 +41,7 @@ for (const [name, source] of workflows) {
 
 const ci = workflows.get('ci.yml')
 const ciConfig = parse(ci)
+const packagePreview = workflows.get('package-preview.yml')
 const release = workflows.get('release.yml')
 const releaseConfig = parse(release)
 const allWorkflows = [...workflows.values()].join('\n')
@@ -69,6 +71,11 @@ assert(
 )
 assert(ci.includes('node scripts/verify-action-shas.mjs'), 'CI must verify pinned Action commits upstream.')
 assert(!ci.includes('GITHUB_TOKEN'), 'Action verification must not receive GITHUB_TOKEN.')
+assert(
+  ci.includes('RELEASE_SOURCE_SHA: ${{ github.sha }}')
+  && packagePreview.includes('RELEASE_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}'),
+  'Artifact certification must bind the checked-out CI or pull-request source commit.',
+)
 const classifyScript = ciConfig.jobs.classify.steps.find(
   step => step.name === 'Select required lanes',
 )?.with?.script
@@ -82,18 +89,46 @@ assert(
   'CI must expose one always-reported gate for every classified lane.',
 )
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor
+const gateScript = ciGate.steps.find(step => step.name === 'Require every selected lane')?.run
+assert(typeof gateScript === 'string', 'CI must execute the selected lane gate.')
+const success = {
+  CLASSIFY_RESULT: 'success', QUALITY: 'true', FULL: 'true', QUALITY_RESULT: 'success',
+  CORE_RESULT: 'success', RASTER_RESULT: 'success', NUXT_RESULT: 'success', WINDOWS_RESULT: 'success', PACKAGE_RESULT: 'success',
+}
+const skipped = Object.fromEntries(Object.keys(success).filter(key => key.endsWith('_RESULT') && key !== 'CLASSIFY_RESULT').map(key => [key, 'skipped']))
+for (const scenario of [
+  { name: 'all selected', env: {}, passes: true },
+  { name: 'docs selected', env: { ...skipped, FULL: 'false', QUALITY_RESULT: 'success' }, passes: true },
+  { name: 'prose only', env: { ...skipped, FULL: 'false', QUALITY: 'false' }, passes: true },
+  { name: 'missing selected result', env: { PACKAGE_RESULT: '' }, passes: false },
+  { name: 'unknown selected result', env: { CORE_RESULT: 'neutral' }, passes: false },
+  { name: 'cancelled selected job', env: { NUXT_RESULT: 'cancelled' }, passes: false },
+  { name: 'classifier failure', env: { CLASSIFY_RESULT: 'failure' }, passes: false },
+  { name: 'missing selection', env: { ...skipped, FULL: '', QUALITY: 'false' }, passes: false },
+  { name: 'unknown selection', env: { ...skipped, FULL: 'false', QUALITY: 'unknown' }, passes: false },
+]) {
+  const result = spawnSync('bash', ['-e', '-c', gateScript], { env: { PATH: process.env.PATH, ...success, ...scenario.env } })
+  assert((result.status === 0) === scenario.passes, `CI gate failed the ${scenario.name} fixture.`)
+}
+assert(ciConfig.on.pull_request !== undefined && !ciConfig.on.pull_request?.branches,
+  'Required CI must run for pull requests targeting stacked branches.')
 for (const scenario of [
   { name: 'public docs', event: 'pull_request', paths: ['docs/content/1.index.md'], full: 'false', quality: 'true' },
   { name: 'top-level prose', event: 'pull_request', paths: ['README.md'], full: 'false', quality: 'false' },
   { name: 'compiler source', event: 'pull_request', paths: ['src/runtime/compiler.ts'], full: 'true', quality: 'true' },
   { name: 'workflow policy', event: 'pull_request', paths: ['.github/workflows/ci.yml'], full: 'true', quality: 'true' },
+  { name: 'executable content file', event: 'pull_request', paths: ['docs/content/example.ts'], full: 'true', quality: 'true' },
+  { name: 'docs configuration', event: 'pull_request', paths: ['docs/nuxt.config.ts'], full: 'true', quality: 'true' },
+  { name: 'source renamed to prose', event: 'pull_request', paths: ['docs/content/example.md'], previous: ['src/runtime/example.ts'], full: 'true', quality: 'true' },
+  { name: 'unknown script', event: 'pull_request', paths: ['scripts/new-check.mjs'], full: 'true', quality: 'true' },
+  { name: 'empty file response', event: 'pull_request', paths: [], full: 'true', quality: 'true' },
   { name: 'main certification', event: 'push', paths: [], full: 'true', quality: 'true' },
 ]) {
   const outputs = new Map()
   await new AsyncFunction('context', 'github', 'core', classifyScript)(
     { eventName: scenario.event, issue: { number: 1 }, repo: { owner: 'lupinum-dev', repo: 'nuxt-pdf' } },
     {
-      paginate: async () => scenario.paths.map(filename => ({ filename })),
+      paginate: async () => scenario.paths.map((filename, index) => ({ filename, previous_filename: scenario.previous?.[index] })),
       rest: { pulls: { listFiles() {} } },
     },
     { setOutput: (name, value) => outputs.set(name, value) },
@@ -103,6 +138,17 @@ for (const scenario of [
     `CI classification failed the ${scenario.name} fixture.`,
   )
 }
+
+assert(packageJson.scripts.check === 'pnpm check:source && pnpm test:artifact',
+  'The normal check must certify its package after source checks.')
+assert(packageJson.scripts['release:verify'] === 'pnpm check:dependencies && pnpm audit:all && pnpm check:source && node scripts/check-release-artifact.mjs release-artifacts',
+  'Release verification must run policy, audit, source checks, and one retained certification.')
+assert(!packageJson.scripts['check:source'].includes('test:artifact')
+  && !packageJson.scripts['check:source'].includes('release:pack'),
+'Source checks must not repeat package consumer certification.')
+assert(!ciConfig.jobs['nuxt-integration'].steps.some(step => step.run === 'pnpm build')
+  && packageJson.scripts['test:production'].startsWith('pnpm build && '),
+'Production tests must own the integration build.')
 
 const publishJob = extractJob(release, 'publish')
 const verifyCandidateJob = extractJob(release, 'verify-candidate')

@@ -31,15 +31,32 @@ Ask for a minimal public reproduction before you investigate an unclear bug.
 Close requests that are outside the documented product boundary. State the
 reason and link to the relevant documentation.
 
-## Ship a small change
+## Daily maintenance
 
-1. Create a short branch from current `main`.
-2. Change one concern.
-3. Run the smallest relevant test while you work.
-4. Run `pnpm verify` before you finish.
-5. Open a pull request with a Conventional Commit title.
-6. Resolve review threads and required checks.
-7. Squash the pull request into `main`.
+An assigned maintenance task includes setup, diagnosis, implementation,
+independent review, routine pull requests, protected merge, post-merge checks,
+and cleanup. Preserve public contracts. Changes to security or delegation need
+explicit policy approval; a patch cannot authorize itself. Keep the final
+protected npm publication approval with a human maintainer.
+
+Use the Node version in `.node-version` and the package manager in `package.json`.
+Run `corepack enable pnpm`, then `pnpm install --frozen-lockfile`.
+`pnpm dev` prepares the module and starts the playground. Open the printed URL
+and `/_pdf`. Select a template and scenario, edit its content, and check the
+updated document and diagnostics. Explore a narrow screen and error recovery.
+Restore temporary fixture edits and stop only the processes you started.
+
+`pnpm build` builds the package from source. `pnpm verify` checks policy, the
+full workspace audit, source, documentation, production boundaries, and one
+packed-consumer certification. `pnpm release:verify` runs those checks and
+retains the certified candidate. Commit source changes before retaining it.
+Do not rerun aggregate children after a successful aggregate gate.
+
+Use focused tests while editing. GitHub separately owns pinned Linux raster,
+Windows, supported Node, scheduled compatibility, stress, and performance
+results. A local pass does not certify those platforms. Read the required
+`CI gate` for the exact reviewed commit before merging. Use a Conventional
+Commit title and independent review for meaningful code, CI, and dependencies.
 
 An issue is optional for a small defect or documentation correction. Use an
 issue first when the expected behavior is not clear.
@@ -98,6 +115,11 @@ Do not rebuild after the release artifact is created. The OIDC job downloads
 the retained tarball. It does not check out code, install dependencies, or run
 repository scripts.
 
+The SBOM describes the locked root production graph. The license inventory
+describes installed production dependencies on the certification host; optional
+packages for other platforms can appear only in the SBOM. Documentation and
+playground dependencies remain covered by the full workspace audit.
+
 If npm already contains the same version, rerun the current workflow only when
 the registry SHA-1 matches the certified tarball and npm exposes provenance.
 The unprivileged verifier checks the signed npm attestation and derives the
@@ -148,7 +170,7 @@ For each update:
 
 1. Review the upstream release, provenance, and lifecycle-script changes.
 2. Keep `allowBuilds` limited to dependencies that require a build.
-3. Run `pnpm verify`.
+3. Run `pnpm release:verify`, which includes the full workspace audit.
 4. Run raster, performance, and compatibility jobs when the engine or Nuxt
    dependency family changes.
 5. Give every temporary override a reason and review date.
@@ -177,7 +199,7 @@ compiler/runtime separation, then rerun `pnpm test:artifact`.
 ## Publish the documentation site
 
 Vercel deploys the documentation application as the `nuxt-pdf-docs` project. `main`
-is the production branch. Pull requests receive preview deployments. The
+is the production branch. Request a pull-request preview with `/vercel`. The
 production domain is `nuxt-pdf.lupinum.com`.
 
 The Vercel project uses `docs/` as its root. Enable **Include source files
@@ -198,7 +220,7 @@ section states the required policy.
 GitHub must have:
 
 - A `main` ruleset that blocks deletion and force pushes, requires linear
-  history and resolved review threads, and requires all eight CI jobs.
+  history and resolved review threads, and requires the `CI gate` check.
 - Squash merge as the only merge method and automatic branch deletion.
 - GitHub Actions restricted to full commit-SHA references, with default
   workflow permissions read-only.
@@ -222,9 +244,12 @@ npm must have:
 Vercel must have:
 
 - The `nuxt-pdf-docs` project bound to this repository with root `docs`.
-- `main` as the production branch and pull request previews enabled.
+- `main` as the production branch and pull request previews on demand.
 - `nuxt-pdf.lupinum.com` as the production domain.
 - No Install Command or Output Directory override.
+- Basic build machines and queued builds with on-demand concurrency disabled.
+  Use another machine only after review proves lower cost per successful build
+  or a Basic build failure.
 
 ## Respond to a credential incident
 
