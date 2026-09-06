@@ -12,7 +12,7 @@ describe('Nuxt PDF development workflow', async () => {
   it('renders the index page', async () => {
     // Get response to a server-rendered page with `$fetch`.
     const html = await $fetch('/')
-    expect(html).toContain('<div>basic</div>')
+    expect(html).toMatch(/<div>\s*basic\s*<\/div>/)
   })
 
   it('renders the generated typed registry through a Nitro route', async () => {
@@ -29,6 +29,12 @@ describe('Nuxt PDF development workflow', async () => {
     expect(pdf.pageCount).toBe(1)
     expect(pdf.pages[0]?.text).toContain('Invoice INV-001')
     expect(pdf.pages[0]?.text).toContain('PDF framework')
+  })
+
+  it('rejects an auto-imported PDF component in the application', async () => {
+    const response = await nuxtFetch('/?pdfMisuse=1')
+    expect(response.status).toBe(500)
+    expect(await response.text()).toContain('only works inside a discovered pdfs/*.vue template')
   })
 
   it('serves development-only preview pages and raw bytes', async () => {

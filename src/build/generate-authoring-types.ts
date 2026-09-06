@@ -1,4 +1,4 @@
-import { PDF_STUB_NAMES } from '../runtime/components/stubs'
+import * as pdfStubs from '../runtime/components/stubs'
 
 export const generateAuthoringTypes = (
   componentsImport: string,
@@ -11,7 +11,7 @@ export const generateAuthoringTypes = (
 
 declare module 'vue' {
   interface GlobalComponents {
-${PDF_STUB_NAMES.map(name => `    ${name}: typeof import(${JSON.stringify(componentsImport)})['${name}']`).join('\n')}
+${Object.keys(pdfStubs).map(name => `    ${name}: typeof import(${JSON.stringify(componentsImport)})['${name}']`).join('\n')}
   }
 }
 

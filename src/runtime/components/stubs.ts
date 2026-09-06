@@ -8,31 +8,6 @@ import { NuxtPdfError, PDF_ERROR_CODES } from '../shared/errors'
  * while resolving to nothing at runtime. Registering these stubs turns that
  * silent failure into an immediate, actionable error.
  */
-export const PDF_STUB_NAMES = [
-  'PdfCircle',
-  'PdfClipPath',
-  'PdfDefs',
-  'PdfDocument',
-  'PdfEllipse',
-  'PdfG',
-  'PdfImage',
-  'PdfLine',
-  'PdfLinearGradient',
-  'PdfLink',
-  'PdfNote',
-  'PdfPage',
-  'PdfPath',
-  'PdfPolygon',
-  'PdfPolyline',
-  'PdfRadialGradient',
-  'PdfRect',
-  'PdfStop',
-  'PdfSvg',
-  'PdfText',
-  'PdfTspan',
-  'PdfView',
-] as const
-
 const stubMessage = (name: string): string =>
   `<${name}> only works inside a discovered pdfs/*.vue template rendered by `
   + '@lupinum/nuxt-pdf. Move this component under pdfs/, or replace it with '
@@ -46,7 +21,25 @@ const createPdfStub = (name: string) => defineComponent({
   render: () => null,
 })
 
-export const createPdfStubs = (): Record<string, ReturnType<typeof defineComponent>> =>
-  Object.fromEntries(
-    PDF_STUB_NAMES.map(name => [name, createPdfStub(name)]),
-  )
+export const PdfCircle = createPdfStub('PdfCircle')
+export const PdfClipPath = createPdfStub('PdfClipPath')
+export const PdfDefs = createPdfStub('PdfDefs')
+export const PdfDocument = createPdfStub('PdfDocument')
+export const PdfEllipse = createPdfStub('PdfEllipse')
+export const PdfG = createPdfStub('PdfG')
+export const PdfImage = createPdfStub('PdfImage')
+export const PdfLine = createPdfStub('PdfLine')
+export const PdfLinearGradient = createPdfStub('PdfLinearGradient')
+export const PdfLink = createPdfStub('PdfLink')
+export const PdfNote = createPdfStub('PdfNote')
+export const PdfPage = createPdfStub('PdfPage')
+export const PdfPath = createPdfStub('PdfPath')
+export const PdfPolygon = createPdfStub('PdfPolygon')
+export const PdfPolyline = createPdfStub('PdfPolyline')
+export const PdfRadialGradient = createPdfStub('PdfRadialGradient')
+export const PdfRect = createPdfStub('PdfRect')
+export const PdfStop = createPdfStub('PdfStop')
+export const PdfSvg = createPdfStub('PdfSvg')
+export const PdfText = createPdfStub('PdfText')
+export const PdfTspan = createPdfStub('PdfTspan')
+export const PdfView = createPdfStub('PdfView')
