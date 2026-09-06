@@ -40,7 +40,7 @@ describe('Nuxt PDF production boundary', () => {
       String(pdfBytes.byteLength),
     )
     expect(pdf.pages[0]?.text).toContain('Invoice INV-001')
-    expect(previewBody).toContain('<div>basic</div>')
+    expect(previewBody).toMatch(/<div>\s*basic\s*<\/div>/)
     expect(previewBody).not.toContain('<h1>PDF templates</h1>')
 
     // The per-template viewer (where the diagnostics/scenario UI lives) must
