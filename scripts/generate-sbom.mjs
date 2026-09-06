@@ -9,9 +9,12 @@ const outputPath = resolve(process.argv[2] ?? 'reports/nuxt-pdf.cdx.json')
 const packageJson = JSON.parse(await readFile(`${rootDir}/package.json`, 'utf8'))
 const trees = JSON.parse(execFileSync(
   'pnpm',
-  ['list', '--prod', '--json', '--depth', 'Infinity'],
+  ['--filter', packageJson.name, 'list', '--prod', '--json', '--depth', 'Infinity'],
   { cwd: rootDir, encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 },
 ))
+if (trees.length !== 1 || trees[0].name !== packageJson.name || resolve(trees[0].path) !== rootDir) {
+  throw new Error('The SBOM requires exactly the publishable root package dependency graph.')
+}
 
 const components = new Map()
 

@@ -1,12 +1,15 @@
 import { execFileSync } from 'node:child_process'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
+const rootDir = resolve(fileURLToPath(new URL('..', import.meta.url)))
+const packageJson = JSON.parse(await readFile(resolve(rootDir, 'package.json'), 'utf8'))
 const outputPath = resolve(process.argv[2] ?? 'reports/third-party-licenses.json')
 const grouped = JSON.parse(execFileSync(
   'pnpm',
-  ['licenses', 'list', '--prod', '--json'],
-  { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
+  ['--filter', packageJson.name, 'licenses', 'list', '--prod', '--json'],
+  { cwd: rootDir, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
 ))
 
 const packages = Object.entries(grouped).flatMap(([license, entries]) =>

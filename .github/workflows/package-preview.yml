@@ -39,6 +39,8 @@ jobs:
 
       - name: Build the disposable certified tarball
         id: artifact
+        env:
+          RELEASE_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: node scripts/build-package-preview.mjs
 
       - name: Publish the commit-addressed preview
