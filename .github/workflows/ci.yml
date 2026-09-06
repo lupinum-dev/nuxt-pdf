@@ -274,24 +274,14 @@ jobs:
           done
 
   compatibility:
-    name: Current dependency compatibility (${{ matrix.label }})
+    name: Current dependency compatibility (${{ matrix.boundary }})
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - label: pinned
-            nuxt: 4.4.8
-            vue: 3.5.0
-            pdfjs: 5.6.205
-            canvas: 0.1.97
-          - label: latest supported
-            nuxt: ^4.4.8
-            vue: ^3.5.0
-            pdfjs: ^5.6.205
-            canvas: ^0.1.97
+        boundary: [minimum, latest]
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -302,12 +292,7 @@ jobs:
       - run: npm install --global pnpm@11.21.0
       - run: pnpm install --frozen-lockfile
       - name: Select supported dependency boundary
-        run: >-
-          pnpm add --workspace-root --save-dev
-          nuxt@${{ matrix.nuxt }}
-          vue@${{ matrix.vue }}
-          pdfjs-dist@${{ matrix.pdfjs }}
-          @napi-rs/canvas@${{ matrix.canvas }}
+        run: node scripts/select-compatibility.mjs ${{ matrix.boundary }}
       - run: pnpm typecheck
       - run: pnpm test:production
 

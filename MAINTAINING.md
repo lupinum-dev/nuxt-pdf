@@ -120,6 +120,11 @@ describes installed production dependencies on the certification host; optional
 packages for other platforms can appear only in the SBOM. Documentation and
 playground dependencies remain covered by the full workspace audit.
 
+Packed consumers test the declared peer minima and the installed current
+versions with npm and pnpm. They check application versions and report the
+Vue version resolved inside Nuxt, which can differ. Scheduled compatibility
+selects minimum or latest supported dependencies from the same peer manifest.
+
 If npm already contains the same version, rerun the current workflow only when
 the registry SHA-1 matches the certified tarball and npm exposes provenance.
 The unprivileged verifier checks the signed npm attestation and derives the
