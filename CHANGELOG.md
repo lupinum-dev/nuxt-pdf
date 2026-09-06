@@ -4,6 +4,13 @@ All notable changes to `@lupinum/nuxt-pdf` are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Fixed
+
+- Revalidate development image files on every render. Keep resource roots
+  isolated and reject invalid edits even when file size and timestamp match.
+
 ## 0.4.0-beta.3 - 2026-09-03
 
 ### Added

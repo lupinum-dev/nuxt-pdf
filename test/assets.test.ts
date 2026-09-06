@@ -5,6 +5,7 @@ import {
   mkdtemp,
   rm,
   symlink,
+  utimes,
   writeFile,
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -239,6 +240,27 @@ describe('PDF image tree resolution', () => {
     const third = image({ src: 'images/logo.png' })
     await resolvePdfImageAssets(documentWith(third), { assets })
     expect(Buffer.from(third.props.src as Uint8Array)).toEqual(PNG)
+  })
+
+  it.each(['another root', 'the same root'])('validates disk bytes from %s even when metadata matches a previous render', async (location) => {
+    const firstRoot = await createTemporaryDirectory()
+    const nextRoot = location === 'the same root' ? firstRoot : await createTemporaryDirectory()
+    const key = 'same-metadata.png'
+    const timestamp = new Date('2026-01-01T00:00:00Z')
+    await writeFile(join(firstRoot, key), PNG)
+    await utimes(join(firstRoot, key), timestamp, timestamp)
+    await resolvePdfImageAssets(documentWith(image({ src: key })), {
+      assets: { [key]: { format: 'png', root: firstRoot } },
+    })
+
+    await writeFile(join(nextRoot, key), Buffer.alloc(PNG.byteLength))
+    await utimes(join(nextRoot, key), timestamp, timestamp)
+    await expectAssetError(
+      resolvePdfImageAssets(documentWith(image({ src: key })), {
+        assets: { [key]: { format: 'png', root: nextRoot } },
+      }),
+      PDF_ASSET_ERROR_CODES.Invalid,
+    )
   })
 
   it('never reuses a cached image across different render budgets', async () => {

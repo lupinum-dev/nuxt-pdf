@@ -486,48 +486,8 @@ export const loadPdfImageAsset = async (
   )
 }
 
-// Resolved local images are immutable per (entry, file version), so a small
-// process-wide cache lets hot paths skip disk reads, base64 decoding, and
-// re-validation. Disk entries key on mtimeMs + size so an edited image is
-// picked up on the next render without a server restart. The cache is bounded
-// by total bytes; the oldest entries evict first. Every caller receives a
-// fresh copy of the cached bytes so renders never share mutable state.
-const RESOLVED_IMAGE_CACHE_BYTES = 32 * 1024 * 1024
-
-const resolvedImageCache = new Map<string, ResolvedPdfImageAsset>()
-let resolvedImageCacheBytes = 0
-
-// Identity-keyed cache for embedded production entries (see resolveLocalImage).
+// Embedded production entries are immutable and shared by registry identity.
 const embeddedImageCache = new WeakMap<object, Map<string, ResolvedPdfImageAsset>>()
-
-const rememberResolvedImage = (
-  cacheKey: string,
-  image: ResolvedPdfImageAsset,
-): void => {
-  if (resolvedImageCache.has(cacheKey)) return
-
-  resolvedImageCache.set(cacheKey, image)
-  resolvedImageCacheBytes += image.data.byteLength
-
-  while (
-    resolvedImageCacheBytes > RESOLVED_IMAGE_CACHE_BYTES
-    && resolvedImageCache.size > 1
-  ) {
-    const oldest = resolvedImageCache.keys().next().value
-    if (oldest === undefined) break
-    resolvedImageCacheBytes -= resolvedImageCache.get(oldest)!.data.byteLength
-    resolvedImageCache.delete(oldest)
-  }
-}
-
-const cachedResolvedImage = (cacheKey: string): ResolvedPdfImageAsset | undefined => {
-  const cached = resolvedImageCache.get(cacheKey)
-  if (!cached) return undefined
-  return {
-    ...cached,
-    data: Buffer.from(cached.data),
-  }
-}
 
 const resolveLocalImage = async (
   source: string,
@@ -591,29 +551,8 @@ const resolveLocalImage = async (
     return { ...resolved, data: Buffer.from(resolved.data) }
   }
 
-  // Development entries read from disk. The stat keeps edited files fresh
-  // without a restart and versions the cache entry per file content state.
-  let fileStat
-  try {
-    fileStat = await stat(resolve(entry.root, ...key.split('/')))
-  }
-  catch (error) {
-    if (isMissingFileError(error)) {
-      return invalid(`The local PDF image "${key}" was not found under pdfs/assets.`)
-    }
-    return invalid('The local PDF image cannot be inspected.', error)
-  }
-  if (!fileStat.isFile()) {
-    return invalid('The local PDF image is not a regular file.')
-  }
-
-  // Limits participate in the cache key: a hit must never bypass the calling
-  // render's own byte/pixel budgets, which may be tighter than another
-  // render's were when the entry was validated.
-  const cacheKey = `disk\0${key}\0${fileStat.mtimeMs}\0${fileStat.size}\0${maxBytes}\0${maxPixels}`
-  const cached = cachedResolvedImage(cacheKey)
-  if (cached) return cached
-
+  // Revalidate disk resources on every render. File metadata cannot prove
+  // content identity or containment after a file or symlink changes.
   const loaded = await loadPdfImageAsset(key, {
     roots: [entry.root],
     maxBytes,
@@ -627,7 +566,6 @@ const resolveLocalImage = async (
     pixels: loaded.pixels,
     width: loaded.width,
   }) satisfies ResolvedPdfImageAsset
-  rememberResolvedImage(cacheKey, resolved)
   return { ...resolved, data: Buffer.from(resolved.data) }
 }
 

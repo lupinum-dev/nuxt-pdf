@@ -342,6 +342,8 @@ shows up without a restart. The tested boundary includes:
 - TTF, OTF, and WOFF2 signature/extension/structure validation,
   registration validation, source byte limits, and source-removal rendering;
 - explicit local `pdfs/assets` and `pdfs/fonts` roots;
+- independent image validation across roots and after same-size,
+  same-timestamp development edits;
 - rejection of absolute paths, traversal, missing assets, ambiguous sources,
   unsupported URLs, and symlink escapes; and
 - font rendering after its source file is removed, and image resolution from
