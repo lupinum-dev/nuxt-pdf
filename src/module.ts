@@ -31,7 +31,7 @@ import {
   generatePdfRuntimeRegistry,
 } from './build/generate-registry'
 import { createPdfSfcPlugin } from './build/pdf-sfc-plugin'
-import { PDF_STUB_NAMES } from './runtime/components/stubs'
+import * as pdfStubs from './runtime/components/stubs'
 import {
   normalizeRemoteAssetPolicy,
   type RemoteAssetOptions,
@@ -318,7 +318,7 @@ export default defineNuxtModule<ModuleOptions>({
 
       // Global Pdf* types make misuse outside pdfs/ typecheck; these stubs
       // turn the silent runtime failure into an immediate, actionable error.
-      for (const name of PDF_STUB_NAMES) {
+      for (const name of Object.keys(pdfStubs)) {
         addComponent({
           name,
           export: name,

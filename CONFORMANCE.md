@@ -261,6 +261,8 @@ The 0.4.0-beta.2 tests verify:
   content type;
 - development preview index, viewer, raw PDF, and named scenarios, backed by a
   separate internal development sidecar;
+- development guards for every global PDF component, including Nuxt
+  auto-import misuse outside a PDF template;
 - a production Nitro route rendering through the generated registry;
 - structural removal of `sampleData` and `scenarios` during production SFC
   compilation, with unique fixture canaries and preview-only API tokens rejected

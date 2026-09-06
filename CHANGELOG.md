@@ -8,6 +8,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Export the development guards registered for global PDF components. Misuse
+  in an application now explains that the component belongs in a PDF template.
 - Revalidate development image files on every render. Keep resource roots
   isolated and reject invalid edits even when file size and timestamp match.
 
