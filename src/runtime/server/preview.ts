@@ -420,9 +420,7 @@ const viewerPage = async (
     `<header><h1>${escapeHtml(title)}</h1>${actions}</header>${nav}${body}`
     + `<script type="module">import { createHotContext } from ${JSON.stringify(hmrClientPath)};`
     + `createHotContext('/_pdf').on('nuxt-pdf:update',()=>{`
-    + `const frame=document.querySelector('iframe');`
-    + `if(frame&&frame.contentWindow){frame.contentWindow.location.reload();}`
-    + `else{location.reload();}`
+    + `location.reload();`
     + `});</script>`,
   )
 }

@@ -8,6 +8,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Rebuild watched PDF templates before refreshing the development preview.
+  Update the document and diagnostics together while keeping the selected scenario.
 - Export the development guards registered for global PDF components. Misuse
   in an application now explains that the component belongs in a PDF template.
 - Revalidate development image files on every render. Keep resource roots

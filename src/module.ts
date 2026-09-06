@@ -268,6 +268,15 @@ export default defineNuxtModule<ModuleOptions>({
       nuxt.hook('vite:serverCreated', (viteServer, environment) => {
         if (environment.isClient) clientViteServer = viteServer
       })
+      const refreshPreview = () => clientViteServer?.ws.send({
+        type: 'custom',
+        event: 'nuxt-pdf:update',
+        data: {},
+      })
+      nuxt.hook('nitro:init', (nitro) => {
+        // Refresh after the compiled registry is replaced, not at file-change time.
+        nitro.hooks.hook('dev:reload', refreshPreview)
+      })
       nuxt.hook('builder:watch', async (event, path) => {
         const absolutePath = isAbsolute(path)
           ? path
@@ -286,13 +295,8 @@ export default defineNuxtModule<ModuleOptions>({
           await nuxt.callHook('restart')
           return
         }
-        if (action !== 'refresh') return
-
-        clientViteServer?.ws.send({
-          type: 'custom',
-          event: 'nuxt-pdf:update',
-          data: {},
-        })
+        // Disk images need no compilation; template and helper edits wait for Nitro.
+        if (action === 'refresh' && /\.(?:png|jpe?g)$/i.test(absolutePath)) refreshPreview()
       })
 
       addServerTemplate({

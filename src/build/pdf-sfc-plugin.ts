@@ -63,7 +63,7 @@ type CompiledCode = {
 
 export type PdfSfcPlugin = {
   enforce: 'pre'
-  load(id: string): Promise<PdfSfcTransformResult | null>
+  load(this: { addWatchFile(file: string): void }, id: string): Promise<PdfSfcTransformResult | null>
   name: 'nuxt-pdf:sfc'
   resolveId(source: string, importer?: string): string | null
   transform(source: string, id: string): Promise<PdfSfcTransformResult | null>
@@ -156,6 +156,7 @@ export const createPdfSfcPlugin = (
     const kind = options.files.get(filename)
     if (!kind) return null
 
+    this.addWatchFile(filename)
     return compilePdfSfc(
       await readFile(filename, 'utf8'),
       filename,

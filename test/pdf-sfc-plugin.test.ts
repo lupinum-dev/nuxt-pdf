@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { originalPositionFor, TraceMap } from '@jridgewell/trace-mapping'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import {
   compilePdfSfc,
   createPdfSfcPlugin,
@@ -306,9 +306,11 @@ const count = ref(1)
 
     const invoiceId = plugin.resolveId(invoiceFile)
     expect(invoiceId).toMatch(/^\0nuxt-pdf:sfc:.*\.mjs$/)
-    expect(await plugin.load(invoiceId!)).toMatchObject({
+    const addWatchFile = vi.fn()
+    expect(await plugin.load.call({ addWatchFile }, invoiceId!)).toMatchObject({
       code: expect.stringContaining('__nuxtPdf'),
     })
+    expect(addWatchFile).toHaveBeenCalledExactlyOnceWith(invoiceFile)
     expect(plugin.resolveId('./LineItem.vue', invoiceId!)).toMatch(
       /^\0nuxt-pdf:sfc:.*\.mjs$/,
     )
