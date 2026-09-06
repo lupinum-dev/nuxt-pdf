@@ -18,7 +18,8 @@ accepted design decision.
   example documents.
 - `scripts/` contains direct verification and release operations.
 - `CONFORMANCE.md` states the tested behavior and limitations.
-- `MAINTAINING.md` contains the human release and recovery procedure.
+- `MAINTAINING.md` owns setup, delegated maintenance, verification, and release
+  recovery.
 
 ## Sources of truth
 
@@ -54,13 +55,14 @@ Use these focused commands during development:
 - `pnpm test:raster` compares reviewed PDF images.
 - `pnpm test:workflows` checks the release privilege boundaries.
 - `pnpm docs:dev` runs the documentation site.
-- `pnpm docs:theme` checks the Nuxt visual tokens and Ginko Docs version.
+- `pnpm docs:theme` checks the Nuxt visual theme contract.
 - `pnpm docs:build` builds the documentation site.
 - `pnpm audit:all` audits the complete workspace.
 - `pnpm release:verify` creates and verifies the release candidate.
 
-Run the smallest relevant test while you work. Run `pnpm verify` before you
-finish. Run `pnpm release:verify` for package or release-boundary changes.
+Run the smallest relevant test while you work. Run `pnpm verify` before handoff.
+For package or release-boundary changes, use `pnpm release:verify` instead; it
+includes the full verification gate.
 
 ## Branches and commits
 
@@ -133,14 +135,5 @@ Use the issue templates for public reports. Send security reports through GitHub
 private vulnerability reporting. CodeRabbit comments are advisory. Apply a
 suggestion only after you verify it against the repository rules and tests.
 
-## Change policy
-
-Use a short branch name that describes the work, such as
-`fix/font-containment`. Do not require an agent or tool prefix.
-
 Prefer deletion and simplification. Do not add generic adapters, wrappers,
-configuration, caches, state machines, or compatibility paths for possible
-future use.
-
-Use a hard cut for an unreleased or greenfield path. Remove the old path after
-the replacement passes its tests.
+configuration, caches, or compatibility paths for possible future needs.

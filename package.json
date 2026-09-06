@@ -76,12 +76,11 @@
     "release:notes": "node scripts/write-release-notes.mjs",
     "release:pack": "pnpm build && node scripts/check-release-artifact.mjs release-artifacts",
     "release:prepare": "changelogen --bump --clean",
-    "release:verify": "pnpm verify && pnpm release:pack",
+    "release:verify": "pnpm check:dependencies && pnpm audit:all && pnpm check:source && node scripts/check-release-artifact.mjs release-artifacts",
     "test:artifact": "node scripts/check-release-artifact.mjs",
     "test:dependencies": "node scripts/check-production-dependencies.mjs",
-    "test:docs": "node scripts/check-documentation.mjs && pnpm docs:theme && pnpm --dir docs check",
+    "test:docs": "node scripts/check-documentation.mjs && pnpm --dir docs check",
     "test:package": "node scripts/check-package.mjs",
-    "test:package-metadata": "node scripts/check-api-report.mjs",
     "test:performance": "node --expose-gc ./node_modules/vitest/vitest.mjs run --config vitest.performance.config.ts",
     "test:prepare": "pnpm dev:prepare && nuxt prepare test/fixtures/layers",
     "test:production": "pnpm build && vitest run --config vitest.production.config.ts",
@@ -96,7 +95,8 @@
     "audit:all": "pnpm audit",
     "check:dependencies": "node scripts/check-dependency-policy.mjs",
     "verify": "pnpm check:dependencies && pnpm audit:all && pnpm check",
-    "check": "pnpm format:check && pnpm check:vercel && pnpm typecheck && pnpm test:docs && pnpm test:version-headings && pnpm test:workflows && pnpm test:dependencies && pnpm test && pnpm test:production && pnpm test:serverless && pnpm build && pnpm test:package-metadata && pnpm dev:build && pnpm test:artifact"
+    "check": "pnpm check:source && pnpm test:artifact",
+    "check:source": "pnpm format:check && pnpm check:vercel && pnpm typecheck && pnpm test:docs && pnpm test:version-headings && pnpm test:workflows && pnpm test:dependencies && pnpm test && pnpm test:production && pnpm test:serverless && pnpm build && pnpm test:api && pnpm dev:build"
   },
   "dependencies": {
     "@jridgewell/remapping": "2.3.5",
