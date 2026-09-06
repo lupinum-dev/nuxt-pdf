@@ -5,6 +5,7 @@ import {
   mkdir,
   readFile,
   readdir,
+  realpath,
   rm,
   writeFile,
 } from 'node:fs/promises'
@@ -12,6 +13,8 @@ import { tmpdir } from 'node:os'
 import { basename, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createServer } from 'node:net'
+import { createRequire } from 'node:module'
+import { consumerVersions } from './consumer-versions.mjs'
 import { prepareConsumerPolicy } from './consumer-policy.mjs'
 
 const rootDir = resolve(fileURLToPath(new URL('..', import.meta.url)))
@@ -52,18 +55,21 @@ const installedVersion = async (name) => {
   return dependency.version
 }
 
-const writeFixture = async (appDir, tarball, manager) => {
-  const packageSpec = `file:${relative(appDir, tarball).replaceAll('\\', '/')}`
-  const versions = {
-    '@napi-rs/canvas': await installedVersion('@napi-rs/canvas'),
-    '@types/node': await installedVersion('@types/node'),
-    'nuxt': await installedVersion('nuxt'),
-    'pdfjs-dist': await installedVersion('pdfjs-dist'),
-    'typescript': await installedVersion('typescript'),
-    'vue': await installedVersion('vue'),
-    'vue-tsc': await installedVersion('vue-tsc'),
+const checkInstalledVersions = async (appDir, versions) => {
+  for (const name of ['nuxt', 'vue', 'pdfjs-dist', '@napi-rs/canvas']) {
+    const installed = JSON.parse(await readFile(join(appDir, 'node_modules', name, 'package.json'), 'utf8'))
+    assert(installed.version === versions[name], `Requested ${name}@${versions[name]}, installed ${installed.version}.`)
   }
+  const nuxt = createRequire(await realpath(join(appDir, 'node_modules', 'nuxt', 'package.json')))
+  const internalVue = JSON.parse(await readFile(nuxt.resolve('vue/package.json'), 'utf8'))
+  const pdf = createRequire(await realpath(join(appDir, 'node_modules', packageJson.name, 'package.json')))
+  const packageVue = JSON.parse(await readFile(pdf.resolve('vue/package.json'), 'utf8'))
+  assert(packageVue.version === versions.vue, `The PDF package resolved Vue ${packageVue.version}; expected ${versions.vue}.`)
+  console.log(`Installed Nuxt ${versions.nuxt}, application Vue ${versions.vue}, PDF Vue ${packageVue.version}, Nuxt Vue ${internalVue.version}.`)
+}
 
+const writeFixture = async (appDir, tarball, manager, versions) => {
+  const packageSpec = `file:${relative(appDir, tarball).replaceAll('\\', '/')}`
   await Promise.all([
     mkdir(join(appDir, 'pdfs', 'assets'), { recursive: true }),
     mkdir(join(appDir, 'pdfs', 'components'), { recursive: true }),
@@ -485,43 +491,59 @@ try {
     assert(report.version === packageJson.version, `Quickstart packed the wrong version: ${report.version}.`)
   }
 
+  const current = Object.fromEntries(await Promise.all([
+    '@napi-rs/canvas', '@types/node', 'nuxt', 'pdfjs-dist', 'typescript', 'vue', 'vue-tsc',
+  ].map(async name => [name, await installedVersion(name)])))
+  const profiles = consumerVersions(packageJson.peerDependencies, current)
   const managers = process.env.NUXT_PDF_PACKAGE_MANAGERS?.split(',') ?? ['npm', 'pnpm']
+  const failures = []
   for (const manager of managers) {
     assert(manager === 'npm' || manager === 'pnpm', `Unsupported package manager: ${manager}.`)
-    const appDir = join(temporaryDirectory, manager)
-    await mkdir(appDir)
-    await writeFixture(appDir, tarball, manager)
-    const npmCutoff = await prepareConsumerPolicy(appDir)
+    for (const { name, versions } of profiles) {
+      console.log(`Checking ${manager} ${name}: Nuxt ${versions.nuxt}, Vue ${versions.vue}, PDF.js ${versions['pdfjs-dist']}.`)
+      try {
+        const appDir = join(temporaryDirectory, `${manager}-${name}`)
+        await mkdir(appDir)
+        await writeFixture(appDir, tarball, manager, versions)
+        const npmCutoff = await prepareConsumerPolicy(appDir)
+        if (manager === 'npm') {
+          run('npm', ['install', npmCutoff, '--cache', join(temporaryDirectory, 'npm-cache'), '--no-audit', '--no-fund'], appDir)
+          await checkInstalledVersions(appDir, versions)
+          run('npm', ['exec', '--', 'nuxt', 'prepare'], appDir)
+          run('npm', ['exec', '--', 'vue-tsc', '--noEmit'], appDir)
+          run(process.execPath, ['test-pdf-sfc.mjs'], appDir)
+          run('npm', ['exec', '--', 'nuxt', 'build'], appDir)
+        }
+        else {
+          const store = join(temporaryDirectory, 'pnpm-store')
+          run('pnpm', ['install', '--store-dir', store], appDir)
+          await checkInstalledVersions(appDir, versions)
+          run('pnpm', ['exec', 'nuxt', 'prepare'], appDir)
+          run('pnpm', ['exec', 'vue-tsc', '--noEmit'], appDir)
+          run(process.execPath, ['test-pdf-sfc.mjs'], appDir)
+          run('pnpm', ['exec', 'nuxt', 'build'], appDir)
+        }
 
-    if (manager === 'npm') {
-      run('npm', ['install', npmCutoff, '--cache', join(temporaryDirectory, 'npm-cache'), '--no-audit', '--no-fund'], appDir)
-      run('npm', ['exec', '--', 'nuxt', 'prepare'], appDir)
-      run('npm', ['exec', '--', 'vue-tsc', '--noEmit'], appDir)
-      run(process.execPath, ['test-pdf-sfc.mjs'], appDir)
-      run('npm', ['exec', '--', 'nuxt', 'build'], appDir)
+        const { bytes, headers, status } = await executeBuiltRoute(appDir)
+        assert(status === 200, `${manager} production PDF route returned ${status}.`)
+        assert(headers.get('content-type') === 'application/pdf', `${manager} production route has the wrong content type.`)
+        assert(headers.get('content-length') === String(bytes.byteLength), `${manager} production route has the wrong content length.`)
+        assert(
+          headers.get('content-disposition')?.startsWith('attachment; filename="invoice-QS-001.pdf"'),
+          `${manager} production route has the wrong content disposition.`,
+        )
+        await assertPdfSemantics(bytes)
+        await assertProductionBoundary(appDir)
+
+        console.log(`Verified ${packageJson.name}@${packageJson.version} with ${manager} ${name} in a fresh Nuxt production application.`)
+      }
+      catch (error) {
+        console.error(`${manager} ${name} failed:`, error)
+        failures.push(new Error(`${manager} ${name} consumer failed.`, { cause: error }))
+      }
     }
-    else {
-      const store = join(temporaryDirectory, 'pnpm-store')
-      run('pnpm', ['install', '--store-dir', store], appDir)
-      run('pnpm', ['exec', 'nuxt', 'prepare'], appDir)
-      run('pnpm', ['exec', 'vue-tsc', '--noEmit'], appDir)
-      run(process.execPath, ['test-pdf-sfc.mjs'], appDir)
-      run('pnpm', ['exec', 'nuxt', 'build'], appDir)
-    }
-
-    const { bytes, headers, status } = await executeBuiltRoute(appDir)
-    assert(status === 200, `${manager} production PDF route returned ${status}.`)
-    assert(headers.get('content-type') === 'application/pdf', `${manager} production route has the wrong content type.`)
-    assert(headers.get('content-length') === String(bytes.byteLength), `${manager} production route has the wrong content length.`)
-    assert(
-      headers.get('content-disposition')?.startsWith('attachment; filename="invoice-QS-001.pdf"'),
-      `${manager} production route has the wrong content disposition.`,
-    )
-    await assertPdfSemantics(bytes)
-    await assertProductionBoundary(appDir)
-
-    console.log(`Verified ${packageJson.name}@${packageJson.version} with ${manager} in a fresh Nuxt production application.`)
   }
+  if (failures.length) throw new AggregateError(failures, 'Packed consumer compatibility failed.')
 }
 finally {
   await rm(temporaryDirectory, { force: true, recursive: true })
