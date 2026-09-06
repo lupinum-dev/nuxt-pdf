@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { releaseSource } from './release-source.mjs'
 
 const rootDir = resolve(fileURLToPath(new URL('..', import.meta.url)))
 
@@ -26,6 +27,7 @@ const retainedDirectory = join(rootDir, 'release-artifacts')
 if (requestedOutput && resolve(requestedOutput) !== retainedDirectory) {
   throw new Error('The retained release output must be ./release-artifacts.')
 }
+const sourceSha = releaseSource(rootDir, { retained: Boolean(requestedOutput) })
 
 const workingDirectory = await mkdtemp(join(tmpdir(), 'nuxt-pdf-release-artifact-'))
 const outputDirectory = requestedOutput ? retainedDirectory : workingDirectory
@@ -64,12 +66,6 @@ try {
   const tarball = join(outputDirectory, basename(report.filename))
   const reportPath = join(outputDirectory, 'pack-report.json')
   await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`)
-
-  const sourceSha = process.env.GITHUB_SHA
-    ?? execFileSync('git', ['rev-parse', 'HEAD'], { cwd: rootDir, encoding: 'utf8' }).trim()
-  if (!/^[a-f0-9]{40}$/u.test(sourceSha)) {
-    throw new Error('The release artifact requires an exact 40-character source commit.')
-  }
 
   const tarballBytes = await readFile(tarball)
   const manifestPath = join(outputDirectory, 'release-artifact.json')
@@ -129,9 +125,17 @@ try {
   }
   await writeFile(join(outputDirectory, 'SHA256SUMS'), `${checksums.join('\n')}\n`)
 
+  if (releaseSource(rootDir, { retained: Boolean(requestedOutput) }) !== sourceSha) {
+    throw new Error('The source commit changed during release certification.')
+  }
+
   console.log(requestedOutput
     ? `Retained verified release evidence in ${outputDirectory}.`
     : 'Verified the release artifact and evidence.')
+}
+catch (error) {
+  if (requestedOutput) await rm(outputDirectory, { force: true, recursive: true })
+  throw error
 }
 finally {
   await rm(workingDirectory, { force: true, recursive: true })
