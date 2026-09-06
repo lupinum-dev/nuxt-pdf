@@ -155,6 +155,16 @@ For each update:
 
 Do not bypass the 24-hour dependency release-age policy for convenience.
 
+Run `pnpm check:dependencies` to check the install policy and exception expiry.
+An exact exception needs an inline JSON comment with `reason`, `owner`, and
+UTC `expires`, within 24 hours. Remove the exclusion and its comment at expiry.
+CI checks the policy on pull requests, main pushes, and daily.
+
+Fresh package consumers validate their generated policy before installation.
+They inherit root quarantine settings and exact exceptions, without workspace
+dependency overrides. npm uses a cutoff 24 hours before the install and does
+not use pnpm exceptions.
+
 ## Review package size changes
 
 Build the package, then measure it with `npm pack --ignore-scripts --dry-run --json`.
