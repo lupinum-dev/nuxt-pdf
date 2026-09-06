@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os'
 import { basename, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createServer } from 'node:net'
+import { prepareConsumerPolicy } from './consumer-policy.mjs'
 
 const rootDir = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const packageJson = JSON.parse(
@@ -91,17 +92,6 @@ const writeFixture = async (appDir, tarball, manager) => {
       'vue-tsc': versions['vue-tsc'],
     },
   }, null, 2)}\n`)
-
-  if (manager === 'pnpm') {
-    await writeFile(join(appDir, 'pnpm-workspace.yaml'), `packages:
-  - .
-
-allowBuilds:
-  '@parcel/watcher': true
-  esbuild: true
-  unrs-resolver: true
-`)
-  }
 
   await writeFile(join(appDir, 'nuxt.config.ts'), `export default defineNuxtConfig({
   compatibilityDate: '2026-07-20',
@@ -501,9 +491,10 @@ try {
     const appDir = join(temporaryDirectory, manager)
     await mkdir(appDir)
     await writeFixture(appDir, tarball, manager)
+    const npmCutoff = await prepareConsumerPolicy(appDir)
 
     if (manager === 'npm') {
-      run('npm', ['install', '--cache', join(temporaryDirectory, 'npm-cache'), '--no-audit', '--no-fund'], appDir)
+      run('npm', ['install', npmCutoff, '--cache', join(temporaryDirectory, 'npm-cache'), '--no-audit', '--no-fund'], appDir)
       run('npm', ['exec', '--', 'nuxt', 'prepare'], appDir)
       run('npm', ['exec', '--', 'vue-tsc', '--noEmit'], appDir)
       run(process.execPath, ['test-pdf-sfc.mjs'], appDir)

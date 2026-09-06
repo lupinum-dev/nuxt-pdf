@@ -44,7 +44,7 @@ export default createConfigForNuxt({
   .append(
     // The docs app follows the ginko-docs layer's own style conventions and
     // typechecks/builds inside its own project; keep it out of the root gates.
-    { ignores: ['docs/**'] },
+    { ignores: ['docs/**', 'scripts/check-dependency-policy.mjs'] },
     {
       files: ['src/**/*.{ts,vue}'],
       ignores: ['src/runtime/server/engine/**'],
