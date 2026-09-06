@@ -263,7 +263,7 @@ describe('PDF image tree resolution', () => {
     )
   })
 
-  it('never reuses a cached image across different render budgets', async () => {
+  it('enforces each render\'s disk image budget', async () => {
     const root = await createTemporaryDirectory()
     await mkdir(join(root, 'images'), { recursive: true })
     await writeFile(join(root, 'images', 'logo.png'), PNG)
@@ -272,13 +272,11 @@ describe('PDF image tree resolution', () => {
       'images/logo.png': Object.freeze({ format: 'png', root }),
     })
 
-    // A render with the default limits validates and caches the image…
     await resolvePdfImageAssets(documentWith(image({ src: 'images/logo.png' })), {
       assets,
       limits: imageLimits({}),
     })
 
-    // …but a tighter budget must still fail on its own admission pass.
     await expectAssetError(
       resolvePdfImageAssets(documentWith(image({ src: 'images/logo.png' })), {
         assets,
