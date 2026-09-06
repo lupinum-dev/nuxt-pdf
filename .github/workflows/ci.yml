@@ -323,6 +323,7 @@ jobs:
           node-version: 24.18.0
       - run: npm install --global pnpm@11.21.0
       - run: pnpm install --frozen-lockfile
+      - run: pnpm exec nuxt prepare
       - run: pnpm exec vitest run test/isolation-stress.test.ts
       - run: NUXT_PDF_PERF_GATE=1 pnpm test:performance
       - run: pnpm audit --audit-level high
