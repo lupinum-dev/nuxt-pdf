@@ -263,6 +263,8 @@ The 0.4.0-beta.2 tests verify:
   separate internal development sidecar;
 - development guards for every global PDF component, including Nuxt
   auto-import misuse outside a PDF template;
+- watched template rebuilds and whole-viewer refreshes that keep the selected
+  scenario and replace document bytes with their matching diagnostics;
 - a production Nitro route rendering through the generated registry;
 - structural removal of `sampleData` and `scenarios` during production SFC
   compilation, with unique fixture canaries and preview-only API tokens rejected

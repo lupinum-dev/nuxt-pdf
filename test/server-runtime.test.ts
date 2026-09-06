@@ -729,6 +729,19 @@ describe('development PDF preview', () => {
     expect(long).toMatch(/src="\/_pdf\/invoice\.pdf\?scenario=long&(amp;)?render=[^"&]+"/)
     expect(long).toContain('createHotContext(\'/_pdf\').on(\'nuxt-pdf:update\'')
     expect(long).toContain('location.reload()')
+    const script = long.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1]
+    expect(script).toBeDefined()
+    const reloadPage = vi.fn()
+    const reloadFrame = vi.fn()
+    const on = vi.fn((_event: string, update: () => void) => update())
+    new Function('createHotContext', 'location', 'document', script!.replace(/^import[^;]+;/, ''))(
+      () => ({ on }),
+      { reload: reloadPage },
+      { querySelector: () => ({ contentWindow: { location: { reload: reloadFrame } } }) },
+    )
+    expect(on).toHaveBeenCalledWith('nuxt-pdf:update', expect.any(Function))
+    expect(reloadPage).toHaveBeenCalledOnce()
+    expect(reloadFrame).not.toHaveBeenCalled()
   })
 
   it('uses Nuxt\'s configured Vite client path for preview HMR', async () => {
