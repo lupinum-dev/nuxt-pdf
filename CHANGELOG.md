@@ -4,16 +4,27 @@ All notable changes to `@lupinum/nuxt-pdf` are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## 0.4.0-beta.4
+
+[compare changes](https://github.com/lupinum-dev/nuxt-pdf/compare/v0.4.0-beta.3...0.4.0-beta.4)
 
 ### Fixed
 
-- Rebuild watched PDF templates before refreshing the development preview.
-  Update the document and diagnostics together while keeping the selected scenario.
-- Export the development guards registered for global PDF components. Misuse
-  in an application now explains that the component belongs in a PDF template.
-- Revalidate development image files on every render. Keep resource roots
-  isolated and reject invalid edits even when file size and timestamp match.
+- **deps:** Enforce quarantine in package consumers ([#48](https://github.com/lupinum-dev/nuxt-pdf/pull/48))
+- **assets:** Revalidate disk images across renders ([#49](https://github.com/lupinum-dev/nuxt-pdf/pull/49))
+- **dev:** Export registered PDF component guards ([#50](https://github.com/lupinum-dev/nuxt-pdf/pull/50))
+- **preview:** Rebuild watched templates before refreshing ([#51](https://github.com/lupinum-dev/nuxt-pdf/pull/51))
+- **release:** Bind package evidence to its source graph ([#52](https://github.com/lupinum-dev/nuxt-pdf/pull/52))
+
+### Maintenance
+
+- **maintenance:** Verify PDF commands without repeated work ([#53](https://github.com/lupinum-dev/nuxt-pdf/pull/53))
+
+### Tests
+
+- **compatibility:** Verify declared PDF consumer versions ([#54](https://github.com/lupinum-dev/nuxt-pdf/pull/54))
+- **assets:** Describe per-render disk validation ([#55](https://github.com/lupinum-dev/nuxt-pdf/pull/55))
+- **production:** Tolerate fixture text whitespace ([#56](https://github.com/lupinum-dev/nuxt-pdf/pull/56))
 
 ## 0.4.0-beta.3 - 2026-09-03
 
