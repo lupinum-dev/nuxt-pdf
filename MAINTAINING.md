@@ -98,8 +98,10 @@ at `./agent-docs`. Do not add an install hook or consumer skill.
 ## Prepare a release
 
 1. Create a release preparation branch from protected `main`.
-2. Run `pnpm release:prepare`. Changelogen infers the next version from the
-   Conventional Commit history. It updates `package.json` and `CHANGELOG.md`.
+2. Run `pnpm release:prepare`. While the package is in beta, Changelogen keeps
+   the next version on the `beta` prerelease line and updates `package.json`
+   and `CHANGELOG.md`. Change the script deliberately when the package is
+   approved for a stable release.
 3. Review the version and changelog. Update `CONFORMANCE.md` for the same
    version.
 4. Run `pnpm release:verify`.

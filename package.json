@@ -1,6 +1,6 @@
 {
   "name": "@lupinum/nuxt-pdf",
-  "version": "0.4.0-beta.4",
+  "version": "0.4.0-beta.5",
   "description": "Author and render PDFs with Vue components in Nuxt",
   "keywords": [
     "nuxt",
@@ -78,7 +78,7 @@
     "test:api": "node scripts/check-api-report.mjs",
     "release:notes": "node scripts/write-release-notes.mjs",
     "release:pack": "pnpm docs:build && pnpm docs:package && node scripts/check-release-artifact.mjs release-artifacts",
-    "release:prepare": "changelogen --bump --clean",
+    "release:prepare": "changelogen --bump --prerelease beta --clean",
     "release:verify": "pnpm check:dependencies && pnpm audit:all && pnpm check:source && pnpm docs:build && pnpm docs:package && node scripts/check-release-artifact.mjs release-artifacts",
     "test:artifact": "pnpm docs:build && pnpm docs:package && node scripts/check-release-artifact.mjs",
     "test:dependencies": "node scripts/check-production-dependencies.mjs",

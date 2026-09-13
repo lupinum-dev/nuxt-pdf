@@ -4,6 +4,18 @@ All notable changes to `@lupinum/nuxt-pdf` are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.4.0-beta.5
+
+[compare changes](https://github.com/lupinum-dev/nuxt-pdf/compare/v0.4.0-beta.4...0.4.0-beta.5)
+
+### Added
+
+- **docs:** Ship versioned package guidance ([ca81a32](https://github.com/lupinum-dev/nuxt-pdf/commit/ca81a32))
+
+### Fixed
+
+- **deps:** Clear workspace advisories and update Vitest ([#59](https://github.com/lupinum-dev/nuxt-pdf/pull/59))
+
 ## 0.4.0-beta.4
 
 [compare changes](https://github.com/lupinum-dev/nuxt-pdf/compare/v0.4.0-beta.3...0.4.0-beta.4)
