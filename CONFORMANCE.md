@@ -1,11 +1,11 @@
-# Nuxt PDF 0.4.0-beta.4 conformance
+# Nuxt PDF 0.4.0-beta.5 conformance
 
 Nuxt PDF claims behavioral compatibility for a deliberately small, tested
 corpus. It does not claim full React PDF API or test-suite compatibility.
 
 ## Version boundary
 
-| Layer | 0.4.0-beta.4 boundary |
+| Layer | 0.4.0-beta.5 boundary |
 |---|---|
 | Node.js | `^22.14.0`, `^24.0.0`, or `^26.0.0` |
 | Nuxt | `^4.4.8` |
@@ -217,7 +217,7 @@ checking.
 
 ### Vue and Nuxt authoring
 
-The 0.4.0-beta.2 tests verify:
+The 0.4.0-beta.5 tests verify:
 
 - `PdfDocument`, `PdfPage`, `PdfView`, `PdfText`, `PdfImage`, `PdfLink`, and
   `PdfNote`;
@@ -456,7 +456,7 @@ parser, not two. Claimed:
 Verified end-to-end against a real rendered template, including assertion
 failure messages, in `test/test-utils-public.test.ts`.
 
-## Explicitly not claimed in 0.4.0-beta.2
+## Explicitly not claimed in 0.4.0-beta.5
 
 - Full React PDF component, hook, browser-helper, or test-suite parity.
 - React runtime compatibility or React-shaped dynamic callback results.
