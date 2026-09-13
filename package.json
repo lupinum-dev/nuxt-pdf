@@ -57,7 +57,7 @@
     "node": "^22.14.0 || ^24.0.0 || ^26.0.0"
   },
   "scripts": {
-    "prepack": "pnpm build && pnpm docs:package",
+    "prepack": "pnpm docs:build && pnpm docs:package",
     "prepublishOnly": "node scripts/block-source-publish.mjs",
     "dev": "npm run dev:prepare && nuxt dev playground",
     "dev:build": "nuxt build playground",

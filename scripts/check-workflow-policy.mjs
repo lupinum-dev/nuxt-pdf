@@ -141,7 +141,7 @@ for (const scenario of [
 
 assert(packageJson.scripts.check === 'pnpm check:source && pnpm test:artifact',
   'The normal check must certify its package after source checks.')
-assert(packageJson.scripts['release:verify'] === 'pnpm check:dependencies && pnpm audit:all && pnpm check:source && node scripts/check-release-artifact.mjs release-artifacts',
+assert(packageJson.scripts['release:verify'] === 'pnpm check:dependencies && pnpm audit:all && pnpm check:source && pnpm docs:build && pnpm docs:package && node scripts/check-release-artifact.mjs release-artifacts',
   'Release verification must run policy, audit, source checks, and one retained certification.')
 assert(!packageJson.scripts['check:source'].includes('test:artifact')
   && !packageJson.scripts['check:source'].includes('release:pack'),

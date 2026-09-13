@@ -37,10 +37,20 @@ function pageMetadata(source, path) {
   if (!meta || typeof meta.title !== 'string' || !meta.title.trim()
     || typeof meta.route !== 'string' || !meta.route.startsWith('/') || meta.route.startsWith('//')
     || [...meta.route].some(char => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127)
-    || typeof meta.url !== 'string' || !/^https?:\/\//u.test(meta.url)) {
+    || !isCanonicalUrl(meta.url)) {
     throw new Error(`Generated page requires title, route and canonical URL: ${path}`)
   }
   return { title: meta.title, route: meta.route, url: meta.url }
+}
+
+function isCanonicalUrl(value) {
+  if (typeof value !== 'string') return false
+  try {
+    return ['http:', 'https:'].includes(new URL(value).protocol)
+  }
+  catch {
+    return false
+  }
 }
 
 async function packageIdentity(packageRoot) {

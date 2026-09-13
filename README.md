@@ -77,7 +77,8 @@ export default defineNuxtConfig({
 
 ### Use a coding agent
 
-After installation, copy this prompt into your agent:
+A coding agent is a development tool that can inspect and change your project.
+After installation, copy this prompt into your coding agent:
 
 ```text
 Add Nuxt PDF to this Nuxt application and render one PDF from a Vue template.
