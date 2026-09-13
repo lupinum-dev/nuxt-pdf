@@ -89,6 +89,12 @@ Put maintainer operations in this file.
 Follow `docs/WRITING.md`. Run `pnpm test:docs` and `pnpm docs:build` after a
 documentation change.
 
+The installation page owns the coding-agent onboarding prompt. Run
+`pnpm docs:onboarding` after editing its marked block to update the README.
+Keep `scripts/package-agent-docs.mjs` aligned with the reviewed Lupinum OSS
+shared implementation. The package exports the rendered documentation snapshot
+at `./agent-docs`. Do not add an install hook or consumer skill.
+
 ## Prepare a release
 
 1. Create a release preparation branch from protected `main`.

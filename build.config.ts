@@ -10,6 +10,11 @@ export default defineBuildConfig({
     { input: 'src/test/index', name: 'test' },
     { input: 'src/build/index', name: 'build' },
     { input: 'src/server', name: 'server' },
+    {
+      builder: 'copy',
+      input: 'agent-docs',
+      outDir: 'dist/agent',
+    },
   ],
   externals: [
     '@napi-rs/canvas',
