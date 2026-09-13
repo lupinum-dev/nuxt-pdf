@@ -222,7 +222,8 @@ jobs:
           path: .pnpm-store
           key: pnpm-${{ runner.os }}-package-${{ hashFiles('pnpm-lock.yaml') }}
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build
+      - run: pnpm docs:build
+      - run: pnpm docs:package
       - run: pnpm test:api
       - name: Certify the exact release candidate
         env:

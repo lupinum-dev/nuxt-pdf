@@ -64,6 +64,31 @@ try {
     throw new Error(`Unpacked package size regressed from ${performanceBaseline.packageUnpackedBytes} to ${report.unpackedSize} bytes.`)
   }
   const tarball = join(outputDirectory, basename(report.filename))
+  const reproducibilityDirectory = join(workingDirectory, 'reproducibility')
+  await mkdir(reproducibilityDirectory)
+  const repeatedOutput = execFileSync(
+    'npm',
+    ['pack', '--ignore-scripts', '--json', '--pack-destination', reproducibilityDirectory],
+    {
+      cwd: rootDir,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        npm_config_cache: join(workingDirectory, 'pack-cache'),
+        npm_config_loglevel: 'silent',
+      },
+      maxBuffer: 10 * 1024 * 1024,
+    },
+  )
+  const repeatedReport = parsePackReport(repeatedOutput)
+  if (repeatedReport.filename !== report.filename) {
+    throw new Error('Repeated package inventory differs.')
+  }
+  const repeatedTarball = join(reproducibilityDirectory, basename(repeatedReport.filename))
+  const repeatedBytes = await readFile(repeatedTarball)
+  if (createHash('sha256').update(repeatedBytes).digest('hex') !== createHash('sha256').update(await readFile(tarball)).digest('hex')) {
+    throw new Error('Repeated package bytes differ.')
+  }
   const reportPath = join(outputDirectory, 'pack-report.json')
   await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`)
 
@@ -90,7 +115,7 @@ try {
     env,
     stdio: 'inherit',
   })
-  execFileSync('pnpm', ['exec', 'attw', tarball, '--profile', 'esm-only'], {
+  execFileSync('pnpm', ['exec', 'attw', tarball, '--profile', 'esm-only', '--exclude-entrypoints', './agent-docs'], {
     cwd: rootDir,
     env,
     stdio: 'inherit',

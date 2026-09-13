@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { verifyPackageAgentDocs } from './package-agent-docs.mjs'
 
 const rootDir = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const packageJson = JSON.parse(
@@ -34,6 +35,8 @@ const requiredFiles = [
   'dist/types.d.mts',
   'dist/build.d.mts',
   'dist/build.mjs',
+  'dist/agent/AGENTS.md',
+  'dist/agent/manifest.json',
   'dist/server.d.mts',
   'dist/server.mjs',
   'package.json',
@@ -150,6 +153,11 @@ try {
   assert(packedPackageJson.publishConfig?.access === 'public', 'Scoped package must publish with public access.')
   assert(importTarget && fileSet.has(importTarget), `Package export target is missing: ${importTarget}.`)
   assert(typeTarget && fileSet.has(typeTarget), `Package type target is missing: ${typeTarget}.`)
+  assert(packedPackageJson.exports?.['./agent-docs'] === './dist/agent/AGENTS.md', 'Package must export its installed documentation entry.')
+
+  execFileSync('tar', ['-xzf', tarball, '-C', temporaryDirectory])
+  const documentation = await verifyPackageAgentDocs(join(temporaryDirectory, 'package'))
+  console.log(`Verified installed documentation for ${documentation.name}@${documentation.version} (${documentation.pages.length} pages).`)
 
   const repositoryPath = `${rootDir}${sep}`
   const forbiddenScaffoldText = [

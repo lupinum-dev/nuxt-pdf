@@ -12,7 +12,7 @@ import {
 
 const repositoryRoot = resolve(import.meta.dirname, '..')
 const contentRoot = join(repositoryRoot, 'docs/content')
-const supportedLanguages = new Set(['bash', 'ts', 'vue'])
+const supportedLanguages = new Set(['bash', 'text', 'ts', 'vue'])
 
 const markdownFiles = await findMarkdownFiles(contentRoot)
 const { primitiveProps } = await loadPdfDocumentationContracts(repositoryRoot)
