@@ -44,7 +44,17 @@ export default createConfigForNuxt({
   .append(
     // The docs app follows the ginko-docs layer's own style conventions and
     // typechecks/builds inside its own project; keep it out of the root gates.
-    { ignores: ['docs/**', 'scripts/check-dependency-policy.mjs'] },
+    // The release scripts are copied byte-for-byte from the Lupinum OSS starter.
+    {
+      ignores: [
+        'docs/**',
+        'release/**',
+        'scripts/agent-docs.mjs',
+        'scripts/audit-deps.mjs',
+        'scripts/lint-changesets.mjs',
+        'scripts/release.mjs',
+      ],
+    },
     {
       files: ['src/**/*.{ts,vue}'],
       ignores: ['src/runtime/server/engine/**'],

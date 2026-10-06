@@ -5,6 +5,9 @@ import site from "./site.json" with { type: "json" };
 // pipeline; this app owns only its identity, landing copy, and Markdown.
 export default defineNuxtConfig({
   extends: ["@lupinum/ginko-docs"],
+  // `ginko-content validate` reads the build's link report from the build directory
+  // that loadNuxtConfig resolves; pin it so the CLI and `nuxt build` agree.
+  buildDir: ".nuxt",
 
 
   ginkoDocs: {

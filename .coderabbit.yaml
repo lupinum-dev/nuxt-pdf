@@ -9,7 +9,7 @@ reviews:
   poem: false
   review_status: true
   path_filters:
-    - "!release-artifacts/**"
+    - "!release/**"
     - "!reports/**"
     - "!test/fixtures/baselines/**"
     - "!**/*.pdf"

@@ -4,6 +4,7 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { basename, dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { build, type Plugin } from 'esbuild'
+import { loadNuxtConfig } from '@nuxt/kit'
 import type { Component } from 'vue'
 import {
   discoverPdfImageFiles,
@@ -137,10 +138,27 @@ export async function renderPdfSfc<Props extends object>(
     throw new Error(`PDF SFC ${JSON.stringify(entry)} must be a template directly inside pdfs/ or one of its feature directories.`)
   }
   const normalizedLimits = normalizePdfLimits(options.limits)
+  // Explicit fonts keep standalone tests independent of Nuxt configuration.
+  // Otherwise reuse the application's declaration, without loading modules or dotenv.
+  const config = options.fonts === undefined
+    ? await loadNuxtConfig({ cwd: rootDir, dotenv: false, globalRc: false })
+    : undefined
+  const pdfConfig = config && 'pdf' in config ? config.pdf : undefined
+  if (pdfConfig !== undefined && (typeof pdfConfig !== 'object' || pdfConfig === null || Array.isArray(pdfConfig))) {
+    throw new TypeError('pdf configuration must be an object.')
+  }
+  const configuredFonts = pdfConfig && 'fonts' in pdfConfig ? pdfConfig.fonts : undefined
+  const declaredFonts = options.fonts ?? (configuredFonts === undefined ? [] : configuredFonts)
+  if (!Array.isArray(declaredFonts)) {
+    throw new TypeError('pdf.fonts must be an array of local font declarations.')
+  }
+  const fontRoots = (config?._layers.map(layer => layer.config.rootDir || layer.cwd) ?? [rootDir])
+    .map(directory => join(directory, 'pdfs', 'fonts'))
+    .filter(directory => existsSync(directory))
   const [component, imageFiles, fonts] = await Promise.all([
     loadPdfSfc(entry),
     discoverPdfImageFiles([{ name: 'test', rootDir }]),
-    bundlePdfFonts(options.fonts ?? [], { fontRoots: [join(rootDir, 'pdfs', 'fonts')] }),
+    bundlePdfFonts(declaredFonts, { fontRoots }),
   ])
   // Test renders resolve from disk exactly like development Nuxt renders.
   const assets = Object.fromEntries(imageFiles.map(image => [

@@ -95,7 +95,7 @@ Public documentation explains supported user behavior. It must not contain
 maintainer evidence, internal fixture names, release approval steps, or local
 repository paths.
 
-Keep maintainer procedures in `MAINTAINING.md`. Keep durable engine contracts
+Keep maintainer procedures in `AGENTS.md` and `internals/`. Keep durable engine contracts
 in `src/runtime/server/engine/CONTRACTS.md`.
 
 ## Exclusions

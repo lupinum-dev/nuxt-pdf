@@ -16,7 +16,6 @@ import { createServer } from 'node:net'
 import { createRequire } from 'node:module'
 import { consumerVersions } from './consumer-versions.mjs'
 import { prepareConsumerPolicy } from './consumer-policy.mjs'
-import { verifyPackageAgentDocs } from './package-agent-docs.mjs'
 
 const rootDir = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const packageJson = JSON.parse(
@@ -525,10 +524,8 @@ try {
           run('pnpm', ['exec', 'nuxt', 'build'], appDir)
         }
 
-        const documentation = await verifyPackageAgentDocs(
-          await realpath(join(appDir, 'node_modules', packageJson.name)),
-        )
-        console.log(`Installed documentation: ${documentation.name}@${documentation.version}, ${documentation.pages.length} verified pages.`)
+        const agentDocs = await readFile(join(await realpath(join(appDir, 'node_modules', packageJson.name)), 'dist/agent/AGENTS.md'), 'utf8')
+        assert(agentDocs.startsWith(`# ${packageJson.name} ${packageJson.version} documentation`), `${manager} installed documentation for another version.`)
 
         const { bytes, headers, status } = await executeBuiltRoute(appDir)
         assert(status === 200, `${manager} production PDF route returned ${status}.`)

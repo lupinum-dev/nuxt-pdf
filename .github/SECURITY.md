@@ -2,9 +2,11 @@
 
 ## Supported versions
 
-Lupinum OG provides security fixes for the latest published minor release.
-Before version 1.0, a security fix can include a hard cut when a compatibility
-path would keep an unsafe behavior.
+Security fixes go into the newest release line: the npm `latest` tag, or the
+`next` tag while the package has no stable 1.0 release yet. Older versions do
+not receive fixes; upgrade to the newest release on that line. Before version
+1.0, a security fix can include a hard cut when a compatibility path would keep
+an unsafe behavior.
 
 ## Report a vulnerability
 
@@ -32,13 +34,13 @@ Treat these defects as security-sensitive:
 - One render can read data from another render.
 - A resource bypasses its path, type, size, or remote-host policy.
 - A render silently loses document content.
-- A release artifact differs from the artifact that maintainers approved.
+- A published package differs from the tarball that CI packed.
 
 ## Publication security
 
-The release workflow uses npm trusted publishing with publish permission. It
-does not use a long-lived npm publication token. A maintainer must inspect the
-certified artifact and approve the protected `npm` environment deployment.
+The release workflow uses npm trusted publishing with provenance. It does not
+use a long-lived npm publication token. A maintainer reviews the release run and
+approves the protected `npm` environment deployment.
 
 Agents and normal CI jobs must not publish packages, approve protected
 deployments, move dist-tags, or create release tags.
