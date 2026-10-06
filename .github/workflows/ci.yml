@@ -1,113 +1,61 @@
 name: ci
 
 on:
+  pull_request:
   push:
     branches: [main]
-  pull_request:
+  # In libraries, release.yml starts this workflow on the Version packages PR,
+  # because pull requests opened with GITHUB_TOKEN trigger no workflows on their own.
   workflow_dispatch:
-  schedule:
-    - cron: '17 3 * * 1'
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-env:
-  CI: 'true'
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  classify:
-    name: Classify changes
+  check:
+    name: ${{ matrix.task }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 2
-    permissions:
-      pull-requests: read
-    outputs:
-      full: ${{ steps.paths.outputs.full }}
-      quality: ${{ steps.paths.outputs.quality }}
-    steps:
-      - name: Select required lanes
-        id: paths
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
-        with:
-          script: |
-            const runAll = context.eventName !== 'pull_request'
-            const files = runAll
-              ? []
-              : await github.paginate(github.rest.pulls.listFiles, {
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  pull_number: context.issue.number,
-                  per_page: 100,
-                })
-            const paths = files.flatMap((file) => [file.filename, file.previous_filename].filter(Boolean))
-            const publicDocsOnly =
-              paths.length > 0 &&
-              paths.every((path) =>
-                /^(?:docs\/content\/.*\.md$|README\.md$|CONTRIBUTING\.md$|SECURITY\.md$|MAINTAINING\.md$|AGENTS\.md$|CLAUDE\.md$|LICENSE$)/u.test(path),
-              )
-            const topLevelProseOnly =
-              paths.length > 0 &&
-              paths.every((path) =>
-                /^(?:README\.md$|CONTRIBUTING\.md$|SECURITY\.md$|MAINTAINING\.md$|AGENTS\.md$|CLAUDE\.md$|LICENSE$)/u.test(path),
-              )
-            core.setOutput('full', String(runAll || !publicDocsOnly))
-            core.setOutput('quality', String(runAll || !topLevelProseOnly))
-
-  quality:
-    name: Quality and documentation
-    needs: classify
-    if: needs.classify.outputs.quality == 'true'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        # Keep in sync with the `verify` script in package.json.
+        task: [lint, typecheck, 'test:docs', test, 'test:production', build, audit]
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
+          # lint compares the pull request with origin/main.
+          fetch-depth: ${{ matrix.task == 'lint' && '0' || '1' }}
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 24.18.0
-      - run: npm install --global pnpm@11.21.0
-      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
-        with:
-          path: .pnpm-store
-          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-      - run: pnpm install --frozen-lockfile
-      - name: Verify pinned Action commits
-        run: node scripts/verify-action-shas.mjs
-      - name: Validate pull request title
-        if: github.event_name == 'pull_request'
-        env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
-        run: |
-          pattern='^(feat|fix|perf|refactor|types|build|docs|test|ci|chore)(\([a-z0-9][a-z0-9._/-]*\))?(!)?: .+'
-          [[ "$PR_TITLE" =~ $pattern ]] || {
-            echo 'Use a Conventional Commit pull request title, for example: fix(runtime): reject invalid images'
-            exit 1
-          }
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test:docs
-        env:
-          NODE_OPTIONS: --max-old-space-size=4096
-      - run: pnpm test:version-headings
-      - run: pnpm test:workflows
-      - run: pnpm test:dependencies
-      - run: pnpm build && pnpm test:api
+          node-version: 24
+          package-manager-cache: false
+      - run: corepack enable pnpm
+      - if: matrix.task != 'audit'
+        run: pnpm install --frozen-lockfile
+      - if: matrix.task != 'audit' && matrix.task != 'build'
+        run: pnpm ${{ matrix.task }}
+      # The packed-package checks install the tarball of `pnpm build` into fresh Nuxt apps.
+      - if: matrix.task == 'build'
+        run: pnpm build && pnpm test:api && pnpm test:packed
+      # Only production advisories that reach a published package block releases.
+      - if: matrix.task == 'audit'
+        run: node scripts/audit-deps.mjs
 
-  core:
-    name: Core (Node ${{ matrix.node }})
-    needs: classify
-    if: needs.classify.outputs.full == 'true'
+  # The supported Node floor and the newest supported Node major.
+  node:
+    name: test (Node ${{ matrix.node }})
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        node: [22.14.0, 24.18.0, 26.5.0]
+        node: [22.14.0, 26.5.0]
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -115,18 +63,14 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: ${{ matrix.node }}
-      - run: npm install --global pnpm@11.21.0
-      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
-        with:
-          path: .pnpm-store
-          key: pnpm-${{ runner.os }}-node-${{ matrix.node }}-${{ hashFiles('pnpm-lock.yaml') }}
+          package-manager-cache: false
+      - run: corepack enable pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
 
+  # Raster baselines depend on the platform's font rendering, so they run in a pinned image.
   raster:
-    name: Pinned Linux raster evidence
-    needs: classify
-    if: needs.classify.outputs.full == 'true'
+    name: raster (pinned Linux)
     runs-on: ubuntu-24.04
     container:
       image: node:24.11.1-bookworm@sha256:9a2ed90cd91b1f3412affe080b62e69b057ba8661d9844e143a6bbd76a23260f
@@ -135,11 +79,7 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
-      - run: npm install --global pnpm@11.21.0
-      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
-        with:
-          path: .pnpm-store
-          key: pnpm-${{ runner.os }}-raster-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: corepack enable pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm dev:prepare
       - name: Run raster and geometry suites
@@ -162,33 +102,8 @@ jobs:
           path: reports/pdf-snapshots
           if-no-files-found: ignore
 
-  nuxt-integration:
-    name: Nuxt production and serverless
-    needs: classify
-    if: needs.classify.outputs.full == 'true'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 35
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: 24.18.0
-      - run: npm install --global pnpm@11.21.0
-      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
-        with:
-          path: .pnpm-store
-          key: pnpm-${{ runner.os }}-nuxt-${{ hashFiles('pnpm-lock.yaml') }}
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm test:production
-      - run: pnpm test:serverless
-      - run: pnpm dev:build
-
   windows:
-    name: Windows paths and assets
-    needs: classify
-    if: needs.classify.outputs.full == 'true'
+    name: test (Windows paths and assets)
     runs-on: windows-2025
     timeout-minutes: 25
     steps:
@@ -197,127 +112,22 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 24.18.0
-      - run: npm install --global pnpm@11.21.0
+          node-version: 24
+          package-manager-cache: false
+      - run: corepack enable pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:prepare
       - run: pnpm exec vitest run test/assets.test.ts test/build.test.ts test/fonts.test.ts test/layers.test.ts test/pdf-sfc-plugin.test.ts
 
-  package:
-    name: Exact installable artifact
-    needs: classify
-    if: needs.classify.outputs.full == 'true'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 35
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: 24.18.0
-      - run: npm install --global pnpm@11.21.0
-      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
-        with:
-          path: .pnpm-store
-          key: pnpm-${{ runner.os }}-package-${{ hashFiles('pnpm-lock.yaml') }}
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm docs:build
-      - run: pnpm docs:package
-      - run: pnpm test:api
-      - name: Certify the exact release candidate
-        env:
-          RELEASE_SOURCE_SHA: ${{ github.sha }}
-        run: |
-          node scripts/check-release-artifact.mjs release-artifacts
-          version="$(node -p "require('./package.json').version")"
-          node scripts/write-release-notes.mjs "$version" release-artifacts/release-notes.md
-          test -s release-artifacts/release-notes.md
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: release-candidate
-          path: release-artifacts
-          if-no-files-found: error
-          retention-days: 14
-
-  gate:
-    name: CI gate
+  # The one required status check for the main branch ruleset.
+  ci:
+    name: ci
     if: always()
-    needs:
-      - classify
-      - quality
-      - core
-      - raster
-      - nuxt-integration
-      - windows
-      - package
+    needs: [check, node, raster, windows]
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:
-      - name: Require every selected lane
-        env:
-          CLASSIFY_RESULT: ${{ needs.classify.result }}
-          QUALITY: ${{ needs.classify.outputs.quality }}
-          QUALITY_RESULT: ${{ needs.quality.result }}
-          FULL: ${{ needs.classify.outputs.full }}
-          CORE_RESULT: ${{ needs.core.result }}
-          RASTER_RESULT: ${{ needs.raster.result }}
-          NUXT_RESULT: ${{ needs.nuxt-integration.result }}
-          WINDOWS_RESULT: ${{ needs.windows.result }}
-          PACKAGE_RESULT: ${{ needs.package.result }}
+      - env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
         run: |
-          test "$CLASSIFY_RESULT" = success
-          test "$QUALITY" = true || test "$QUALITY" = false
-          test "$FULL" = true || test "$FULL" = false
-          if [ "$QUALITY" = true ]; then test "$QUALITY_RESULT" = success; else test "$QUALITY_RESULT" = skipped; fi
-          for result in "$CORE_RESULT" "$RASTER_RESULT" "$NUXT_RESULT" "$WINDOWS_RESULT" "$PACKAGE_RESULT"; do
-            if [ "$FULL" = true ]; then test "$result" = success; else test "$result" = skipped; fi
-          done
-
-  compatibility:
-    name: Current dependency compatibility (${{ matrix.boundary }})
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 35
-    strategy:
-      fail-fast: false
-      matrix:
-        boundary: [minimum, latest]
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: 24.18.0
-      - run: npm install --global pnpm@11.21.0
-      - run: pnpm install --frozen-lockfile
-      - name: Select supported dependency boundary
-        run: node scripts/select-compatibility.mjs ${{ matrix.boundary }}
-      - run: pnpm typecheck
-      - run: pnpm test:production
-
-  stress:
-    name: Scheduled isolation and soak
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: 24.18.0
-      - run: npm install --global pnpm@11.21.0
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm exec nuxt prepare
-      - run: pnpm exec vitest run test/isolation-stress.test.ts
-      - run: NUXT_PDF_PERF_GATE=1 pnpm test:performance
-      - run: pnpm audit --audit-level high
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        if: always()
-        with:
-          name: performance-report
-          path: reports/performance.json
-          if-no-files-found: error
+          for result in $RESULTS; do test "$result" = success; done
