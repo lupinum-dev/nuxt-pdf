@@ -3,7 +3,6 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { verifyPackageAgentDocs } from './package-agent-docs.mjs'
 
 const rootDir = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const packageJson = JSON.parse(
@@ -36,7 +35,6 @@ const requiredFiles = [
   'dist/build.d.mts',
   'dist/build.mjs',
   'dist/agent/AGENTS.md',
-  'dist/agent/manifest.json',
   'dist/server.d.mts',
   'dist/server.mjs',
   'package.json',
@@ -89,30 +87,22 @@ const readTarEntry = (tarball, path) => execFileSync(
 const temporaryDirectory = await mkdtemp(join(tmpdir(), 'nuxt-pdf-pack-'))
 
 try {
-  let report
-  let tarball
-  if (process.env.NUXT_PDF_TARBALL && process.env.NUXT_PDF_PACK_REPORT) {
-    tarball = resolve(process.env.NUXT_PDF_TARBALL)
-    report = JSON.parse(await readFile(resolve(process.env.NUXT_PDF_PACK_REPORT), 'utf8'))
-  }
-  else {
-    const output = execFileSync(
-      'npm',
-      ['pack', '--json', '--pack-destination', temporaryDirectory],
-      {
-        cwd: rootDir,
-        encoding: 'utf8',
-        env: {
-          ...process.env,
-          npm_config_cache: join(temporaryDirectory, 'npm-cache'),
-          npm_config_loglevel: 'silent',
-        },
-        maxBuffer: 10 * 1024 * 1024,
+  const output = execFileSync(
+    'npm',
+    ['pack', '--json', '--pack-destination', temporaryDirectory],
+    {
+      cwd: rootDir,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        npm_config_cache: join(temporaryDirectory, 'npm-cache'),
+        npm_config_loglevel: 'silent',
       },
-    )
-    report = parsePackReport(output)
-    tarball = join(temporaryDirectory, basename(report.filename))
-  }
+      maxBuffer: 10 * 1024 * 1024,
+    },
+  )
+  const report = parsePackReport(output)
+  const tarball = join(temporaryDirectory, basename(report.filename))
   const files = report.files.map(file => file.path).sort()
   const fileSet = new Set(files)
 
@@ -149,15 +139,21 @@ try {
   assert(packedPackageJson.license === 'MIT', 'Packed package.json must use the MIT license.')
   assert(packedPackageJson.repository?.url === expectedRelease.repository, 'Packed package.json has the wrong repository URL.')
   assert(!packedPackageJson.scripts?.prepare, 'Packed package.json must not run a prepare script during installation.')
-  assert(packedPackageJson.scripts?.prepublishOnly === 'node scripts/block-source-publish.mjs', 'Packed package.json must retain the source-publish blocker.')
+  // release.yml publishes with --ignore-scripts; a lifecycle script would only run in local packs.
+  for (const script of ['prepack', 'prepublishOnly', 'postpack']) {
+    assert(!packedPackageJson.scripts?.[script], `Packed package.json must not define ${script}.`)
+  }
   assert(packedPackageJson.publishConfig?.access === 'public', 'Scoped package must publish with public access.')
   assert(importTarget && fileSet.has(importTarget), `Package export target is missing: ${importTarget}.`)
   assert(typeTarget && fileSet.has(typeTarget), `Package type target is missing: ${typeTarget}.`)
   assert(packedPackageJson.exports?.['./agent-docs'] === './dist/agent/AGENTS.md', 'Package must export its installed documentation entry.')
 
-  execFileSync('tar', ['-xzf', tarball, '-C', temporaryDirectory])
-  const documentation = await verifyPackageAgentDocs(join(temporaryDirectory, 'package'))
-  console.log(`Verified installed documentation for ${documentation.name}@${documentation.version} (${documentation.pages.length} pages).`)
+  const agentDocs = readTarEntry(tarball, 'dist/agent/AGENTS.md')
+  assert(agentDocs.startsWith(`# ${packageJson.name} ${packageJson.version} documentation`), 'dist/agent/AGENTS.md documents another version. Run pnpm build.')
+  assert(files.some(path => path.startsWith('dist/agent/pages/') && path.endsWith('.md')), 'Packed artifact has no documentation pages in dist/agent/pages/.')
+
+  execFileSync('pnpm', ['exec', 'publint', tarball], { cwd: rootDir, stdio: 'inherit' })
+  execFileSync('pnpm', ['exec', 'attw', tarball, '--profile', 'esm-only', '--exclude-entrypoints', './agent-docs'], { cwd: rootDir, stdio: 'inherit' })
 
   const repositoryPath = `${rootDir}${sep}`
   const forbiddenScaffoldText = [

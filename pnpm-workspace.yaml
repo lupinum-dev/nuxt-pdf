@@ -1,4 +1,6 @@
+# `.` makes the root package visible to Changesets next to the docs site and playground.
 packages:
+  - .
   - playground
   - docs
 
@@ -7,7 +9,6 @@ minimumReleaseAgeStrict: true
 minimumReleaseAgeIgnoreMissingTime: false
 trustLockfile: false
 blockExoticSubdeps: true
-storeDir: .pnpm-store
 
 overrides:
   # Security floors for transitive build and documentation dependencies.
