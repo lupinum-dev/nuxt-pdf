@@ -1,9 +1,8 @@
-# Repository instructions
-
-## Purpose
+# Nuxt PDF
 
 Nuxt PDF lets Nuxt applications author PDF documents as Vue components and
-render them on the Node server.
+render them on the Node server. It is a Nuxt module, published to npm as
+`@lupinum/nuxt-pdf`.
 
 Keep one authoring model, one document tree, and one rendering pipeline. Do not
 add a second schema, layout engine, renderer, or compatibility path without an
@@ -16,64 +15,77 @@ accepted design decision.
 - `docs/` contains the public Ginko Docs site.
 - `playground/` contains the internal development application and supported
   example documents.
-- `scripts/` contains direct verification and release operations.
+- `scripts/` contains the release scripts from the Lupinum OSS starter and the
+  docs and packed-package checks.
 - `CONFORMANCE.md` states the tested behavior and limitations.
-- `MAINTAINING.md` owns setup, delegated maintenance, verification, and release
-  recovery.
-
-## Sources of truth
-
-- `package.json` owns the package name, version, exports, and command surface.
-- `pnpm-lock.yaml` owns resolved dependencies.
-- `changelog.config.json` owns changelog grouping and presentation.
-- `docs/site.json` owns documentation identity.
-- `src/` owns runtime behavior and public types.
-- `API_REPORT.md` is derived from built declarations.
-- Raster and performance baselines are reviewed evidence, not editable output.
-
-Do not hand-edit generated files under `.nuxt/`, `.output/`, `dist/`, or
-`reports/`.
+- `API_REPORT.md` is derived from the built declarations.
+- `internals/` holds decisions and performance notes for maintainers.
 
 ## Commands
 
-Use the exact Node and pnpm versions declared by the repository.
-
 ```bash
-pnpm install --frozen-lockfile
-pnpm dev
-pnpm verify
+pnpm install
+pnpm dev              # run the module in playground/
+pnpm docs:dev         # run the documentation site
+pnpm test             # main test suite
+pnpm format           # apply lint fixes
+pnpm verify           # what CI runs on Linux and Node 24
+pnpm changeset        # describe a user-facing change for the next release
 ```
 
-Use these focused commands during development:
+Focused commands:
 
-- `pnpm format` fixes supported formatting and lint issues.
-- `pnpm lint` checks source rules.
+- `pnpm lint` checks source rules and changesets.
 - `pnpm typecheck` checks the module, fixtures, and playground.
-- `pnpm test` runs the main test suite.
-- `pnpm test:production` checks the production Nuxt boundary.
-- `pnpm test:serverless` checks the serverless build boundary.
-- `pnpm test:raster` compares reviewed PDF images.
-- `pnpm test:workflows` checks the release privilege boundaries.
-- `pnpm docs:dev` runs the documentation site.
-- `pnpm docs:theme` checks the Nuxt visual theme contract.
-- `pnpm docs:build` builds the documentation site.
-- `pnpm audit:all` audits the complete workspace.
-- `pnpm release:verify` creates and verifies the release candidate.
+- `pnpm test:docs` checks docs snippets, docs contracts and the docs app types.
+- `pnpm test:production` builds the module and checks the production and
+  serverless Nuxt boundaries and the playground build.
+- `pnpm test:raster` compares reviewed PDF images. CI runs it in a pinned Linux
+  image; local results can differ.
+- `pnpm test:performance` measures render time and memory against
+  `test/fixtures/performance/linux-node24.json`. It is not part of CI; run it
+  when a change can affect performance (see `internals/performance.md`).
+- `pnpm test:api` compares `API_REPORT.md` with the built declarations.
+  `pnpm api:write` updates it after an intended API change.
+- `pnpm test:packed` packs the output of `pnpm build` and installs it into fresh
+  Nuxt applications with npm and pnpm, at the lowest and the current supported
+  peer versions.
 
-Run the smallest relevant test while you work. Run `pnpm verify` before handoff.
-For package or release-boundary changes, use `pnpm release:verify` instead; it
-includes the full verification gate.
+`pnpm build` builds the package, the docs site and `dist/agent/`, a copy of the
+rendered docs that ships as `@lupinum/nuxt-pdf/agent-docs` so agents in
+consuming projects read documentation that matches the installed version.
+The "Agent setup" section of the README tells those agents how to add a
+pointer to it. Keep the `./agent-docs` export and that section.
 
-## Branches and commits
+CI also runs the tests on the Node floor and the newest Node major, the raster
+suite in a pinned Linux image, and the path and asset tests on Windows.
 
-Use a short Conventional Commit title for each pull request. The squash commit
-on `main` uses that title, and Changelogen uses it to prepare release notes.
+## Hard rules
 
-Use `<type>/<short-description>` for branch names. Examples include
-`feat/pdf-bookmarks`, `fix/remote-image-timeout`, and
-`chore/release-automation`.
-
-Do not prefix a branch with an agent, model, vendor, tool, or username.
+- Never publish to npm, push to `main`, create tags or release by hand. Releases
+  happen when a maintainer merges the "Version packages" PR and approves the
+  protected `npm` environment.
+- Never add `NPM_TOKEN` or any other long-lived publish credential.
+- Add a changeset (`pnpm changeset`) to every pull request that changes what
+  package users install: code, types, runtime behavior or dependencies.
+  Documentation, tests and CI changes need none. CI requires one when `src/`
+  changes; use `pnpm changeset --empty` if users see nothing. A change to
+  `dependencies` or `peerDependencies` needs a changeset that bumps the package
+  (at least patch).
+- Changeset style: one summary line in present tense that starts with Fix, Add,
+  Remove or Change and says what changed for users. A short body may follow
+  after a blank line. A major change adds a line that starts with `Migration:`
+  and says what users must do.
+- The package is in the `beta` prerelease line (`.changeset/pre.json`). Leave it
+  with `pnpm changeset pre exit` in its own pull request.
+- Do not bypass the 24-hour dependency quarantine (`minimumReleaseAge`). Do not
+  add dependencies to `allowBuilds` without a reason.
+- Pin GitHub Actions to full commit SHAs. Give each job only the permissions it
+  needs. `release.yml`, `preview.yml` and the release scripts come from the
+  Lupinum OSS starter; change them there first, then copy them.
+- Keep tooling lean. Add a script, check or workflow only when it guards
+  behavior users rely on or closes a real attack path. Process is not security.
+- Record lasting choices in [internals/decisions.md](internals/decisions.md).
 
 ## Architecture boundaries
 
@@ -88,7 +100,9 @@ Do not prefix a branch with an agent, model, vendor, tool, or username.
 - Invalid or unsupported document behavior must fail with a typed error.
 
 Keep domain logic out of the Nuxt module and transport layers. Put PDF behavior
-in the existing runtime and engine boundaries.
+in the existing runtime and engine boundaries. The `@react-pdf/*` engine
+packages are pinned exactly; `src/runtime/server/engine/CONTRACTS.md` says how
+to review an engine update.
 
 ## Tests and evidence
 
@@ -100,40 +114,21 @@ without inspecting every changed page.
 
 Update these files when their contract changes:
 
-- `CONFORMANCE.md` for claimed behavior and limitations.
+- `CONFORMANCE.md` for claimed behavior and limitations. Do not write the
+  package version into it; the Version packages pull request would make it stale.
 - `src/runtime/server/engine/CONTRACTS.md` for the lower-engine boundary.
-- Public Ginko documentation for user-visible behavior.
-- `CHANGELOG.md` for release-facing changes.
+- The public docs for user-visible behavior, in the same pull request.
 
 ## Documentation
 
 Follow `docs/WRITING.md`. Keep the README short. Put detailed user guidance in
-Ginko Docs. Put maintainer operations in `MAINTAINING.md`.
+the docs. Do not rewrite legal text, code, API names, quotations, or generated
+reports to match the writing profile.
 
-Do not rewrite legal text, code, API names, quotations, or generated reports to
-match the controlled-English profile.
-
-## Publication safety
-
-Agents must not:
-
-- Publish an npm package.
-- Approve an npm environment deployment.
-- Move an npm dist-tag.
-- Create or push a release tag.
-- Change npm trusted-publisher settings.
-- Handle, request, or store publication credentials.
-
-Agents can prepare and verify a release artifact. A human maintainer performs
-all registry approvals and external configuration.
-
-Only the protected `release.yml` workflow can publish the certified tarball and
-create the immutable release tag and GitHub Release. Agents must not reproduce
-that operation locally.
+The docs deploy through the Vercel Git integration (project `nuxt-pdf-docs`,
+root directory `docs`, with source files outside the root directory included).
+`docs/vercel.json` runs `pnpm docs:build`; the site needs no secret.
 
 Use the issue templates for public reports. Send security reports through GitHub
-private vulnerability reporting. CodeRabbit comments are advisory. Apply a
+private vulnerability reporting. Review comments from bots are advisory. Apply a
 suggestion only after you verify it against the repository rules and tests.
-
-Prefer deletion and simplification. Do not add generic adapters, wrappers,
-configuration, caches, or compatibility paths for possible future needs.

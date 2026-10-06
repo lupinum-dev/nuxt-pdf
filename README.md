@@ -22,7 +22,7 @@
   <a href="https://www.npmjs.com/package/@lupinum/nuxt-pdf"><img src="https://img.shields.io/npm/v/@lupinum/nuxt-pdf?color=00DC82" alt="npm version"></a>
   <a href="https://github.com/lupinum-dev/nuxt-pdf/actions/workflows/ci.yml"><img src="https://github.com/lupinum-dev/nuxt-pdf/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-00DC82" alt="MIT license"></a>
-  <a href="https://discord.gg/RPH6SeA36N"><img src="https://img.shields.io/badge/Discord-18181B?logo=discord" alt="Discord"></a>
+  <a href="https://discord.lupinum.com"><img src="https://img.shields.io/badge/Discord-18181B?logo=discord" alt="Discord"></a>
   <a href="https://deepwiki.com/lupinum-dev/nuxt-pdf"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 </p>
 
@@ -72,34 +72,6 @@ export default defineNuxtConfig({
   modules: ['@lupinum/nuxt-pdf'],
 })
 ```
-
-<!-- BEGIN:consumer-onboarding -->
-
-### Use a coding agent
-
-A coding agent is a development tool that can inspect and change your project.
-After installation, copy this prompt into your coding agent:
-
-```text
-Add Nuxt PDF to this Nuxt application and render one PDF from a Vue template.
-Read the project's existing instructions first. Resolve
-@lupinum/nuxt-pdf/agent-docs from this application's directory and read its
-starting pages. Use the installed version's examples and public types. Preserve
-existing routes, security limits, conventions, and AGENTS.md instructions. Add
-or update one short Nuxt PDF pointer in AGENTS.md if the project allows it; do
-not duplicate the documentation. If the file is absent, create only that
-pointer. Report missing guidance. Verify the server route, PDF output, and one
-invalid request.
-```
-
-If the installed package has no `agent-docs` export, read its packaged README,
-types, and `CONFORMANCE.md`. Use documentation from the matching source tag when
-more detail is needed. Installing or updating the package does not edit project
-instructions. The pointer resolves the installed package, so upgrades and
-rollbacks select the matching documentation without copying it into your
-application.
-
-<!-- END:consumer-onboarding -->
 
 ## Quick start
 
@@ -186,13 +158,58 @@ Nuxt PDF regenerates the typed `#pdf` registry whenever templates change. If
 your editor still shows `#pdf` as untyped, run `nuxt prepare` once to refresh
 the generated types.
 
+## Agent setup
+
+`@lupinum/nuxt-pdf` ships its documentation inside the package for coding
+agents such as Claude Code, Codex and Cursor. The pages match the installed
+version, so an agent does not follow the website for a different version.
+
+To set it up, give your coding agent this task:
+
+```text
+Set up @lupinum/nuxt-pdf for coding agents as described under "Agent setup" in its README.
+```
+
+### Steps for the agent
+
+1. Find `node_modules/@lupinum/nuxt-pdf/dist/agent/AGENTS.md`. Look in the
+   directory of the project that depends on `@lupinum/nuxt-pdf` first, then
+   in its parent directories up to the repository root (workspaces can hoist
+   packages). Read it; it lists the documentation pages.
+2. Add the section below to the project's agent instructions: `AGENTS.md`, or
+   `CLAUDE.md` if the project has only that file. If it has neither, create
+   `AGENTS.md`. Write the path relative to the repository root, through
+   `node_modules/@lupinum/nuxt-pdf` (for example
+   `apps/web/node_modules/@lupinum/nuxt-pdf/...` in a workspace). Never write
+   a resolved path such as `node_modules/.pnpm/...`: it contains the version and
+   breaks after an upgrade. If a section for `@lupinum/nuxt-pdf` already
+   exists, leave it as it is.
+
+   Use the path you found in place of the sample path:
+
+   ```md
+   ## @lupinum/nuxt-pdf
+
+   Before you change code that uses @lupinum/nuxt-pdf, read
+   `node_modules/@lupinum/nuxt-pdf/dist/agent/AGENTS.md` and the pages it
+   lists. They document the installed version. Prefer them over what you
+   remember about this package and over the website.
+   ```
+
+3. Do not copy the documentation into the project and do not install a skill.
+   The section points into the installed package, so it stays correct after
+   every upgrade or downgrade.
+
+If the file does not exist, the installed version has no packaged
+documentation. Read the package README and its TypeScript types instead.
+
 ## Discord
 
 Join the Lupinum OSS community to discuss Nuxt PDF, ask questions, and share
 what you build.
 
 <p align="center">
-  <a href="https://discord.gg/RPH6SeA36N">
+  <a href="https://discord.lupinum.com">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="docs/public/discord-dark.svg">
       <source media="(prefers-color-scheme: light)" srcset="docs/public/discord-light.svg">
@@ -262,23 +279,20 @@ pnpm dev
 pnpm verify
 ```
 
-Use `pnpm docs:dev` to run the documentation site. Run `pnpm docs:build` before
-you hand off a documentation change. Use `pnpm release:verify` only for release
-preparation.
+Use `pnpm docs:dev` to run the documentation site. `pnpm verify` runs the same
+checks as CI.
 
-Read [CONTRIBUTING.md](./CONTRIBUTING.md) before you open a pull request.
-Maintainers use [MAINTAINING.md](./MAINTAINING.md) for release and recovery
-procedures.
+Read [CONTRIBUTING.md](.github/CONTRIBUTING.md) before you open a pull request.
 
 ## Support and security
 
 - Read the [documentation](https://nuxt-pdf.lupinum.com).
-- Join the [Lupinum OSS Discord](https://discord.gg/RPH6SeA36N).
-- Open a [bug report](https://github.com/lupinum-dev/nuxt-pdf/issues/new?template=bug.md)
+- Join the [Lupinum OSS Discord](https://discord.lupinum.com).
+- Open a [bug report](https://github.com/lupinum-dev/nuxt-pdf/issues/new?template=bug.yml)
   for a reproducible defect.
-- Open a [feature request](https://github.com/lupinum-dev/nuxt-pdf/issues/new?template=proposal.md)
+- Open a [feature request](https://github.com/lupinum-dev/nuxt-pdf/issues/new?template=feature.yml)
   before you plan a larger change.
-- Follow [SECURITY.md](./SECURITY.md) for a private vulnerability report.
+- Follow [SECURITY.md](.github/SECURITY.md) for a private vulnerability report.
 
 ## License
 

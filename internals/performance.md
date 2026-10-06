@@ -9,8 +9,9 @@ Performance is measured by `pnpm test:performance`. The harness renders:
 - 100 sequential invoices for retained-heap evidence.
 
 It records render times, completed output sizes, process peak RSS, and heap trend
-in `reports/performance.json`. Scheduled CI runs the harness in the same pinned
-Linux/Node 24 environment as raster evidence and uploads that report.
+in `reports/performance.json`. CI does not run it. Run it by hand, with
+`NUXT_PDF_PERF_GATE=1`, in a Linux/Node 24 environment like the raster job's
+before you compare results with the baseline.
 
 The reviewed high-water values live in
 `test/fixtures/performance/linux-node24.json`. Time and memory fail above 120%

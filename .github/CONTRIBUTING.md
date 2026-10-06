@@ -18,7 +18,7 @@ refactor. This step helps you prevent work that the project cannot accept.
 
 Use the bug form for a reproducible defect. Use the feature form to describe
 the user problem before you propose an implementation. Ask usage questions in
-the [Lupinum OSS Discord](https://discord.gg/RPH6SeA36N). Follow
+the [Lupinum OSS Discord](https://discord.lupinum.com). Follow
 [SECURITY.md](./SECURITY.md) for a private vulnerability report.
 
 ## Prepare the repository
@@ -49,8 +49,13 @@ generic adapters, or compatibility aliases without an accepted design issue.
 
 Use a focused Conventional Commit title for the pull request, for example
 `fix(runtime): reject invalid images`, `feat(test): add bookmark assertions`,
-`docs: explain font loading`, or `ci: verify release notes`. The repository
-uses the squash commit title to generate its changelog.
+or `docs: explain font loading`.
+
+Add a changeset with `pnpm changeset` when the pull request changes what users
+install: code, types, runtime behavior or dependencies. A change to
+`dependencies` or `peerDependencies` needs at least a patch bump. The changelog
+is built from changesets; the style rules are in [AGENTS.md](../AGENTS.md). Use
+`pnpm changeset --empty` when you change `src/` but users see no difference.
 
 Use a descriptive `<type>/<short-description>` branch name. Do not include an
 AI tool, model, vendor, or username in the branch name.
