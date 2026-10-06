@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises'
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { defineComponent, h } from 'vue'
@@ -206,6 +206,61 @@ describe('@lupinum/nuxt-pdf/test public surface', () => {
       .toContainText(sampleInvoice.number)
       .toContainText(sampleInvoice.customer.name)
     expect(rendered.result.diagnostics.pageCount).toBeGreaterThan(0)
+  }, 30_000)
+
+  it('uses application font configuration unless the caller supplies fonts', async () => {
+    const rendered = await renderPdfSfc(
+      resolve('playground/pdfs/invoice.vue'),
+      { invoice: sampleInvoice },
+    )
+    expectPdf(rendered.parsed).toContainText(sampleInvoice.number)
+    expect(rendered.result.diagnostics.registeredFontFaces).toEqual(expect.arrayContaining([
+      expect.objectContaining({ family: 'Fieldnote Sans' }),
+      expect.objectContaining({ family: 'Inter', fontWeight: 700 }),
+    ]))
+    const explicit = await renderPdfSfc(
+      resolve('playground/pdfs/invoice.vue'),
+      { invoice: sampleInvoice },
+      { fonts: [{ family: 'Fieldnote Sans', src: 'Roboto-Regular.ttf' }] },
+    )
+    expect(explicit.result.diagnostics.registeredFontFaces).toHaveLength(1)
+    await expect(renderPdfSfc(
+      resolve('playground/pdfs/invoice.vue'),
+      { invoice: sampleInvoice },
+      { fonts: [] },
+    )).rejects.toThrow(/Font family not registered/)
+  }, 30_000)
+
+  it('rejects invalid configured fonts instead of silently rendering with defaults', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'nuxt-pdf-config-'))
+    try {
+      await mkdir(join(root, 'pdfs'))
+      await cp(resolve('playground/pdfs/invoice.vue'), join(root, 'pdfs/invoice.vue'))
+      await writeFile(join(root, 'nuxt.config.ts'), 'export default { pdf: { fonts: "invalid" } }')
+      await expect(renderPdfSfc(join(root, 'pdfs/invoice.vue'), {}))
+        .rejects.toThrow('pdf.fonts must be an array')
+    }
+    finally { await rm(root, { recursive: true, force: true }) }
+  })
+
+  it('resolves inherited font declarations inside their Nuxt layer', async () => {
+    const cache = resolve('node_modules/.cache')
+    await mkdir(cache, { recursive: true })
+    const root = await mkdtemp(join(cache, 'pdf-layer-fonts-'))
+    try {
+      await mkdir(join(root, 'pdfs'))
+      await mkdir(join(root, 'base/pdfs/fonts'), { recursive: true })
+      await cp(resolve('playground/pdfs/fonts/Roboto-Regular.ttf'), join(root, 'base/pdfs/fonts/Layer.ttf'))
+      await writeFile(join(root, 'nuxt.config.ts'), 'export default { extends: ["./base"] }')
+      await writeFile(join(root, 'base/nuxt.config.ts'), 'export default { pdf: { fonts: [{ family: "Layer Sans", src: "Layer.ttf" }] } }')
+      await writeFile(join(root, 'pdfs/example.vue'), '<script setup>definePdf({})</script><template><PdfDocument><PdfPage><PdfText :style="{ fontFamily: \'Layer Sans\' }">Inherited font</PdfText></PdfPage></PdfDocument></template>')
+      const rendered = await renderPdfSfc(join(root, 'pdfs/example.vue'), {})
+      expectPdf(rendered.parsed).toContainText('Inherited font')
+      expect(rendered.result.diagnostics.registeredFontFaces).toEqual([
+        expect.objectContaining({ family: 'Layer Sans' }),
+      ])
+    }
+    finally { await rm(root, { recursive: true, force: true }) }
   }, 30_000)
 
   it('throws PdfAssertionError with actionable messages on failure', async () => {
