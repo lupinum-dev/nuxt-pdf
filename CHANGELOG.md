@@ -4,6 +4,12 @@ All notable changes to `@lupinum/nuxt-pdf` are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.4.0-beta.6
+
+### Patch Changes
+
+- [#68](https://github.com/lupinum-dev/nuxt-pdf/pull/68) [`11d711a`](https://github.com/lupinum-dev/nuxt-pdf/commit/11d711ac83c69d3f468fb7983a15075398fa100e) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix `renderPdfSfc()` to use the fonts from the application's Nuxt configuration, including inherited layers, when the test passes no `fonts` option.
+
 ## 0.4.0-beta.5
 
 [compare changes](https://github.com/lupinum-dev/nuxt-pdf/compare/v0.4.0-beta.4...0.4.0-beta.5)
