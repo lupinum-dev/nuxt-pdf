@@ -33,6 +33,7 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
+          check-latest: true
           package-manager-cache: false
       - run: corepack enable pnpm
       - run: pnpm install --frozen-lockfile --ignore-scripts
@@ -191,6 +192,7 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
+          check-latest: true
           package-manager-cache: false
       - run: corepack enable pnpm
       # Shown on the run page where the maintainer approves the publish: what changed in the release
@@ -274,6 +276,7 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
+          check-latest: true
           package-manager-cache: false
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
