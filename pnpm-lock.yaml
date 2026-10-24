@@ -12,7 +12,7 @@ overrides:
   esbuild: 0.28.1
   fflate@<0.7.5: 0.7.5
   fast-uri: 3.1.8
-  hono: 4.13.7
+  hono: 4.13.11
   ip-address: 10.7.3
   js-yaml: 4.3.2
   nanoid: 3.3.18
@@ -4643,8 +4643,8 @@ packages:
   highlight.js@10.7.3:
     resolution: {integrity: sha512-tzcUFauisWKNHaRkN4Wjl/ZA07gENAjFl3J/c480dprkGTg5EQstgaNFqBfUqCq54kZRIEcreTsAgF/m2quD7A==}
 
-  hono@4.13.7:
-    resolution: {integrity: sha512-c8/gF9ac8Y78/agExVocyLevgR+JlpNB444Py0FSX8pJoPdYUfUzRcXtYEYGwt6l19qIlVZPN5Mfsw9jFShmQQ==}
+  hono@4.13.11:
+    resolution: {integrity: sha512-/SMX/RQNJn7oNmFwH6DtwDqcrzZU2otm1FD6OJe2cWF6cfy/F8hq0XVBv7xW3FTJshRQwuBnXHDq2kNsdZnshg==}
     engines: {node: '>=16.9.0'}
 
   hookable@5.5.3:
@@ -8083,7 +8083,7 @@ snapshots:
 
   '@hono/node-server@1.19.15(hono@4.13.7)':
     dependencies:
-      hono: 4.13.7
+      hono: 4.13.11
 
   '@humanfs/core@0.19.2':
     dependencies:
@@ -8620,7 +8620,7 @@ snapshots:
       eventsource-parser: 3.1.0
       express: 5.2.1(supports-color@10.2.2)
       express-rate-limit: 8.6.0(express@5.2.1(supports-color@10.2.2))(supports-color@10.2.2)
-      hono: 4.13.7
+      hono: 4.13.11
       jose: 6.2.3
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
@@ -12636,7 +12636,7 @@ snapshots:
 
   highlight.js@10.7.3: {}
 
-  hono@4.13.7: {}
+  hono@4.13.11: {}
 
   hookable@5.5.3: {}
 
