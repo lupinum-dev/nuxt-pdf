@@ -124,7 +124,7 @@
     "eslint": "^10.4.1",
     "nuxt": "^4.5.2",
     "pdfjs-dist": "6.2.108",
-    "pkg-pr-new": "0.0.87",
+    "pkg-pr-new": "0.0.93",
     "publint": "^0.3.21",
     "react": "19.2.0",
     "source-code-pro": "2.42.0",
