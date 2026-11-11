@@ -32,7 +32,7 @@ import {
   resolvePdfRenderLimits,
 } from './render-limits'
 import type { BundledPdfFontDescriptor } from '../fonts'
-import { getSharedPdfFontStore } from './engine/fonts'
+import { createPdfFontStore } from './engine/fonts'
 import { createPdfRenderResult } from './result'
 
 export type {
@@ -260,7 +260,10 @@ const renderTemplate = async <Props extends object>(
       component,
       props as Record<string, unknown>,
     )
-    const fontStore = getSharedPdfFontStore(options.fonts)
+    // One store per document. fontkit caches glyphs per parsed font, and a glyph first loaded as
+    // part of a composite (the O inside Ö) is cached without its code point. A later document
+    // that shares the store then drops that letter: "Own" printed as "wn".
+    const fontStore = createPdfFontStore(options.fonts)
 
     // Gate: only a template that reads `usePdfPageNumbers()` consumes resolved
     // page numbers, so only it runs the fixed-point layout loop. Internal `#id`

@@ -320,6 +320,8 @@ Protected by PDF magic-byte, parse, metadata, stream completion, and stream erro
 
 A fresh `FontStore` contains the standard PDF fonts. Additional local fonts are registered before layout and the same store is passed to `layoutDocument`.
 
+Every render creates its own `FontStore`; renders never share one. fontkit caches glyph objects per parsed font, and a glyph first loaded as a component of a composite glyph (the O inside Ö) is cached without its code point. A later render that reuses the store then drops that letter. A fresh store per render costs no measurable time, because fontkit parses tables lazily. Protected by the composite-glyph test in `test/isolation-stress.test.ts`.
+
 Font resolution runs *inside* the layout pipeline (`resolveAssets` calls
 `fontStore.load`), so a missing family throws during `layoutDocument`. Nuxt PDF
 surfaces this as a single `PDF_LAYOUT_ERROR` carrying React PDF's own exact
