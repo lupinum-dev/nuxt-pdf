@@ -152,6 +152,32 @@ describe('render isolation stress', () => {
     }
   }, 60_000)
 
+  it('keeps every letter when an earlier render used a composite glyph', async () => {
+    // fontkit caches the O inside Ö without its code point. A font store shared
+    // across renders then dropped the letter in the next document: "wn".
+    const template = createPdfTemplate<StressProps>(
+      'composite-glyph',
+      asTemplate(defineComponent({
+        name: 'CompositeGlyph',
+        props: { token: { required: true, type: String } },
+        setup: props => () => h(PdfDocument, {}, {
+          default: () => h(PdfPage, { size: [200, 100] }, {
+            default: () => h(PdfText, {
+              style: { fontFamily: 'Composite Font' },
+            }, { default: () => props.token }),
+          }),
+        }),
+      }), {}),
+      { fonts: [{ family: 'Composite Font', src: FONT_DATA }] },
+    )
+
+    await template.render({ token: 'Österreich' })
+    const result = await template.render({ token: 'Own' })
+    const parsed = await parsePdf(await result.toUint8Array())
+
+    expect(parsed.pages[0]?.textItems).toEqual(['Own'])
+  })
+
   it('renders an explicit 100-page document without state accumulation', async () => {
     const component = asTemplate(defineComponent({
       name: 'HundredPages',
