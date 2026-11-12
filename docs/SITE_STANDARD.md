@@ -4,7 +4,7 @@
 - **Adoption level:** pilot for library docs sites. This is an open-source library's docs, so lupinum-oss
   owns the repository and the docs structure; the website standard covers SEO, performance, security
   headers, measurement and search engines.
-- **Stage:** Live (site online since 2026-08), moving to Ginko 0.16 with this record
+- **Stage:** Live (site online since 2026-08; Ginko 0.16 deployed 2026-11-12, #88)
 - **Production URL:** https://nuxt-pdf.lupinum.com
 - **Owner at Lupinum:** Matthias · **Client:** Lupinum itself (no external client)
 
@@ -41,14 +41,15 @@
 
 ### Live
 
-- MEAS-01 proven 2026-11-12 — Plausible site `nuxt-pdf.lupinum.com` exists; the old setup recorded 12 page views in 30 days. Recheck after the Ginko 0.16 deploy: the script now loads only when the env var is set.
-- SRCH-01 proven 2026-11-12 — covered by the Search Console domain property `lupinum.com` (DNS verified); sitemap `https://nuxt-pdf.lupinum.com/sitemap.xml` submitted, indexing of `/` requested.
-- SRCH-02 unverified 2026-11-12 — site added in Bing Webmaster Tools; verification by the `msvalidate.01` meta tag in `nuxt.config.ts` after the deploy, then submit the sitemap.
+- MEAS-01 proven 2026-11-12 — after the Ginko 0.16 deploy, a visit to /docs/quickstart shows in the Plausible realtime view. Goals: 404 (sent by app/plugins/plausible.ts), Outbound Link: Click, File Download.
+- SRCH-01 proven 2026-11-12 — covered by the Search Console domain property `lupinum.com` (DNS verified); sitemap submitted and read (Success); indexing requested for `/`, `/docs/getting-started`, `/docs/quickstart`, `/docs/installation`.
+- SRCH-02 proven 2026-11-12 — Bing Webmaster Tools: site verified by the `msvalidate.01` meta tag, sitemap submitted (processing).
 
 ## Checks
 
 - `pnpm test:docs` (snippets, contracts, `ginko check`, types) and `pnpm --dir docs build`.
 - `node ~/Git/0_libs/lupinum-website/tools/check-launch.mjs https://nuxt-pdf.lupinum.com --profile relaunch --repo .`
-  On 2026-11-12 against the local production build: 19 pass. The only failures were the
-  production-host-only items (Ginko sends `noindex` on every other host) and CON-11, fixed since.
-  Startup JavaScript fell from 259 kB to 98 kB gzip.
+  On 2026-11-12 against production: 24 pass, SEO-02 fails only on the missing `www` host and PERF-02 warns
+  on the layer logo (both exceptions above). Startup JavaScript fell from 259 kB to 98 kB gzip.
+- After the first indexing (about 1–2 weeks): POST-01 in Search Console (pages indexed, no 404 spike from the
+  old addresses).
