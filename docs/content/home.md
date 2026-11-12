@@ -1,5 +1,5 @@
 ---
-title: Nuxt PDF, PDFs authored as Vue components
+title: PDFs authored as Vue components
 description: Nuxt PDF renders PDF documents on the Nuxt server from ordinary Vue components. Typed templates, local images and fonts, links, bookmarks and test helpers.
 install: pnpm add @lupinum/nuxt-pdf
 links:
@@ -15,11 +15,11 @@ features:
     title: Server-only rendering
     description: The engine runs on the Node server, with no client build step. React PDF runtimes stay out of the client bundle and the production dependencies.
   - icon: lucide:braces
-    title: Typed #pdf registry
-    description: Discovered templates generate an inspectable #pdf module. Property access and literal names infer each template's props.
+    title: "Typed #pdf registry"
+    description: "Discovered templates generate an inspectable #pdf module. Property access and literal names infer each template's props."
   - icon: lucide:list-tree
     title: Contents, links, bookmarks
-    description: A multi-pass layout resolves table-of-contents page numbers; #id links and a bookmark outline follow the component tree.
+    description: "A multi-pass layout resolves table-of-contents page numbers; #id links and a bookmark outline follow the component tree."
   - icon: lucide:shield-check
     title: Fail-closed resources
     description: Local images and fonts are checked and embedded at build. Remote fetching is off until you set an explicit allowlist.

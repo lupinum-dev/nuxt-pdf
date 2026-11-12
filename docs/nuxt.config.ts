@@ -30,6 +30,7 @@ export default defineNuxtConfig({
   extends: ["@lupinum/ginko-docs"],
   modules: ["@lupinum/ginko/nuxt"],
   ginko,
+  css: ["~/assets/css/main.css"],
   // P-06: Plausible loads on production only; the ID is set in Vercel's Production scope.
   runtimeConfig: {
     // The policy without frame-ancestors, which server/plugins/csp.ts puts in front of Ginko's header.

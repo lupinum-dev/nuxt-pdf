@@ -3,7 +3,8 @@ import site from "../site.json" with { type: "json" };
 // Options of the docs layer. Link texts live in i18n/en.json (`docs.footer.<id>`).
 export default defineAppConfig({
   docs: {
-    logo: { light: "/logo-light.svg", dark: "/logo-dark.svg" },
+    // The logo image already holds the name.
+    logo: { light: "/logo-light.svg", dark: "/logo-dark.svg", wordmark: true },
     social: [
       { icon: "docs:github", href: site.repository, label: "GitHub" },
       { icon: "docs:discord", href: site.discord, label: "Discord" },

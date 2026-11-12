@@ -1,0 +1,16 @@
+/* Nuxt PDF colours: Nuxt green on slate, the same values as the site before Ginko 0.16.
+   The docs layer reads these shadcn-style tokens; its own defaults sit in @layer theme. */
+:root {
+  --primary: #00dc82;
+  --primary-foreground: light-dark(#020420, #052e16);
+  --ring: light-dark(#00a155, #00dc82);
+  --background: light-dark(#fff, oklch(12.9% 0.042 264.695));
+  --foreground: light-dark(oklch(20.8% 0.042 265.755), oklch(98.4% 0.003 247.858));
+  --card: light-dark(#fff, oklch(20.8% 0.042 265.755));
+  --popover: light-dark(#fff, oklch(20.8% 0.042 265.755));
+  --muted: light-dark(oklch(98.4% 0.003 247.858), oklch(20.8% 0.042 265.755));
+  --muted-foreground: light-dark(oklch(55.4% 0.046 257.417), oklch(70.4% 0.04 256.788));
+  --accent: light-dark(oklch(96.8% 0.007 247.896), oklch(27.9% 0.041 260.031));
+  --border: light-dark(oklch(92.9% 0.013 255.508), oklch(27.9% 0.041 260.031));
+  --radius: 0.625rem;
+}
