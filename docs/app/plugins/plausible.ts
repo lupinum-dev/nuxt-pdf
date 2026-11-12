@@ -1,6 +1,6 @@
 // Website standard P-06: Plausible's own snippet, only when the production ID is set. A plugin, not
 // app.vue, so error pages are counted too.
-export default defineNuxtPlugin(() => {
+export default defineNuxtPlugin((nuxtApp) => {
   const { plausibleScriptId } = useRuntimeConfig().public;
   if (!plausibleScriptId) return;
 
@@ -13,4 +13,24 @@ export default defineNuxtPlugin(() => {
       },
     ],
   });
+
+  // The "404" goal in Plausible: which addresses readers reach that do not exist (old links, typos).
+  if (import.meta.client) {
+    const error = useError();
+    nuxtApp.hook("app:mounted", () => {
+      watch(
+        () => error.value && "statusCode" in error.value && error.value.statusCode,
+        (status) => {
+          if (status === 404) window.plausible?.("404", { props: { path: location.pathname } });
+        },
+        { immediate: true },
+      );
+    });
+  }
 });
+
+declare global {
+  interface Window {
+    plausible?: (event: string, options?: { props?: Record<string, string> }) => void;
+  }
+}
