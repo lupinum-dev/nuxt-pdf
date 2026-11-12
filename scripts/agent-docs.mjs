@@ -19,7 +19,12 @@ const port = await new Promise((resolve, reject) => {
   })
 })
 const origin = `http://127.0.0.1:${port}`
-const child = spawn(process.execPath, [server], { env: { ...process.env, PORT: String(port), HOST: '127.0.0.1' }, stdio: 'inherit' })
+// Nitro prefers NITRO_* over PORT/HOST and can listen on a socket or TLS; force plain HTTP on our port.
+const { NITRO_SOCKET, NITRO_SSL_CERT, NITRO_SSL_KEY, NITRO_UNIX_SOCKET, ...env } = process.env
+const child = spawn(process.execPath, [server], {
+  env: { ...env, PORT: String(port), HOST: '127.0.0.1', NITRO_PORT: String(port), NITRO_HOST: '127.0.0.1' },
+  stdio: 'inherit',
+})
 
 try {
   await waitFor(`${origin}/llms.txt`)

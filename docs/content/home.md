@@ -40,6 +40,7 @@ const props = defineProps<{ invoice: { number: string; total: string } }>()
 definePdf({
   title: ({ invoice }) => `Invoice ${invoice.number}`,
   filename: ({ invoice }) => `invoice-${invoice.number}.pdf`,
+  sampleData: { invoice: { number: "INV-001", total: "EUR 1,250.00" } },
 })
 </script>
 
@@ -74,4 +75,4 @@ open http://localhost:3000/api/invoice
 ```
 ::
 
-[Quickstart]($docs.quickstart) explains each file. Nuxt PDF runs on Node.js 22 or newer with Nuxt 4.
+[Quickstart]($docs.quickstart) explains each file. Nuxt PDF runs on Node.js 22 (from 22.14), 24 or 26 with Nuxt 4 ([requirements]($docs.installation)).

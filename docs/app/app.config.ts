@@ -9,7 +9,7 @@ export default defineAppConfig({
       { icon: "docs:github", href: site.repository, label: "GitHub" },
       { icon: "docs:discord", href: site.discord, label: "Discord" },
     ],
-    repository: { url: site.repository, branch: "main", editUrl: "{url}/edit/{branch}/docs/{source}" },
+    repository: { url: site.repository, branch: "main" },
     footer: {
       links: [
         { id: "imprint", href: "https://lupinum.com/impressum" },
