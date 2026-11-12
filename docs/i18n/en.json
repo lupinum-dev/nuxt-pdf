@@ -1,4 +1,7 @@
 {
+  "home": {
+    "eyebrow": "Nuxt module · public beta"
+  },
   "docs": {
     "footer": {
       "imprint": "Legal notice",

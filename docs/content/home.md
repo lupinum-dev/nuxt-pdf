@@ -28,10 +28,6 @@ features:
     description: "@lupinum/nuxt-pdf/test renders a template through the real pipeline and checks text, links, outline, page count and raster baselines."
 ---
 
-## A template, a route, a PDF
-
-Put a Vue template in `pdfs/`, render it from a server route, and return the PDF:
-
 ::code-group
 ```vue [pdfs/invoice.vue]
 <script setup lang="ts">
