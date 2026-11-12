@@ -14,3 +14,28 @@
   --border: light-dark(oklch(92.9% 0.013 255.508), oklch(27.9% 0.041 260.031));
   --radius: 0.625rem;
 }
+
+/* Code panels: the layer tints them with --primary, which turns Nuxt green into a green-grey next to the slate
+   page. Slate 900/800/700 instead. The layer sets these on its containers, so they are set there too. */
+.docs-shell,
+.docs-landing,
+.docs-blog {
+  --ginko-code-bg: oklch(20.8% 0.042 265.755);
+  --ginko-code-frame: oklch(24.5% 0.042 263);
+  --docs-code-line: oklch(31% 0.042 260);
+}
+
+/* Start page (app/pages/index.vue): text left, code tabs right; one column below 64rem. */
+.pdf-hero { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 3.5rem; align-items: center; padding-top: 5.5rem; }
+.pdf-hero h1 { margin: 0; color: var(--foreground); font-size: clamp(2.25rem, 1.5rem + 2.6vw, 3.25rem); font-weight: 700; line-height: 1.05; letter-spacing: -0.035em; text-wrap: balance; }
+.pdf-hero-lead { margin: 1.25rem 0 0; color: var(--muted-foreground); font-size: 1.125rem; line-height: 1.6; text-wrap: pretty; }
+.pdf-hero-links { display: flex; flex-wrap: wrap; gap: 0.625rem; margin-top: 2rem; }
+.pdf-hero-code { min-width: 0; }
+.pdf-hero-code > :first-child { margin-top: 0; }
+.pdf-hero-code pre { max-height: 26rem; }
+@media (max-width: 63.99rem) {
+  .pdf-hero { grid-template-columns: minmax(0, 1fr); gap: 2.5rem; padding-top: 3.5rem; }
+}
+@media (max-width: 40rem) {
+  .pdf-hero { padding-top: 0; }
+}

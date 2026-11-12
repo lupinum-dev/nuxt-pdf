@@ -1,6 +1,6 @@
 ---
 title: PDFs authored as Vue components
-description: Nuxt PDF renders PDF documents on the Nuxt server from ordinary Vue components. Typed templates, local images and fonts, links, bookmarks and test helpers.
+description: Build invoices, reports and tickets as Vue templates and render them in a Nuxt server route. No headless browser, and nothing added to the client bundle.
 install: pnpm add @lupinum/nuxt-pdf
 links:
   - label: Get started
@@ -9,28 +9,24 @@ links:
     href: https://github.com/lupinum-dev/nuxt-pdf
 features:
   - icon: lucide:component
-    title: Vue authoring, PDF output
-    description: Compose documents with typed props, v-if, keyed v-for, slots and local components. A small set of thin primitives maps to the layout engine.
+    title: The Vue you already know
+    description: Props, v-if, v-for, slots and your own components work in templates. Layout uses a small set of components such as PdfPage and PdfText.
   - icon: lucide:server
-    title: Server-only rendering
-    description: The engine runs on the Node server, with no client build step. React PDF runtimes stay out of the client bundle and the production dependencies.
+    title: No browser needed
+    description: Rendering runs in Node on your server. The PDF code never reaches the browser.
   - icon: lucide:braces
-    title: "Typed #pdf registry"
-    description: "Discovered templates generate an inspectable #pdf module. Property access and literal names infer each template's props."
+    title: Typed render calls
+    description: "Each file in pdfs/ becomes pdf.<name>.render(). TypeScript knows its props, so a missing field shows up in your editor, not in production."
   - icon: lucide:list-tree
-    title: Contents, links, bookmarks
-    description: "A multi-pass layout resolves table-of-contents page numbers; #id links and a bookmark outline follow the component tree."
+    title: Page numbers and links
+    description: A table of contents gets the right page numbers. Internal links and PDF bookmarks come from your template.
   - icon: lucide:shield-check
-    title: Fail-closed resources
-    description: Local images and fonts are checked and embedded at build. Remote fetching is off until you set an explicit allowlist.
+    title: Safe images and fonts
+    description: Local images and fonts are checked and bundled at build time. Remote images load only from hosts you allow.
   - icon: lucide:flask-conical
-    title: Test with a real render
-    description: "@lupinum/nuxt-pdf/test renders a template through the real pipeline and checks text, links, outline, page count and raster baselines."
+    title: Tests on real PDFs
+    description: Render a template in Vitest and check its text, links and page count. Compare pages as images when the layout matters.
 ---
-
-## A template, a route, a PDF
-
-Put a Vue template in `pdfs/`, render it from a server route, and return the PDF:
 
 ::code-group
 ```vue [pdfs/invoice.vue]
@@ -74,5 +70,3 @@ open http://localhost:3000/_pdf/invoice
 open http://localhost:3000/api/invoice
 ```
 ::
-
-[Quickstart]($docs.quickstart) explains each file. Nuxt PDF runs on Node.js 22 (from 22.14), 24 or 26 with Nuxt 4 ([requirements]($docs.installation)).
