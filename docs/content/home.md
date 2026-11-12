@@ -70,5 +70,3 @@ open http://localhost:3000/_pdf/invoice
 open http://localhost:3000/api/invoice
 ```
 ::
-
-[Quickstart]($docs.quickstart) explains each file. Needs Node.js 22.14+, 24 or 26 and Nuxt 4 ([requirements]($docs.installation)).

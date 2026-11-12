@@ -35,7 +35,7 @@
 
 ### Built and release
 
-- UX-07 proven 2026-11-12 — the start page ends with the template/route/preview code and a link to Quickstart; every docs page has previous/next links.
+- UX-07 proven 2026-11-12 — the start page shows the template/route/preview code next to the "Get started" button; every docs page has previous/next links.
 - SEC-06 proven 2026-11-12 — `NUXT_PUBLIC_PLAUSIBLE_SCRIPT_ID` set in the Vercel project `nuxt-pdf-docs`, Production scope only (checked with the Vercel API).
 - CON-07 proven 2026-11-12 — local production build: the only third-party host is plausible.io (SEC-05); the CSP allows nothing else.
 

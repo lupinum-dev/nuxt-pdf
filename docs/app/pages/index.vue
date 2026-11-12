@@ -19,7 +19,6 @@ const external = (raw: string) => /^https?:\/\//.test(raw);
     <div class="docs-landing-inner">
       <section class="pdf-hero">
         <div class="pdf-hero-text">
-          <p class="pdf-hero-eyebrow">{{ t("home.eyebrow") }}</p>
           <h1>{{ data.title }}</h1>
           <p v-if="data.description" class="pdf-hero-lead">{{ data.description }}</p>
           <div v-if="data.links.length" class="pdf-hero-links">
