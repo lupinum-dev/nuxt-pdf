@@ -33,7 +33,7 @@
 </p>
 
 <p align="center">
-  Every page above is a Vue template in <a href="./playground/pdfs"><code>playground/pdfs/</code></a>.
+  Every page above is a Vue template rendered by Nuxt PDF. <a href="./playground/pdfs">View the templates</a>.
   <a href="https://nuxt-pdf.lupinum.com/showcase/invoice.pdf">Open the invoice PDF</a>.
 </p>
 

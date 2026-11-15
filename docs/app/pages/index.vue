@@ -9,9 +9,9 @@ useGinkoSeo(() => ({ title: data.value.title, description: data.value.descriptio
 
 const { state, copy } = useDocsCopy();
 // Plausible goals (set up in the Plausible site): who copies the install command and opens a showcase PDF.
-const copyInstall = () => {
-  copy(data.value.install ?? "");
-  window.plausible?.("Install command copied");
+const copyInstall = async () => {
+  await copy(data.value.install ?? "");
+  if (state.value === "copied") window.plausible?.("Install command copied");
 };
 const trackPdf = (id: string) => window.plausible?.("Showcase PDF opened", { props: { document: id } });
 // A route link (`$docs.<page>`) goes through the docs router; a URL stays as written.

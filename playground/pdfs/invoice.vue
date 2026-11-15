@@ -24,8 +24,8 @@ const subtotal = invoiceSubtotal(invoice)
 const tax = subtotal * invoice.taxRate
 const total = invoiceTotal(invoice)
 const money = (value: number) => formatInvoiceMoney(value, invoice.currency)
-// Round to one decimal so 0.085 prints as 8.5, not 8.500000000000002.
-const taxPercent = `${Math.round(invoice.taxRate * 1000) / 10}%`
+// Drop floating-point noise (0.085 * 100 = 8.500000000000002) but keep rates such as 8.25%.
+const taxPercent = `${Number((invoice.taxRate * 100).toFixed(4))}%`
 
 const label = {
   color: '#6A756D',
