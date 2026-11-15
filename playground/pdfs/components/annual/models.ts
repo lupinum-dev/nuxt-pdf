@@ -136,8 +136,8 @@ export const lineModel = (points: readonly MonthlyPoint[]): LineModel => {
     dotY: yScale(lastPoint.mrr, axisMax, plotH),
     ticks: [0, 50, 100].map(value => ({ value, y: yOf(value) })),
     months: points.map((point, index) => ({ label: point.label, x: xOf(index) })),
-    first: { label: `€${firstPoint.mrr}K`, x: plotLeft - 2, y: yOf(firstPoint.mrr) - 11 },
-    last: { label: `€${lastPoint.mrr}K`, x: width - 52, y: yOf(lastPoint.mrr) - 13 },
+    first: { label: `$${firstPoint.mrr}K`, x: plotLeft - 2, y: yOf(firstPoint.mrr) - 11 },
+    last: { label: `$${lastPoint.mrr}K`, x: width - 52, y: yOf(lastPoint.mrr) - 13 },
   }
 }
 
@@ -187,7 +187,7 @@ export const donutModel = (sectors: readonly RevenueSector[]): DonutModel => {
     size,
     total,
     totalLabel: fmtMoneyShort(total),
-    totalK: `€${fmtThousands(total)}K`,
+    totalK: `$${fmtThousands(total)}K`,
     segments: rows.map(({ id, d, color, transform }) => ({ id, d, fill: color, transform })),
     legend: rows.map(({ id, color, label, pct, highlight }) => ({ id, color, label, pct, highlight })),
   }

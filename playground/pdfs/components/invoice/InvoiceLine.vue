@@ -23,9 +23,9 @@ const rate = formatInvoiceMoney(props.line.unitPrice, props.currency)
       borderBottomColor: '#DDE3DE',
       borderBottomWidth: 1,
       flexDirection: 'row',
-      minHeight: 54,
-      paddingBottom: 12,
-      paddingTop: 12,
+      minHeight: 44,
+      paddingBottom: 10,
+      paddingTop: 10,
     }"
     :wrap="false"
   >
@@ -33,7 +33,7 @@ const rate = formatInvoiceMoney(props.line.unitPrice, props.currency)
       {{ String(index + 1).padStart(2, '0') }}
     </PdfText>
     <PdfView :style="{ paddingRight: 16, width: columns.description.width }">
-      <PdfText :style="{ color: '#18251D', fontSize: 9.5, marginBottom: 4 }">
+      <PdfText :style="{ color: '#18251D', fontSize: 9.5, fontWeight: 600, marginBottom: 4 }">
         {{ line.description }}
       </PdfText>
       <PdfText :style="{ color: '#6A756D', fontSize: 7.5, lineHeight: 1.45 }">
@@ -46,7 +46,7 @@ const rate = formatInvoiceMoney(props.line.unitPrice, props.currency)
     <PdfText :style="{ color: '#566159', fontSize: 8.5, textAlign: 'right', width: columns.rate.width }">
       {{ rate }}
     </PdfText>
-    <PdfText :style="{ color: '#18251D', fontSize: 8.5, textAlign: 'right', width: columns.amount.width }">
+    <PdfText :style="{ color: '#18251D', fontSize: 8.5, fontWeight: 600, textAlign: 'right', width: columns.amount.width }">
       {{ amount }}
     </PdfText>
   </PdfView>

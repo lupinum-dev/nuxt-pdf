@@ -4,7 +4,7 @@ export default defineNuxtConfig({
   compatibilityDate: '2026-07-20',
   pdf: {
     fonts: [
-      // Legacy single-weight family kept for the existing invoice/tests.
+      // Single-weight family kept for the font configuration tests.
       { family: 'Fieldnote Sans', src: 'Roboto-Regular.ttf' },
 
       // Inter — the workhorse grotesque. Weights carry hierarchy.

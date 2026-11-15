@@ -97,6 +97,12 @@ function verifyPublicOptionTypes(): void {
 }
 void verifyPublicOptionTypes
 
+// The faces playground/pdfs/invoice.vue uses: Inter for text, Lora for headings.
+const invoiceFonts = [
+  ...([400, 500, 600, 700] as const).map(fontWeight => ({ family: 'Inter', src: `Inter-${fontWeight}.ttf`, fontWeight })),
+  { family: 'Lora', src: 'Lora-600.ttf', fontWeight: 600 },
+]
+
 describe('@lupinum/nuxt-pdf/test public surface', () => {
   it('rejects removed registry options instead of silently ignoring them', async () => {
     const removedTemplateOptions = {
@@ -197,9 +203,7 @@ describe('@lupinum/nuxt-pdf/test public surface', () => {
     const rendered = await renderPdfSfc(
       resolve('playground/pdfs/invoice.vue'),
       { invoice: sampleInvoice },
-      {
-        fonts: [{ family: 'Fieldnote Sans', src: 'Roboto-Regular.ttf' }],
-      },
+      { fonts: invoiceFonts },
     )
 
     expectPdf(rendered.parsed)
@@ -221,9 +225,9 @@ describe('@lupinum/nuxt-pdf/test public surface', () => {
     const explicit = await renderPdfSfc(
       resolve('playground/pdfs/invoice.vue'),
       { invoice: sampleInvoice },
-      { fonts: [{ family: 'Fieldnote Sans', src: 'Roboto-Regular.ttf' }] },
+      { fonts: invoiceFonts },
     )
-    expect(explicit.result.diagnostics.registeredFontFaces).toHaveLength(1)
+    expect(explicit.result.diagnostics.registeredFontFaces).toHaveLength(invoiceFonts.length)
     await expect(renderPdfSfc(
       resolve('playground/pdfs/invoice.vue'),
       { invoice: sampleInvoice },
