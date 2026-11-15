@@ -41,9 +41,9 @@
 
 ### Live
 
-- MEAS-01 proven 2026-11-12 — after the Ginko 0.16 deploy, a visit to /docs/quickstart shows in the Plausible realtime view. Goals: 404 (sent by app/plugins/plausible.ts), Outbound Link: Click, File Download.
-- SRCH-01 proven 2026-11-12 — covered by the Search Console domain property `lupinum.com` (DNS verified); sitemap submitted and read (Success); indexing requested for `/`, `/docs/getting-started`, `/docs/quickstart`, `/docs/installation`.
-- SRCH-02 proven 2026-11-12 — Bing Webmaster Tools: site verified by the `msvalidate.01` meta tag, sitemap submitted (processing).
+- MEAS-01 proven 2026-11-12 — after the Ginko 0.16 deploy, a visit to /docs/quickstart shows in the Plausible realtime view. Goals: 404 (sent by app/plugins/plausible.ts), Outbound Link: Click, File Download. Rechecked 2026-11-15: page views arrive in the 7-day report.
+- SRCH-01 proven 2026-11-12 — covered by the Search Console domain property `lupinum.com` (DNS verified); sitemap submitted and read (Success); indexing requested for `/`, `/docs/getting-started`, `/docs/quickstart`, `/docs/installation`. Rechecked 2026-11-15: sitemap read 2026-11-14 with 30 pages; URL inspection says `/` is on Google.
+- SRCH-02 proven 2026-11-12 — Bing Webmaster Tools: site verified by the `msvalidate.01` meta tag, sitemap submitted. Rechecked 2026-11-15: sitemap status Success, 30 URLs discovered.
 
 ## Checks
 
