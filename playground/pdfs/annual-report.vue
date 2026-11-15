@@ -321,7 +321,7 @@ definePdf<AnnualProps>({
             Revenue by quarter
           </PdfText>
           <PdfText :style="chartCaption">
-            Consulting and licensing, EUR thousands
+            Consulting and licensing, USD thousands
           </PdfText>
 
           <PdfView :style="{ height: bar.height, marginTop: 12, position: 'relative', width: bar.width }">
@@ -389,7 +389,7 @@ definePdf<AnnualProps>({
               Recurring revenue
             </PdfText>
             <PdfText :style="chartCaption">
-              Monthly, EUR thousands
+              Monthly, USD thousands
             </PdfText>
 
             <PdfView :style="{ height: line.height, marginTop: 12, position: 'relative', width: line.width }">
@@ -476,7 +476,7 @@ definePdf<AnnualProps>({
               Revenue by client sector
             </PdfText>
             <PdfText :style="chartCaption">
-              Share of total, EUR thousands
+              Share of total, USD thousands
             </PdfText>
 
             <PdfView :style="{ alignItems: 'center', flexDirection: 'row', marginTop: 12, width: 250 }">
@@ -564,7 +564,7 @@ definePdf<AnnualProps>({
           Statement of operations
         </PdfText>
         <PdfText :style="{ color: ink.muted, fontFamily: 'Inter', fontSize: 9.5, marginTop: 8 }">
-          For the year ended 31 December {{ report.fiscalYear }} · all figures in EUR thousands
+          For the year ended 31 December {{ report.fiscalYear }} · all figures in USD thousands
         </PdfText>
 
         <PdfView :style="{ marginTop: 26, width: 420 }">
@@ -611,7 +611,7 @@ definePdf<AnnualProps>({
             Basis of preparation
           </PdfText>
           <PdfText :style="{ color: ink.soft, fontFamily: 'Inter', fontSize: 8.5, lineHeight: 1.5 }">
-            Figures are unaudited management accounts rounded to the nearest thousand euro.
+            Figures are unaudited management accounts rounded to the nearest thousand dollars.
             Parentheses denote outflows. {{ report.registration }}.
           </PdfText>
         </PdfView>

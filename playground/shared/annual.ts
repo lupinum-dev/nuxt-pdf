@@ -1,13 +1,13 @@
 // Typed sample data for the annual-report showcase PDF.
 //
 // One canonical source of truth: `YearFigures` holds the raw ledger for a
-// fiscal year (all monetary values in EUR thousands). Every headline number —
+// fiscal year (all monetary values in USD thousands). Every headline number —
 // revenue, operating result, margin, KPI deltas, the donut, the bar chart, the
 // ledger table — is DERIVED from these figures by the pure helpers below, so
 // the whole document stays internally consistent. Quarter and sector
 // breakdowns are asserted (in the test) to sum back to the yearly totals.
 
-/** Raw ledger for one fiscal year. All money is EUR thousands. */
+/** Raw ledger for one fiscal year. All money is USD thousands. */
 export interface YearFigures {
   consulting: number
   licensing: number
@@ -117,11 +117,11 @@ export const fmtSignedThousands = (value: number): string => {
   return `${rounded > 0 ? '+' : '−'}${groups.format(Math.abs(rounded))}`
 }
 
-/** Compact headline money, e.g. 2900 -> "€2.90M", 930 -> "€930K". */
+/** Compact headline money, e.g. 2900 -> "$2.90M", 930 -> "$930K". */
 export const fmtMoneyShort = (thousands: number): string =>
   thousands >= 1000
-    ? `€${(thousands / 1000).toFixed(2)}M`
-    : `€${fmtThousands(thousands)}K`
+    ? `$${(thousands / 1000).toFixed(2)}M`
+    : `$${fmtThousands(thousands)}K`
 
 /** One-decimal percent from a 0..1 ratio. */
 export const fmtPercent = (ratio: number): string => `${(ratio * 100).toFixed(1)}%`
@@ -161,7 +161,7 @@ export const buildKpis = (current: YearFigures, prior: YearFigures): Kpi[] => {
       id: 'margin',
       label: 'Operating margin',
       value: fmtPercent(marginOf(current)),
-      caption: `EBIT €${fmtThousands(ebitOf(current))}K`,
+      caption: `EBIT $${fmtThousands(ebitOf(current))}K`,
       delta: `+${(marginDelta * 100).toFixed(1)}pp`,
       direction: 'up',
       favorable: true,
@@ -225,13 +225,13 @@ const priorYear: YearFigures = {
 }
 
 export const sampleAnnualReport: AnnualReport = {
-  company: 'Fieldnote Studio GmbH',
+  company: 'Fieldnote Studio',
   form: 'Annual Report',
   fiscalYear: 2025,
   priorYear: 2024,
-  currency: 'EUR',
+  currency: 'USD',
   edition: 'Shareholder edition',
-  registration: 'Firmenbuch FN 482913 h · Vienna',
+  registration: 'Company no. 4829137 · San Francisco',
   cover: {
     eyebrow: 'Annual Report',
     title: 'Evidence, made legible.',
@@ -242,7 +242,7 @@ export const sampleAnnualReport: AnnualReport = {
   letter: {
     author: 'Mara Voss',
     role: 'Managing Director',
-    place: 'Vienna',
+    place: 'San Francisco',
     date: '18 March 2026',
     salutation: 'To our partners and shareholders,',
     paragraphs: [
@@ -251,8 +251,8 @@ export const sampleAnnualReport: AnnualReport = {
       + 'are made from. The distinction matters. It is the difference between '
       + 'selling hours and compounding a product, and it is visible in every '
       + 'number on the pages that follow.',
-      'Revenue grew to €2.90 million, a fifth higher than the year before, but the '
-      + 'figure I watch most closely is the €930k now recurring from our licensed '
+      'Revenue grew to $2.90 million, a fifth higher than the year before, but the '
+      + 'figure I watch most closely is the $930k now recurring from our licensed '
       + 'reporting system. Almost a third of what we earn no longer depends on the '
       + 'next engagement being signed. That is the foundation we spent three years '
       + 'quietly laying, and it is finally load-bearing.',

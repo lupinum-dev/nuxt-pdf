@@ -64,7 +64,7 @@ describe('playground annual-report.vue (showcase)', () => {
     const allText = parsed.pages.map(page => page.text).join(' · ')
 
     // Cover identity.
-    expect(parsed.pages[0]!.text).toContain('Fieldnote Studio GmbH')
+    expect(parsed.pages[0]!.text).toContain('Fieldnote Studio')
     expect(parsed.pages[0]!.text).toContain('2025')
 
     // The letter carries the signature and the recurring-revenue figure.
@@ -75,7 +75,7 @@ describe('playground annual-report.vue (showcase)', () => {
     const kpis = buildKpis(sampleAnnualReport.current, sampleAnnualReport.prior)
     const revenueKpi = kpis.find(k => k.id === 'revenue')!
     const marginKpi = kpis.find(k => k.id === 'margin')!
-    expect(revenueKpi.value).toBe('€2.90M')
+    expect(revenueKpi.value).toBe('$2.90M')
     expect(allText).toContain(revenueKpi.value)
     expect(allText).toContain(revenueKpi.delta)
     expect(allText).toContain(marginKpi.value)
@@ -90,10 +90,10 @@ describe('playground annual-report.vue (showcase)', () => {
 
     // Donut: the highlighted sector and the centre total.
     expect(allText).toContain('Conservation')
-    expect(allText).toContain('€2.90M')
+    expect(allText).toContain('$2.90M')
 
     // Line chart: endpoint MRR labels.
-    expect(allText).toContain('€84K')
+    expect(allText).toContain('$84K')
 
     // Ledger: subtotal and bottom-line figures, derived and consistent.
     const ledger = buildLedger(sampleAnnualReport.current, sampleAnnualReport.prior)

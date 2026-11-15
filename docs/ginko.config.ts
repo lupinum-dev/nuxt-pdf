@@ -16,6 +16,7 @@ export default defineSite({
   seo: {
     description: site.description,
     color: "#00dc82",
+    image: "/og.png",
     organization: { name: "Lupinum", url: "https://lupinum.com", logo: "/icon-light.svg", sameAs: [site.repository] },
   },
   agents: { description: "Use this site to author and render PDF documents with Nuxt PDF." },
