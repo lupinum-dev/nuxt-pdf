@@ -15,7 +15,7 @@
 </h1>
 
 <p align="center">
-  Author and render PDFs with Vue components in Nuxt.
+  Generate PDFs from typed Vue templates in Nuxt. No headless browser.
 </p>
 
 <p align="center">
@@ -24,6 +24,17 @@
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-00DC82" alt="MIT license"></a>
   <a href="https://discord.lupinum.com"><img src="https://img.shields.io/badge/Discord-18181B?logo=discord" alt="Discord"></a>
   <a href="https://deepwiki.com/lupinum-dev/nuxt-pdf"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+</p>
+
+<p align="center">
+  <a href="https://nuxt-pdf.lupinum.com/#pdf-showcase-title">
+    <img src="https://nuxt-pdf.lupinum.com/showcase/showcase.png" width="800" alt="An invoice, an annual report with charts, an e-book and a certificate, all rendered by Nuxt PDF">
+  </a>
+</p>
+
+<p align="center">
+  Every page above is a Vue template in <a href="./playground/pdfs"><code>playground/pdfs/</code></a>.
+  <a href="https://nuxt-pdf.lupinum.com/showcase/invoice.pdf">Open the invoice PDF</a>.
 </p>
 
 > [!IMPORTANT]
@@ -97,7 +108,7 @@ definePdf<InvoiceProps>({
     invoice: {
       customer: 'Ada Lovelace',
       number: 'INV-001',
-      total: 'EUR 1,250.00',
+      total: 'USD 1,250.00',
     },
   },
 })
@@ -128,7 +139,7 @@ export default defineEventHandler(async () => {
     invoice: {
       customer: 'Ada Lovelace',
       number: 'INV-001',
-      total: 'EUR 1,250.00',
+      total: 'USD 1,250.00',
     },
   })
 
@@ -248,7 +259,7 @@ const { parsed } = await renderPdfSfc('./pdfs/invoice.vue', {
   invoice: {
     customer: 'Ada Lovelace',
     number: 'INV-001',
-    total: 'EUR 1,250.00',
+    total: 'USD 1,250.00',
   },
 })
 

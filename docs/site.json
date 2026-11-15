@@ -1,6 +1,6 @@
 {
   "name": "Nuxt PDF",
-  "description": "Author and render PDFs with Vue components in Nuxt.",
+  "description": "Generate PDFs from typed Vue templates in Nuxt. No headless browser.",
   "url": "https://nuxt-pdf.lupinum.com",
   "repository": "https://github.com/lupinum-dev/nuxt-pdf",
   "discord": "https://discord.lupinum.com"

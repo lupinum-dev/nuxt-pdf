@@ -1,13 +1,21 @@
 {
   "name": "@lupinum/nuxt-pdf",
   "version": "0.4.0-beta.6",
-  "description": "Author and render PDFs with Vue components in Nuxt",
+  "description": "Generate PDFs from typed Vue templates in Nuxt: invoices, reports and more, rendered on the server without a headless browser",
   "keywords": [
     "nuxt",
+    "nuxt-module",
+    "nuxt4",
     "pdf",
+    "pdf-generation",
     "vue",
+    "vue-pdf",
+    "invoice",
+    "report",
+    "document-generation",
     "server-rendering",
-    "document-generation"
+    "typescript",
+    "puppeteer-alternative"
   ],
   "homepage": "https://nuxt-pdf.lupinum.com",
   "bugs": {
