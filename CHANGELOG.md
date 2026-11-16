@@ -4,6 +4,14 @@ All notable changes to `@lupinum/nuxt-pdf` are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.4.0-beta.7
+
+### Patch Changes
+
+- [#84](https://github.com/lupinum-dev/nuxt-pdf/pull/84) [`efd5c74`](https://github.com/lupinum-dev/nuxt-pdf/commit/efd5c74150752ac278252c8d49315a6c050e6eed) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix missing letters when one server process renders several PDFs with the same embedded font
+  
+  A letter that an earlier render only used inside a composite glyph, such as the O in Ö, disappeared from later renders ("Own" printed as "wn"). Each render now uses its own font store.
+
 ## 0.4.0-beta.6
 
 ### Patch Changes
