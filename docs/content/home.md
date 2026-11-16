@@ -36,7 +36,7 @@ const props = defineProps<{ invoice: { number: string; total: string } }>()
 definePdf({
   title: ({ invoice }) => `Invoice ${invoice.number}`,
   filename: ({ invoice }) => `invoice-${invoice.number}.pdf`,
-  sampleData: { invoice: { number: "INV-001", total: "EUR 1,250.00" } },
+  sampleData: { invoice: { number: "INV-001", total: "USD 1,250.00" } },
 })
 </script>
 
@@ -54,7 +54,7 @@ import { pdf } from "#pdf";
 
 export default defineEventHandler(async () => {
   const result = await pdf.invoice.render({
-    invoice: { number: "INV-001", total: "EUR 1,250.00" },
+    invoice: { number: "INV-001", total: "USD 1,250.00" },
   });
   return result.response();
 });

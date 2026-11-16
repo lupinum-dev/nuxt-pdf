@@ -37,16 +37,16 @@ const baseInvoice: Omit<Invoice, 'includeBrief'> = {
   number: 'FN-1042',
   issueDate: '20 July 2026',
   dueDate: '19 August 2026',
-  currency: 'EUR',
+  currency: 'USD',
   purchaseOrder: 'PO-4821',
   from: {
-    name: 'Fieldnote Studio GmbH',
-    address: ['Wiedner Hauptstraße 52', '1040 Vienna, Austria'],
+    name: 'Fieldnote Studio',
+    address: ['400 Brannan Street', 'San Francisco, CA 94107', 'United States'],
     email: 'accounts@fieldnote.studio',
   },
   customer: {
-    name: 'Northstar Alpine AG',
-    address: ['Seefeldstrasse 122', '8008 Zürich, Switzerland'],
+    name: 'Northstar Outdoor Co.',
+    address: ['1200 Pine Street, Suite 400', 'Seattle, WA 98101', 'United States'],
     email: 'finance@northstar.example',
   },
   lines: [
@@ -79,7 +79,7 @@ const baseInvoice: Omit<Invoice, 'includeBrief'> = {
       unitPrice: 850,
     },
   ],
-  taxRate: 0.2,
+  taxRate: 0.085,
   paymentNote: 'Please include invoice FN-1042 with your bank transfer.',
   projectBrief: {
     title: 'Alpine impact report · 2026',
@@ -117,7 +117,7 @@ export const invoiceTotal = (invoice: Invoice): number => {
 export const formatInvoiceMoney = (
   value: number,
   currency: string,
-): string => new Intl.NumberFormat('en-GB', {
+): string => new Intl.NumberFormat('en-US', {
   currency,
   currencyDisplay: 'symbol',
   minimumFractionDigits: 2,

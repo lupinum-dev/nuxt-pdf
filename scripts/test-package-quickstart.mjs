@@ -242,7 +242,7 @@ definePdf<InvoiceProps>({
     invoice: {
       customer: 'Ada Lovelace',
       number: 'QS-001',
-      total: 'EUR 1,250.00',
+      total: 'USD 1,250.00',
     },
   },
 })
@@ -280,7 +280,7 @@ export default defineEventHandler(async () => {
     invoice: {
       customer: 'Ada Lovelace',
       number: 'QS-001',
-      total: 'EUR 1,250.00',
+      total: 'USD 1,250.00',
     },
   }
 
@@ -304,7 +304,7 @@ const props = {
   invoice: {
     customer: 'Ada Lovelace',
     number: 'QS-001',
-    total: 'EUR 1,250.00',
+    total: 'USD 1,250.00',
   },
 }
 const rendered = await renderPdfSfc(
@@ -361,7 +361,7 @@ const assertPdfSemantics = async (bytes) => {
 
     assert(text.includes('Installable invoice QS-001'), `PDF is missing the typed invoice data. Extracted: ${JSON.stringify(text)}`)
     assert(text.includes('Prepared for Ada Lovelace'), 'PDF is missing the customer data.')
-    assert(text.includes('Total: EUR 1,250.00'), 'PDF is missing the nested total.')
+    assert(text.includes('Total: USD 1,250.00'), 'PDF is missing the nested total.')
     assert(text.includes('Target page 1'), 'PDF is missing the resolved destination page.')
     assert(text.includes('Page 1 of 1'), 'PDF is missing dynamic page text.')
   }

@@ -6,13 +6,14 @@ defineProps<{
 </script>
 
 <template>
-  <PdfView :style="{ marginTop: 28 }">
+  <PdfView :style="{ marginTop: 26 }">
     <PdfText
       :min-presence-ahead="54"
       :style="{
-        color: '#47734F',
+        color: '#3E6B48',
         fontSize: 7,
-        letterSpacing: 1.2,
+        fontWeight: 700,
+        letterSpacing: 1.4,
         marginBottom: 7,
         textTransform: 'uppercase',
       }"
@@ -23,8 +24,10 @@ defineProps<{
       :min-presence-ahead="42"
       :style="{
         color: '#18251D',
-        fontSize: 15,
-        marginBottom: 13,
+        fontFamily: 'Lora',
+        fontSize: 16,
+        fontWeight: 600,
+        marginBottom: 12,
       }"
     >
       {{ title }}
