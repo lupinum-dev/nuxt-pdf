@@ -17,7 +17,7 @@ import {
   fmtPercent,
   fmtThousands,
 } from '../../../shared/annual'
-import { accent, ink, paper, sectorTones } from './theme'
+import { accent, sectorTones } from './theme'
 import { angularSpans, areaPath, donutSegment, linePoints, polar, yScale } from './geometry'
 
 // --- Grouped bar chart -----------------------------------------------------
@@ -36,6 +36,8 @@ export interface BarModel {
   ticks: BarTick[]
   bars: Bar[]
   groups: BarGroup[]
+  /** The chart in words, for assistive technology: every value it plots. */
+  alt: string
 }
 
 export const barModel = (quarters: readonly QuarterRevenue[]): BarModel => {
@@ -80,7 +82,15 @@ export const barModel = (quarters: readonly QuarterRevenue[]): BarModel => {
     center: plotLeft + index * slot + slot / 2,
   }))
 
-  return { width, height: baseline + 22, gutter, plotLeft, plotW, baseline, barW, ticks, bars, groups }
+  const series = (name: string, pick: (quarter: QuarterRevenue) => number): string =>
+    `${name}: ${quarters.map(quarter => `${quarter.label} ${fmtThousands(pick(quarter))}`).join(', ')}.`
+  const alt = [
+    'Grouped bar chart of revenue by quarter, in EUR thousands.',
+    series('Consulting', quarter => quarter.consulting),
+    series('Licensing', quarter => quarter.licensing),
+  ].join(' ')
+
+  return { width, height: baseline + 22, gutter, plotLeft, plotW, baseline, barW, ticks, bars, groups, alt }
 }
 
 // --- Line + area chart -----------------------------------------------------
@@ -104,7 +114,11 @@ export interface LineModel {
   months: MonthTick[]
   first: LineLabelPoint
   last: LineLabelPoint
+  /** The chart in words, for assistive technology: start, end and trend. */
+  alt: string
 }
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 export const lineModel = (points: readonly MonthlyPoint[]): LineModel => {
   const width = 222
@@ -121,6 +135,12 @@ export const lineModel = (points: readonly MonthlyPoint[]): LineModel => {
 
   const firstPoint = points[0]!
   const lastPoint = points[points.length - 1]!
+  // The labels are initials (J, F, M …); twelve points are the calendar months.
+  const monthName = (index: number): string =>
+    points.length === MONTH_NAMES.length ? MONTH_NAMES[index]! : `month ${index + 1}`
+  const rising = values.every((value, index) => index === 0 || value > values[index - 1]!)
+  const alt = `Line chart of monthly recurring revenue, in EUR thousands: ${rising ? 'it rises every month, ' : ''}`
+    + `from €${firstPoint.mrr}K in ${monthName(0)} to €${lastPoint.mrr}K in ${monthName(points.length - 1)}.`
 
   return {
     width,
@@ -138,6 +158,7 @@ export const lineModel = (points: readonly MonthlyPoint[]): LineModel => {
     months: points.map((point, index) => ({ label: point.label, x: xOf(index) })),
     first: { label: `€${firstPoint.mrr}K`, x: plotLeft - 2, y: yOf(firstPoint.mrr) - 11 },
     last: { label: `€${lastPoint.mrr}K`, x: width - 52, y: yOf(lastPoint.mrr) - 13 },
+    alt,
   }
 }
 
@@ -152,6 +173,8 @@ export interface DonutModel {
   totalK: string
   segments: DonutSegment[]
   legend: DonutLegendRow[]
+  /** The chart in words, for assistive technology; the legend next to it lists every share. */
+  alt: string
 }
 
 export const donutModel = (sectors: readonly RevenueSector[]): DonutModel => {
@@ -183,9 +206,15 @@ export const donutModel = (sectors: readonly RevenueSector[]): DonutModel => {
     }
   })
 
+  const highlighted = rows.find(row => row.highlight)
+  const alt = `Donut chart of the €${fmtThousands(total)}K revenue by client sector, in ${rows.length} segments`
+    + `${highlighted === undefined ? '' : `; the ${highlighted.label} segment (${highlighted.pct}) is pulled out and in the accent color`}.`
+    + ` Shares: ${rows.map(row => `${row.label} ${row.pct}`).join(', ')}.`
+
   return {
     size,
     total,
+    alt,
     totalLabel: fmtMoneyShort(total),
     totalK: `€${fmtThousands(total)}K`,
     segments: rows.map(({ id, d, color, transform }) => ({ id, d, fill: color, transform })),
@@ -200,34 +229,13 @@ export interface LedgerView {
   label: string
   current: string
   prior: string
-  labelColor: string
-  labelWeight: number
-  valueColor: string
-  valueWeight: number
-  fontSize: number
-  ruled: boolean
-  topColor: string
-  topWidth: number
+  /** Selects the row's classes in annual-report.vue: subtotal and total rows are ruled and bolder. */
+  kind: LedgerRow['kind']
 }
 
 // Accounting convention: parenthesise outflows, plain positives otherwise.
 const money = (value: number): string =>
   value < 0 ? `(${fmtThousands(Math.abs(value))})` : fmtThousands(value)
-
-const styleFor = (row: LedgerRow): Omit<LedgerView, 'id' | 'label' | 'current' | 'prior'> => {
-  const isTotal = row.kind === 'total'
-  const isSubtotal = row.kind === 'subtotal'
-  return {
-    labelColor: isTotal || isSubtotal ? ink.strong : ink.soft,
-    labelWeight: isTotal ? 700 : isSubtotal ? 600 : 400,
-    valueColor: isTotal ? accent.base : ink.strong,
-    valueWeight: isTotal ? 700 : isSubtotal ? 600 : 400,
-    fontSize: isTotal ? 10.5 : 9,
-    ruled: isTotal || isSubtotal,
-    topColor: isTotal ? accent.base : paper.hairlineStrong,
-    topWidth: isTotal ? 0.75 : 0.5,
-  }
-}
 
 export const ledgerView = (current: YearFigures, prior: YearFigures): LedgerView[] =>
   buildLedger(current, prior).map(row => ({
@@ -235,5 +243,5 @@ export const ledgerView = (current: YearFigures, prior: YearFigures): LedgerView
     label: row.label,
     current: money(row.current),
     prior: money(row.prior),
-    ...styleFor(row),
+    kind: row.kind,
   }))

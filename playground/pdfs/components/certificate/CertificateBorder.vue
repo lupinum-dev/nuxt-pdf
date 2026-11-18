@@ -49,13 +49,8 @@ const corners = computed(() => {
 
 <template>
   <PdfView
-    :style="{
-      height,
-      left: 0,
-      position: 'absolute',
-      top: 0,
-      width,
-    }"
+    class="layer"
+    :style="{ height, width }"
   >
     <PdfSvg
       :style="{ height, width }"
@@ -90,3 +85,11 @@ const corners = computed(() => {
     </PdfSvg>
   </PdfView>
 </template>
+
+<style>
+.layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+</style>

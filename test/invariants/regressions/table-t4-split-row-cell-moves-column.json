@@ -1,0 +1,87 @@
+{
+  "profile": "table",
+  "invariants": [
+    "I9"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 0,
+    "rule": "documents"
+  },
+  "note": "T4, fixed in TB1: in a row that split across pages, a cell with no line on one page left that page's part of the row, so the next cell moved one column left. Cause: upstream splitNodes walks a row's cells as if they were stacked, and our layout edit 7 (F4, \"a text with no line moves whole\") then moved that cell out of the row part. Rows now split in splitRowNodes (scripts/vendor-layout.mjs): every cell keeps its slot in both parts, an empty part where it has nothing to show. Edit 7 is unchanged outside rows. Found with keep [T4] in H3, reduced in 48 steps.",
+  "raw": {
+    "pages": [
+      {
+        "size": 2,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          51,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "table",
+            "font": 0,
+            "columns": [
+              {
+                "kind": 1,
+                "value": 0
+              },
+              {
+                "kind": 1,
+                "value": 0
+              }
+            ],
+            "header": true,
+            "headerCells": [],
+            "rows": [
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 37,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              },
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 3,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  },
+                  {
+                    "n": 39,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              }
+            ],
+            "marginTop": 5,
+            "marginBottom": 0
+          }
+        ],
+        "bookmark": false
+      }
+    ]
+  }
+}

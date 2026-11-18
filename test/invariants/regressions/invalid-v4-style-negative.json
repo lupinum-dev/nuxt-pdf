@@ -1,0 +1,34 @@
+{
+  "profile": "invalid",
+  "invariants": [
+    "I15"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 17,
+    "rule": "invalid"
+  },
+  "note": "V4 (fixed in slice V1): a negative style value rendered (fontSize -4 here). The sign rule (PDF_STYLE_SIGNS) now rejects it with the key and value. Found by the first invalid run of H4 (document 17, fault style-negative, base table); reduced by the harness.",
+  "raw": {
+    "fault": "style-negative",
+    "pick": 5,
+    "base": "table",
+    "raw": {
+      "pages": [
+        {
+          "size": 0,
+          "landscape": false,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "fixed": [],
+          "children": [],
+          "bookmark": false
+        }
+      ]
+    }
+  }
+}

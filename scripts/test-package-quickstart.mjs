@@ -232,7 +232,6 @@ type InvoiceProps = {
 }
 
 const props = defineProps<InvoiceProps>()
-const pageNumbers = usePdfPageNumbers()
 
 definePdf<InvoiceProps>({
   title: ({ invoice }) => \`Invoice \${invoice.number}\`,
@@ -262,12 +261,11 @@ definePdf<InvoiceProps>({
         Installable invoice {{ props.invoice.number }}
       </PdfText>
       <PdfText>Total: {{ props.invoice.total }}</PdfText>
-      <PdfText id="target">Target page {{ pageNumbers.target ?? '' }}</PdfText>
+      <PdfText id="target">Target page <PdfPageRef to="target" /></PdfText>
       <PdfText
         fixed
         :style="{ bottom: 24, position: 'absolute', right: 48 }"
-        :render="({ pageNumber, totalPages }) => \`Page \${pageNumber} of \${totalPages}\`"
-      />
+      >Page <PdfPageNumber /> of <PdfPageCount /></PdfText>
     </PdfPage>
   </PdfDocument>
 </template>

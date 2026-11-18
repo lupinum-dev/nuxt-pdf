@@ -1,16 +1,14 @@
 <script setup lang="ts">
-import type { PdfStyle } from '@lupinum/nuxt-pdf'
 import type { Invoice } from '../shared/invoice'
 import {
   compactInvoice,
   formatInvoiceMoney,
-  invoiceSubtotal,
-  invoiceTotal,
   sampleInvoice,
 } from '../shared/invoice'
+import { toEInvoice } from './components/invoice/e-invoice'
 import InvoiceLine from './components/invoice/InvoiceLine.vue'
+import InvoicePage from './components/invoice/InvoicePage.vue'
 import InvoiceSection from './components/invoice/InvoiceSection.vue'
-import { INVOICE_COLUMNS as columns } from './components/invoice/columns'
 
 defineOptions({ name: 'FieldnoteInvoicePdf' })
 
@@ -20,39 +18,15 @@ type InvoiceProps = {
 
 const props = defineProps<InvoiceProps>()
 const invoice = props.invoice
-const subtotal = invoiceSubtotal(invoice)
-const tax = subtotal * invoice.taxRate
-const total = invoiceTotal(invoice)
-const money = (value: number) => formatInvoiceMoney(value, invoice.currency)
+// The machine-readable copy of this invoice (Factur-X, profile EN 16931).
+// computeEInvoice (auto-imported) gives the totals the server writes into
+// its XML, so the page prints exactly those.
+const eInvoice = toEInvoice(invoice)
+const totals = computeEInvoice(eInvoice)
+const money = (value: string) => formatInvoiceMoney(Number(value), invoice.currency)
 
-const pageStyle = {
-  backgroundColor: '#FFFFFF',
-  color: '#18251D',
-  fontFamily: 'Fieldnote Sans',
-  fontSize: 9,
-  paddingBottom: 54,
-  paddingHorizontal: 48,
-  paddingTop: 44,
-} satisfies PdfStyle
-
-const footerLinkStyle = {
-  bottom: 24,
-  color: '#758078',
-  fontSize: 7,
-  left: 48,
-  position: 'absolute',
-  textDecoration: 'none',
-} satisfies PdfStyle
-
-const footerPageStyle = {
-  bottom: 24,
-  color: '#758078',
-  fontSize: 7,
-  left: 48,
-  position: 'absolute',
-  right: 48,
-  textAlign: 'right',
-} satisfies PdfStyle
+// #, description (takes the free width), quantity, rate, amount.
+const lineColumns = ['28pt', 1, '52pt', '78pt', '86pt'] as const
 
 definePdf<InvoiceProps>({
   title: ({ invoice }) => `Invoice ${invoice.number}`,
@@ -72,118 +46,97 @@ definePdf<InvoiceProps>({
     creator="Nuxt PDF"
     subject="Consulting services invoice"
   >
-    <PdfPage
-      size="A4"
-      :style="pageStyle"
-    >
-      <PdfView
-        fixed
-        :style="{
-          backgroundColor: '#315D3B',
-          height: 9,
-          left: 0,
-          position: 'absolute',
-          right: 0,
-          top: 0,
-        }"
-      />
+    <!-- Makes the PDF a Factur-X hybrid invoice, and so PDF/A-3b: every text
+         uses the registered "Fieldnote Sans" through the .page class. -->
+    <PdfFacturX
+      :invoice="eInvoice"
+      profile="EN 16931"
+    />
 
-      <PdfView
-        :style="{
-          alignItems: 'flex-start',
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-        }"
-      >
-        <PdfView :style="{ flexDirection: 'row' }">
+    <InvoicePage
+      head-pages="continuation"
+      :invoice-number="invoice.number"
+      :footer-href="`mailto:${invoice.from.email}`"
+      :footer-label="invoice.from.email"
+      class="page"
+    >
+      <PdfView class="masthead">
+        <PdfView class="brand">
           <PdfImage
             src="alpine.png"
-            :style="{ height: 46, objectFit: 'cover', width: 70 }"
+            class="brand-image"
           />
-          <PdfView :style="{ marginLeft: 13 }">
-            <PdfText :style="{ fontSize: 13, marginBottom: 5 }">
+          <PdfView class="brand-text">
+            <PdfText class="brand-name">
               Fieldnote Studio
             </PdfText>
-            <PdfText :style="{ color: '#6A756D', fontSize: 7.5 }">
+            <PdfText class="brand-tagline">
               Research · systems · reports
             </PdfText>
           </PdfView>
         </PdfView>
-        <PdfView :style="{ alignItems: 'flex-end' }">
-          <PdfText :style="{ color: '#47734F', fontSize: 7, letterSpacing: 1.3 }">
+        <PdfView class="invoice-id">
+          <PdfText class="invoice-label">
             INVOICE
           </PdfText>
-          <PdfText :style="{ fontSize: 10, marginTop: 5 }">
+          <PdfText class="invoice-number">
             {{ invoice.number }}
           </PdfText>
         </PdfView>
       </PdfView>
 
-      <PdfView
-        :style="{
-          alignItems: 'flex-end',
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          marginTop: 42,
-        }"
-      >
-        <PdfView :style="{ width: 305 }">
-          <PdfText :style="{ color: '#47734F', fontSize: 7, letterSpacing: 1.2, marginBottom: 9 }">
+      <PdfView class="summary">
+        <PdfView class="customer">
+          <PdfText class="customer-label">
             PREPARED FOR
           </PdfText>
-          <PdfText :style="{ fontSize: 25, lineHeight: 1.08 }">
+          <PdfText class="customer-name">
             {{ invoice.customer.name }}
           </PdfText>
         </PdfView>
-        <PdfView :style="{ width: 150 }">
-          <PdfText :style="{ color: '#758078', fontSize: 7, marginBottom: 4 }">
+        <PdfView class="amount-due">
+          <PdfText class="meta-label">
             Total due
           </PdfText>
-          <PdfText :style="{ fontSize: 18 }">
-            {{ money(total) }}
+          <PdfText class="amount-due-value">
+            {{ money(totals.grandTotal) }}
           </PdfText>
         </PdfView>
       </PdfView>
 
       <PdfView
-        :style="{
-          backgroundColor: '#F1F4F1',
-          flexDirection: 'row',
-          marginTop: 32,
-          paddingHorizontal: 16,
-          paddingVertical: 14,
-        }"
+        class="meta"
         :wrap="false"
       >
-        <PdfView :style="{ width: 124 }">
-          <PdfText :style="{ color: '#758078', fontSize: 7, marginBottom: 4 }">
+        <PdfView class="meta-cell">
+          <PdfText class="meta-label">
             Issued
           </PdfText>
-          <PdfText :style="{ fontSize: 8.5 }">
+          <PdfText class="meta-value">
             {{ invoice.issueDate }}
           </PdfText>
         </PdfView>
-        <PdfView :style="{ width: 124 }">
-          <PdfText :style="{ color: '#758078', fontSize: 7, marginBottom: 4 }">
+        <PdfView class="meta-cell">
+          <PdfText class="meta-label">
             Due
           </PdfText>
-          <PdfText :style="{ fontSize: 8.5 }">
+          <PdfText class="meta-value">
             {{ invoice.dueDate }}
           </PdfText>
         </PdfView>
-        <PdfView :style="{ width: 124 }">
-          <PdfText :style="{ color: '#758078', fontSize: 7, marginBottom: 4 }">
+        <PdfView class="meta-cell">
+          <PdfText class="meta-label">
             Purchase order
           </PdfText>
-          <PdfText :style="{ fontSize: 8.5 }">
+          <PdfText class="meta-value">
             {{ invoice.purchaseOrder }}
           </PdfText>
         </PdfView>
         <PdfView>
-          <PdfText :style="{ color: '#758078', fontSize: 7, marginBottom: 4 }">
+          <PdfText class="meta-label">
             Currency
           </PdfText>
-          <PdfText :style="{ fontSize: 8.5 }">
+          <PdfText class="meta-value">
             {{ invoice.currency }}
           </PdfText>
         </PdfView>
@@ -193,142 +146,94 @@ definePdf<InvoiceProps>({
         label="Services"
         title="Engagement summary"
       >
-        <PdfView
-          :style="{
-            borderBottomColor: '#9EA8A1',
-            borderBottomWidth: 1,
-            flexDirection: 'row',
-            paddingBottom: 8,
-          }"
-          :wrap="false"
-        >
-          <PdfText :style="{ color: '#758078', fontSize: 7, width: columns.sequence.width }">
-            #
-          </PdfText>
-          <PdfText :style="{ color: '#758078', fontSize: 7, width: columns.description.width }">
-            Description
-          </PdfText>
-          <PdfText :style="{ color: '#758078', fontSize: 7, textAlign: 'right', width: columns.quantity.width }">
-            Qty
-          </PdfText>
-          <PdfText :style="{ color: '#758078', fontSize: 7, textAlign: 'right', width: columns.rate.width }">
-            Rate
-          </PdfText>
-          <PdfText :style="{ color: '#758078', fontSize: 7, textAlign: 'right', width: columns.amount.width }">
-            Amount
-          </PdfText>
-        </PdfView>
-        <InvoiceLine
-          v-for="(line, index) in invoice.lines"
-          :key="line.id"
-          :currency="invoice.currency"
-          :index="index"
-          :line="line"
-        />
+        <PdfTable :columns="lineColumns">
+          <!-- Repeats at the top of every page the table reaches. -->
+          <PdfTableHeader class="line-header">
+            <PdfTableCell>#</PdfTableCell>
+            <PdfTableCell>Description</PdfTableCell>
+            <PdfTableCell align="right">
+              Qty
+            </PdfTableCell>
+            <PdfTableCell align="right">
+              Rate
+            </PdfTableCell>
+            <PdfTableCell align="right">
+              Amount
+            </PdfTableCell>
+          </PdfTableHeader>
+          <InvoiceLine
+            v-for="(line, index) in invoice.lines"
+            :key="line.id"
+            :currency="invoice.currency"
+            :index="index"
+            :line="line"
+          />
+        </PdfTable>
       </InvoiceSection>
 
       <PdfView
         :min-presence-ahead="108"
-        :style="{
-          alignItems: 'flex-end',
-          marginTop: 20,
-        }"
+        class="totals"
         :wrap="false"
       >
-        <PdfView :style="{ width: 220 }">
-          <PdfView :style="{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 }">
-            <PdfText :style="{ color: '#6A756D' }">
+        <PdfView class="totals-box">
+          <PdfView class="total-row">
+            <PdfText class="total-label">
               Subtotal
             </PdfText>
-            <PdfText>{{ money(subtotal) }}</PdfText>
+            <PdfText>{{ money(totals.taxBasisTotal) }}</PdfText>
           </PdfView>
-          <PdfView :style="{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 }">
-            <PdfText :style="{ color: '#6A756D' }">
+          <PdfView class="total-row">
+            <PdfText class="total-label">
               VAT {{ invoice.taxRate * 100 }}%
             </PdfText>
-            <PdfText>{{ money(tax) }}</PdfText>
+            <PdfText>{{ money(totals.taxTotal) }}</PdfText>
           </PdfView>
-          <PdfView
-            :style="{
-              borderTopColor: '#315D3B',
-              borderTopWidth: 1.5,
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              marginTop: 6,
-              paddingTop: 10,
-            }"
-          >
-            <PdfText :style="{ fontSize: 10 }">
+          <PdfView class="grand-total">
+            <PdfText class="grand-total-label">
               Total due
             </PdfText>
-            <PdfText :style="{ fontSize: 12 }">
-              {{ money(total) }}
+            <PdfText class="grand-total-value">
+              {{ money(totals.grandTotal) }}
             </PdfText>
           </PdfView>
         </PdfView>
       </PdfView>
 
       <PdfView
-        :style="{
-          borderLeftColor: '#DABF5B',
-          borderLeftWidth: 3,
-          marginTop: 28,
-          paddingLeft: 12,
-        }"
+        class="payment-note"
         :wrap="false"
       >
-        <PdfText :style="{ color: '#6A756D', fontSize: 7, marginBottom: 4 }">
+        <PdfText class="payment-note-label">
           Payment note
         </PdfText>
-        <PdfText :style="{ fontSize: 8.5 }">
+        <PdfText class="meta-value">
           {{ invoice.paymentNote }}
         </PdfText>
       </PdfView>
+    </InvoicePage>
 
-      <PdfLink
-        fixed
-        :href="`mailto:${invoice.from.email}`"
-        :style="footerLinkStyle"
-      >
-        {{ invoice.from.email }}
-      </PdfLink>
-      <PdfText
-        fixed
-        :render="({ pageNumber, totalPages }) => `Page ${pageNumber} / ${totalPages}`"
-        :style="footerPageStyle"
-      />
-    </PdfPage>
-
-    <PdfPage
+    <InvoicePage
       v-if="invoice.includeBrief"
-      size="A4"
-      :style="pageStyle"
+      head-pages="all"
+      :invoice-number="invoice.number"
+      footer-href="https://nuxt.com"
+      footer-label="Generated with Nuxt PDF"
+      class="page"
     >
-      <PdfView
-        fixed
-        :style="{
-          backgroundColor: '#315D3B',
-          height: 9,
-          left: 0,
-          position: 'absolute',
-          right: 0,
-          top: 0,
-        }"
-      />
-
-      <PdfText :style="{ color: '#47734F', fontSize: 7, letterSpacing: 1.2 }">
+      <PdfText class="brief-label">
         PROJECT CONTEXT
       </PdfText>
-      <PdfText :style="{ fontSize: 27, lineHeight: 1.08, marginTop: 10, width: 360 }">
+      <PdfText class="brief-title">
         {{ invoice.projectBrief.title }}
       </PdfText>
-      <PdfText :style="{ color: '#6A756D', fontSize: 10, lineHeight: 1.55, marginTop: 16, width: 420 }">
+      <PdfText class="brief-summary">
         {{ invoice.projectBrief.summary }}
       </PdfText>
 
       <PdfImage
         src="alpine.png"
-        :style="{ height: 190, marginTop: 28, objectFit: 'cover', width: '100%' }"
+        class="brief-image"
       />
 
       <InvoiceSection
@@ -338,78 +243,311 @@ definePdf<InvoiceProps>({
         <PdfView
           v-for="(deliverable, index) in invoice.projectBrief.deliverables"
           :key="deliverable"
-          :style="{
-            borderTopColor: '#DDE3DE',
-            borderTopWidth: 1,
-            flexDirection: 'row',
-            paddingVertical: 13,
-          }"
+          class="deliverable"
           :wrap="false"
         >
-          <PdfText :style="{ color: '#47734F', fontSize: 8, width: 34 }">
+          <PdfText class="deliverable-number">
             {{ String(index + 1).padStart(2, '0') }}
           </PdfText>
-          <PdfText :style="{ fontSize: 9.5 }">
+          <PdfText class="deliverable-name">
             {{ deliverable }}
           </PdfText>
         </PdfView>
       </InvoiceSection>
 
       <PdfView
-        :style="{
-          backgroundColor: '#F1F4F1',
-          flexDirection: 'row',
-          marginTop: 30,
-          padding: 18,
-        }"
+        class="parties"
         :wrap="false"
       >
-        <PdfView :style="{ paddingRight: 24, width: '50%' }">
-          <PdfText :style="{ color: '#758078', fontSize: 7, marginBottom: 6 }">
+        <PdfView class="party party-from">
+          <PdfText class="party-label">
             From
           </PdfText>
-          <PdfText :style="{ fontSize: 9, marginBottom: 4 }">
+          <PdfText class="party-name">
             {{ invoice.from.name }}
           </PdfText>
           <PdfText
             v-for="line in invoice.from.address"
             :key="line"
-            :style="{ color: '#6A756D', fontSize: 7.5 }"
+            class="party-address"
           >
             {{ line }}
           </PdfText>
         </PdfView>
-        <PdfView :style="{ width: '50%' }">
-          <PdfText :style="{ color: '#758078', fontSize: 7, marginBottom: 6 }">
+        <PdfView class="party">
+          <PdfText class="party-label">
             Bill to
           </PdfText>
-          <PdfText :style="{ fontSize: 9, marginBottom: 4 }">
+          <PdfText class="party-name">
             {{ invoice.customer.name }}
           </PdfText>
           <PdfText
             v-for="line in invoice.customer.address"
             :key="line"
-            :style="{ color: '#6A756D', fontSize: 7.5 }"
+            class="party-address"
           >
             {{ line }}
           </PdfText>
         </PdfView>
       </PdfView>
 
-      <PdfNote>Project context supplied with invoice {{ invoice.number }}.</PdfNote>
-
-      <PdfLink
-        fixed
-        href="https://nuxt.com"
-        :style="footerLinkStyle"
-      >
-        Generated with Nuxt PDF
-      </PdfLink>
-      <PdfText
-        fixed
-        :render="({ pageNumber, totalPages }) => `Page ${pageNumber} / ${totalPages}`"
-        :style="footerPageStyle"
-      />
-    </PdfPage>
+      <!-- A printed line, not a PdfNote: PDF/A does not allow the engine's notes. -->
+      <PdfText class="context-note">
+        Project context supplied with invoice {{ invoice.number }}.
+      </PdfText>
+    </InvoicePage>
   </PdfDocument>
 </template>
+
+<style>
+:root {
+  --ink-soft: #6A756D;
+  --muted: #758078;
+  --accent: #47734F;
+  --page-margin: 48pt;
+}
+.page {
+  padding: 44pt var(--page-margin) 54pt;
+  font-family: "Fieldnote Sans";
+  font-size: 9pt;
+  color: #18251D;
+  background-color: #FFFFFF;
+}
+
+.masthead {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.brand {
+  flex-direction: row;
+}
+
+.brand-image {
+  width: 70pt;
+  height: 46pt;
+  object-fit: cover;
+}
+
+.brand-text {
+  margin-left: 13pt;
+}
+
+.brand-name {
+  margin-bottom: 5pt;
+  font-size: 13pt;
+}
+
+.brand-tagline {
+  font-size: 7.5pt;
+  color: var(--ink-soft);
+}
+
+.invoice-id {
+  align-items: flex-end;
+}
+
+.invoice-label {
+  font-size: 7pt;
+  letter-spacing: 1.3pt;
+  color: var(--accent);
+}
+
+.invoice-number {
+  margin-top: 5pt;
+  font-size: 10pt;
+}
+
+.summary {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: 42pt;
+}
+
+.customer {
+  width: 305pt;
+}
+
+.customer-label {
+  margin-bottom: 9pt;
+  font-size: 7pt;
+  letter-spacing: 1.2pt;
+  color: var(--accent);
+}
+
+.customer-name {
+  font-size: 25pt;
+  line-height: 1.08;
+}
+
+.amount-due {
+  width: 150pt;
+}
+
+/* Small grey caption above a value: the amount due and the meta strip. */
+.meta-label {
+  margin-bottom: 4pt;
+  font-size: 7pt;
+  color: var(--muted);
+}
+
+.amount-due-value {
+  font-size: 18pt;
+}
+
+.meta {
+  flex-direction: row;
+  margin-top: 32pt;
+  padding: 14pt 16pt;
+  background-color: #F1F4F1;
+}
+
+.meta-cell {
+  width: 124pt;
+}
+
+.meta-value {
+  font-size: 8.5pt;
+}
+
+.line-header {
+  padding-bottom: 8pt;
+  border-bottom-width: 1pt;
+  border-bottom-color: #9EA8A1;
+  font-size: 7pt;
+  color: var(--muted);
+}
+
+.totals {
+  align-items: flex-end;
+  margin-top: 20pt;
+}
+
+.totals-box {
+  width: 220pt;
+}
+
+.total-row {
+  flex-direction: row;
+  justify-content: space-between;
+  padding-vertical: 5pt;
+}
+
+.total-label {
+  color: var(--ink-soft);
+}
+
+.grand-total {
+  flex-direction: row;
+  justify-content: space-between;
+  margin-top: 6pt;
+  padding-top: 10pt;
+  border-top-width: 1.5pt;
+  border-top-color: #315D3B;
+}
+
+.grand-total-label {
+  font-size: 10pt;
+}
+
+.grand-total-value {
+  font-size: 12pt;
+}
+
+.payment-note {
+  margin-top: 28pt;
+  padding-left: 12pt;
+  border-left-width: 3pt;
+  border-left-color: #DABF5B;
+}
+
+.payment-note-label {
+  margin-bottom: 4pt;
+  font-size: 7pt;
+  color: var(--ink-soft);
+}
+
+.brief-label {
+  font-size: 7pt;
+  letter-spacing: 1.2pt;
+  color: var(--accent);
+}
+
+.brief-title {
+  margin-top: 10pt;
+  width: 360pt;
+  font-size: 27pt;
+  line-height: 1.08;
+}
+
+.brief-summary {
+  margin-top: 16pt;
+  width: 420pt;
+  font-size: 10pt;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.brief-image {
+  margin-top: 28pt;
+  width: 100%;
+  height: 190pt;
+  object-fit: cover;
+}
+
+.deliverable {
+  flex-direction: row;
+  padding-vertical: 13pt;
+  border-top-width: 1pt;
+  border-top-color: #DDE3DE;
+}
+
+.deliverable-number {
+  width: 34pt;
+  font-size: 8pt;
+  color: var(--accent);
+}
+
+.deliverable-name {
+  font-size: 9.5pt;
+}
+
+.parties {
+  flex-direction: row;
+  margin-top: 30pt;
+  padding: 18pt;
+  background-color: #F1F4F1;
+}
+
+.party {
+  width: 50%;
+}
+
+.party-from {
+  padding-right: 24pt;
+}
+
+.party-label {
+  margin-bottom: 6pt;
+  font-size: 7pt;
+  color: var(--muted);
+}
+
+.party-name {
+  margin-bottom: 4pt;
+  font-size: 9pt;
+}
+
+.party-address {
+  font-size: 7.5pt;
+  color: var(--ink-soft);
+}
+
+.context-note {
+  margin-top: 12pt;
+  font-size: 7.5pt;
+  color: var(--muted);
+}
+</style>

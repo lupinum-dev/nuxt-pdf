@@ -1,11 +1,5 @@
 import { defineComponent, h } from 'vue'
-import {
-  PdfDocument,
-  PdfLink,
-  PdfNote,
-  PdfPage,
-  PdfText,
-} from '../../../src/runtime/components'
+import { PDF_COMPONENTS } from '../../../src/runtime/components'
 import {
   documentMeta,
   linkHitSlop,
@@ -14,6 +8,8 @@ import {
   noteContent,
   pageSetupCases,
 } from './annotations-data'
+
+const { PdfDocument, PdfLink, PdfNote, PdfPage, PdfText } = PDF_COMPONENTS
 
 export const VueAnnotationsDocument = defineComponent({
   name: 'VueAnnotationsDocument',

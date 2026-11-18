@@ -25,12 +25,3 @@ export const paper = {
 
 /** A tonal green ramp for the donut, dark (largest) to pale, plus the accent. */
 export const sectorTones = ['#9CB0A2', '#B0C0B4', '#C4D0C7', '#D8E0DA'] as const
-
-/** Small-caps label styling shared by section eyebrows and tile labels. */
-export const eyebrow = {
-  color: accent.base,
-  fontFamily: 'Inter',
-  fontWeight: 600,
-  fontSize: 8,
-  letterSpacing: 1.6,
-} as const

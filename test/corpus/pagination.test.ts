@@ -10,7 +10,6 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Component } from 'vue'
-import type { DocumentNode } from '@react-pdf/layout'
 import {
   Font as ReactFont,
   renderToBuffer as renderReactDocument,
@@ -18,7 +17,7 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { mountPdfComponent, type PdfComponentProps } from '../../src/runtime/renderer'
 import { bundlePdfFonts } from '../../src/build/fonts'
-import { renderDocument } from '../../src/runtime/server/engine/render-document'
+import { renderPlainDocument } from '../../src/runtime/server/engine/plain-tree'
 import { createPdfFontStore, type PdfFontStore } from '../../src/runtime/server/engine/fonts'
 import {
   comparePageImages,
@@ -115,8 +114,7 @@ async function renderReact(document: ReturnType<typeof createReactWrapFalseDocum
 async function renderVue(component: Component, props: PdfComponentProps = {}): Promise<Rendered> {
   const mounted = await mountPdfComponent(component, props)
   try {
-    const result = await renderDocument(
-      mounted.document as unknown as DocumentNode,
+    const result = await renderPlainDocument(mounted.document,
       { fontStore },
     )
     const pdf = await parsePdf(result.bytes)

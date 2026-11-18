@@ -6,12 +6,9 @@ import {
   Text,
   View,
 } from '@react-pdf/renderer'
-import {
-  PdfDocument,
-  PdfPage,
-  PdfText,
-  PdfView,
-} from '../../../src/runtime/components'
+import { PDF_COMPONENTS } from '../../../src/runtime/components'
+
+const { PdfDocument, PdfPage, PdfText, PdfView } = PDF_COMPONENTS
 
 // Three wrappable nested Views; the 2nd and 3rd each carry `break: true`, so an
 // otherwise short single-page document must land each block on its own page.

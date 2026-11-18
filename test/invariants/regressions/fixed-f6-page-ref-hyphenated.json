@@ -1,0 +1,326 @@
+{
+  "profile": "fixed",
+  "invariants": [
+    "I3"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 29,
+    "rule": "documents"
+  },
+  "note": "Finding F6, fixed in the adapter (L3b, internals/harness-r1/l3b-f3-f6-g3.md): a page reference joins the text instances next to it (plain-tree.ts). It was: the text before a PdfPageRef and the page number were two text runs, so textkit split them into two words and the line breaker hyphenated between them although the text has hyphenate={false} (\"r2p-\" then \"10\" on the next line). Reduced from fixed document 29 of seed 20261116 in 168 steps.",
+  "raw": {
+    "pages": [
+      {
+        "size": 2,
+        "landscape": false,
+        "padding": [
+          51,
+          20,
+          47,
+          56
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "view",
+            "margin": [
+              7,
+              11,
+              0,
+              7
+            ],
+            "padding": [
+              18,
+              10,
+              0,
+              1
+            ],
+            "border": 3,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "view",
+                "margin": [
+                  0,
+                  9,
+                  0,
+                  19
+                ],
+                "padding": [
+                  0,
+                  17,
+                  0,
+                  19
+                ],
+                "border": 0,
+                "minHeight": 0,
+                "wrap": true,
+                "brk": false,
+                "children": [
+                  {
+                    "t": "text",
+                    "n": 25,
+                    "font": 0,
+                    "lineHeight": 0,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 0,
+                    "marginBottom": 0,
+                    "extra": 2,
+                    "ref": 0
+                  },
+                  {
+                    "t": "view",
+                    "margin": [
+                      0,
+                      4,
+                      0,
+                      10
+                    ],
+                    "padding": [
+                      0,
+                      1,
+                      0,
+                      5
+                    ],
+                    "border": 0,
+                    "minHeight": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "children": [
+                      {
+                        "t": "text",
+                        "n": 70,
+                        "font": 0,
+                        "lineHeight": 0,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 0,
+                        "marginBottom": 0,
+                        "extra": 0,
+                        "ref": 0
+                      },
+                      {
+                        "t": "text",
+                        "n": 11,
+                        "font": 2,
+                        "lineHeight": 0,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 0,
+                        "marginBottom": 0,
+                        "extra": 2,
+                        "ref": 458
+                      },
+                      {
+                        "t": "text",
+                        "n": 1,
+                        "font": 0,
+                        "lineHeight": 0,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 0,
+                        "marginBottom": 7,
+                        "extra": 1,
+                        "ref": 0
+                      }
+                    ]
+                  },
+                  {
+                    "t": "text",
+                    "n": 1,
+                    "font": 3,
+                    "lineHeight": 0,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 23,
+                    "marginBottom": 17,
+                    "extra": 0,
+                    "ref": 0
+                  }
+                ]
+              },
+              {
+                "t": "text",
+                "n": 7,
+                "font": 3,
+                "lineHeight": 3,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 19,
+                "marginBottom": 1,
+                "extra": 0,
+                "ref": 0
+              },
+              {
+                "t": "text",
+                "n": 1,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": true,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0
+              },
+              {
+                "t": "text",
+                "n": 22,
+                "font": 2,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": true,
+                "marginTop": 2,
+                "marginBottom": 4,
+                "extra": 0,
+                "ref": 0
+              },
+              {
+                "t": "text",
+                "n": 105,
+                "font": 1,
+                "lineHeight": 3,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 18,
+                "marginBottom": 8,
+                "extra": 0,
+                "ref": 0
+              },
+              {
+                "t": "text",
+                "n": 377,
+                "font": 1,
+                "lineHeight": 4,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 21,
+                "marginBottom": 1,
+                "extra": 0,
+                "ref": 0
+              },
+              {
+                "t": "text",
+                "n": 261,
+                "font": 0,
+                "lineHeight": 4,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 5,
+                "marginBottom": 9,
+                "extra": 2,
+                "ref": 0
+              },
+              {
+                "t": "text",
+                "n": 6,
+                "font": 5,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 13,
+                "marginBottom": 9,
+                "extra": 0,
+                "ref": 0
+              },
+              {
+                "t": "text",
+                "n": 15,
+                "font": 2,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 12,
+                "marginBottom": 2,
+                "extra": 0,
+                "ref": 0
+              },
+              {
+                "t": "text",
+                "n": 7,
+                "font": 4,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 9,
+                "marginBottom": 15,
+                "extra": 0,
+                "ref": 0
+              },
+              {
+                "t": "text",
+                "n": 7,
+                "font": 4,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 17,
+                "marginBottom": 7,
+                "extra": 0,
+                "ref": 0
+              },
+              {
+                "t": "text",
+                "n": 1,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0
+              },
+              {
+                "t": "text",
+                "n": 1,
+                "font": 1,
+                "lineHeight": 4,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0
+              },
+              {
+                "t": "text",
+                "n": 28,
+                "font": 0,
+                "lineHeight": 4,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,17 +1,12 @@
 import { defineComponent, h } from 'vue'
-import {
-  PdfDocument,
-  PdfImage,
-  PdfLink,
-  PdfPage,
-  PdfText,
-  PdfView,
-} from '../../src/runtime/components'
+import { PDF_COMPONENTS } from '../../src/runtime/components'
 import {
   conformanceLines,
   conformanceParagraphs,
   conformanceStyles as styles,
 } from './conformance-data'
+
+const { PdfDocument, PdfImage, PdfLink, PdfPage, PdfPageCount, PdfPageNumber, PdfText, PdfView } = PDF_COMPONENTS
 
 const Section = defineComponent({
   name: 'ConformanceSection',
@@ -35,7 +30,9 @@ const Section = defineComponent({
 export const VueConformanceDocument = defineComponent({
   name: 'VueConformanceDocument',
   props: {
-    imagePath: { type: String, required: true },
+    // Admitted bytes (a Buffer, as image resolution hands them over): this fixture
+    // goes to the engine without image resolution.
+    image: { type: Uint8Array, required: true },
     showConditional: { type: Boolean, default: true },
   },
   setup(props) {
@@ -55,7 +52,7 @@ export const VueConformanceDocument = defineComponent({
             style: styles.header,
           }, () => 'NUXT PDF / COMPATIBILITY KERNEL'),
           h(PdfText, { style: styles.title }, () => 'Renderer conformance'),
-          h(PdfImage, { src: props.imagePath, style: styles.image }),
+          h(PdfImage, { src: props.image, style: styles.image }),
           ...conformanceParagraphs.map((paragraph, index) => h(
             PdfText,
             {
@@ -107,8 +104,7 @@ export const VueConformanceDocument = defineComponent({
           h(PdfText, {
             fixed: true,
             style: styles.footer,
-            render: ({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages ?? '?'}`,
-          }),
+          }, () => ['Page ', h(PdfPageNumber), ' of ', h(PdfPageCount)]),
         ],
       }),
     })

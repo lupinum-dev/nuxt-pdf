@@ -1,21 +1,13 @@
 <script setup lang="ts">
-import type { PdfStyleValue } from '@lupinum/nuxt-pdf'
-
+// The parent styles the headline with a class; it falls through to the text.
 defineProps<{
-  sx: PdfStyleValue
   text: string
 }>()
-
-// Keep display names and course titles intact across lines. PDF component props
-// use ordinary Vue kebab-case in SFC templates and normalize at the renderer edge.
-const keepWhole = (word: string): string[] => [word]
 </script>
 
 <template>
-  <PdfText
-    :hyphenation-callback="keepWhole"
-    :style="sx"
-  >
+  <!-- Keep display names and course titles intact across lines. -->
+  <PdfText :hyphenate="false">
     {{ text }}
   </PdfText>
 </template>

@@ -1,0 +1,34 @@
+{
+  "profile": "invalid",
+  "invariants": [
+    "I15"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 30,
+    "rule": "invalid"
+  },
+  "note": "V5 (fixed in slice V1): bookmark was not checked, so bookmark: 42 rendered. It must now be a title string or { title, expanded }. Found by the first invalid run of H4 (document 30, fault bookmark-type, base flow); reduced by the harness.",
+  "raw": {
+    "fault": "bookmark-type",
+    "pick": 6,
+    "base": "flow",
+    "raw": {
+      "pages": [
+        {
+          "size": 0,
+          "landscape": false,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "fixed": [],
+          "children": [],
+          "bookmark": false
+        }
+      ]
+    }
+  }
+}

@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Component } from 'vue'
-import type { DocumentNode, SafeDocumentNode } from '@react-pdf/layout'
+import type { DocumentNode, SafeDocumentNode } from '../../src/runtime/server/engine/layout/index'
 import {
   Font as ReactFont,
   renderToBuffer as renderReactDocument,

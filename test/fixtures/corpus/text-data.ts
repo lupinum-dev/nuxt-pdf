@@ -24,23 +24,22 @@ export const textCorpusMeta = {
 } as const
 
 // ---------------------------------------------------------------------------
-// (1) hyphenationCallback + (2) long-word overflow without hyphenation
+// (1) default hyphenation + (2) long-word overflow without hyphenation
 // ---------------------------------------------------------------------------
 
 /**
  * A single long token with no internal spaces. At 20pt it is far wider than
- * the 132pt column, so its wrapping is decided entirely by the hyphenation
- * callback: disabling splitting overflows one line, aggressive splitting adds
- * lines and hyphen glyphs.
+ * the 132pt column, so its wrapping is decided entirely by hyphenation:
+ * disabling it overflows one line, the engine's default hyphenation adds lines
+ * and hyphen glyphs.
  */
 export const longToken = 'Supercalifragilisticexpialidocious'
 
-/** Disable hyphenation entirely: the word is never split, so it overflows. */
+/**
+ * The React oracle's way to disable hyphenation; `hyphenate: false` on a Vue
+ * `PdfText` becomes the same callback in the engine adapter.
+ */
 export const noHyphenation = (word: string): string[] => [word]
-
-/** Custom splitter: break every word into fixed six-character syllables. */
-export const sixCharHyphenation = (word: string): string[] =>
-  word.match(/.{1,6}/g) ?? [word]
 
 export const hyphenationStyles = {
   column: { width: 132 },

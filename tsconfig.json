@@ -9,5 +9,7 @@
     ".tmp",
     "tmp",
     "test/fixtures",
+    // Generated JavaScript copy; TypeScript reads its index.d.ts.
+    "src/runtime/server/engine/layout/index.js",
   ]
 }

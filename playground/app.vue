@@ -38,7 +38,7 @@ const documents: GalleryDoc[] = [
     meta: 'Multi-page · A4',
     description:
       'A field survey whose contents page prints the resolved page each section lands on.',
-    technique: 'usePdfPageNumbers · internal links',
+    technique: 'PdfPageRef · internal links',
   },
   {
     key: 'annual-report',

@@ -1,34 +1,41 @@
-import { readdir, readFile } from 'node:fs/promises'
-import { join, relative, resolve } from 'node:path'
+import { mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { dirname, join, relative, resolve } from 'node:path'
 import process from 'node:process'
 
-import { compileScript, compileTemplate, parse } from '@vue/compiler-sfc'
+import { babelParse, compileScript, compileTemplate, parse } from '@vue/compiler-sfc'
 import { transform } from 'esbuild'
 
 import {
+  findUndefinedClasses,
   findUnsupportedPrimitiveProps,
   loadPdfDocumentationContracts,
 } from './docs-contracts.mjs'
 
 const repositoryRoot = resolve(import.meta.dirname, '..')
 const contentRoot = join(repositoryRoot, 'docs/content')
-const supportedLanguages = new Set(['bash', 'text', 'ts', 'vue'])
+const supportedLanguages = new Set(['bash', 'css', 'text', 'ts', 'vue'])
+// `css [pdfs/theme.css]` fences are written here, so a `<style>` block in a
+// vue fence of the same page can `@import` them as a template would.
+const snippetRoot = await realpath(await mkdtemp(join(tmpdir(), 'nuxt-pdf-docs-snippets-')))
 
 const markdownFiles = await findMarkdownFiles(contentRoot)
-const { primitiveProps } = await loadPdfDocumentationContracts(repositoryRoot)
+const { compilePdfStyles, primitiveProps } = await loadPdfDocumentationContracts(repositoryRoot)
 const failures = []
 let snippetCount = 0
 
 for (const file of markdownFiles) {
   const source = await readFile(file, 'utf8')
   const lines = source.split('\n')
+  const pageRoot = join(snippetRoot, relative(contentRoot, file))
+  await writeCssFences(lines, pageRoot)
   let fence
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index]
 
     if (!fence) {
-      const opening = /^```([^\s[]+)(?:\s+\[[^\]]+\])?\s*$/.exec(line)
+      const opening = /^```([^\s[]+)(?:\s+\[([^\]]+)\])?\s*$/.exec(line)
       if (!opening) {
         if (line.startsWith('```')) {
           failures.push(`${location(file, index + 1)}: code fences must declare a language`)
@@ -36,7 +43,7 @@ for (const file of markdownFiles) {
         continue
       }
 
-      fence = { language: opening[1], line: index + 1, source: [] }
+      fence = { label: opening[2], language: opening[1], line: index + 1, pageRoot, source: [] }
       continue
     }
 
@@ -54,6 +61,8 @@ for (const file of markdownFiles) {
     failures.push(`${location(file, fence.line)}: unclosed ${fence.language} code fence`)
   }
 }
+
+await rm(snippetRoot, { force: true, recursive: true })
 
 if (failures.length > 0) {
   console.error(`Documentation snippet validation failed:\n\n${failures.join('\n')}`)
@@ -78,8 +87,12 @@ async function checkSnippet(file, fence) {
       return
     }
 
+    if (fence.language === 'css') {
+      checkVueSnippet(`<template><PdfView /></template>\n<style>\n${source}\n</style>`, fence, fence.line - 2)
+    }
+
     if (fence.language === 'vue') {
-      checkVueSnippet(source, `${relative(repositoryRoot, file)}:${fence.line}`)
+      checkVueSnippet(source, fence, fence.line)
     }
   }
   catch (error) {
@@ -87,7 +100,8 @@ async function checkSnippet(file, fence) {
   }
 }
 
-function checkVueSnippet(source, filename) {
+function checkVueSnippet(source, fence, fenceLine) {
+  const filename = join(fence.pageRoot, fence.label ?? `snippet-${fence.line}.vue`)
   const completeSfc = ['script', 'template'].some(tag => containsOpeningTag(source, tag))
   const sfcSource = completeSfc ? source : `<template>\n${source}\n</template>`
   const { descriptor, errors } = parse(sfcSource, { filename })
@@ -99,6 +113,18 @@ function checkVueSnippet(source, filename) {
   if (descriptor.script || descriptor.scriptSetup) {
     compileScript(descriptor, { id: filename })
   }
+  checkDefinePdf(descriptor, fence)
+
+  // The same compiler as the build: invalid PDF CSS fails with its line in the
+  // docs file (the fence line plus the line in the SFC, minus a wrapper line).
+  const sfcLineOffset = fenceLine - (completeSfc ? 0 : 1)
+  const { rules } = compilePdfStyles(
+    descriptor.styles,
+    (line, column, message, file) => new Error(file
+      ? `${relative(fence.pageRoot, file)} line ${line}, column ${column}: ${message}`
+      : `<style> line ${sfcLineOffset + line}, column ${column}: ${message}`),
+    { alias: { '~': fence.pageRoot, '@': fence.pageRoot }, filename, rootDir: fence.pageRoot },
+  )
 
   if (descriptor.template) {
     const result = compileTemplate({
@@ -111,8 +137,60 @@ function checkVueSnippet(source, filename) {
       throw new Error(result.errors.map(formatError).join('; '))
     }
 
-    const propErrors = findUnsupportedPrimitiveProps(result.ast, primitiveProps)
+    const propErrors = [
+      ...findUnsupportedPrimitiveProps(result.ast, primitiveProps),
+      // A fragment without a <style> block uses classes of a file it does not show.
+      ...descriptor.styles.length > 0
+        ? findUndefinedClasses(result.ast, new Set(rules.flatMap(([selectors]) => selectors.flatMap(selector => selector.split(/[\s.]+/)))))
+        : [],
+    ]
     if (propErrors.length > 0) throw new Error(propErrors.join('; '))
+  }
+}
+
+/**
+ * A fence labelled as a file under `pdfs/` must compile as that file: the
+ * module rejects a template without exactly one `definePdf()` call and a
+ * component under `pdfs/components/` with one. The Vue compiler alone does
+ * not know these rules, so a copied template would fail only in the app.
+ * A part of a longer file is labelled `pdfs/<name>.vue (excerpt)`.
+ */
+function checkDefinePdf(descriptor, fence) {
+  const label = fence.label?.replaceAll('\\', '/')
+  if (!label?.startsWith('pdfs/') || !label.endsWith('.vue')) return
+  const calls = [descriptor.script, descriptor.scriptSetup].filter(Boolean).reduce((count, block) => {
+    const plugins = block.lang === 'ts' || block.lang === 'tsx' ? ['typescript'] : []
+    return count + countCalls(babelParse(block.content, { plugins, sourceType: 'module' }).program, 'definePdf')
+  }, 0)
+  if (label.startsWith('pdfs/components/')) {
+    if (calls > 0) throw new Error(`${label} is a component, so it cannot call definePdf(); only templates directly in pdfs/ can.`)
+    return
+  }
+  if (calls !== 1) {
+    throw new Error(`${label} is a template and needs exactly one definePdf({...}) call in <script setup>; found ${calls}. Add one, or label a part of a longer file as "${label} (excerpt)".`)
+  }
+}
+
+function countCalls(node, name) {
+  if (Array.isArray(node)) return node.reduce((count, child) => count + countCalls(child, name), 0)
+  if (!node || typeof node !== 'object' || typeof node.type !== 'string') return 0
+  let count = node.type === 'CallExpression' && node.callee?.type === 'Identifier' && node.callee.name === name ? 1 : 0
+  for (const [key, value] of Object.entries(node)) {
+    if (key !== 'loc' && typeof value === 'object') count += countCalls(value, name)
+  }
+  return count
+}
+
+async function writeCssFences(lines, pageRoot) {
+  await mkdir(pageRoot, { recursive: true })
+  for (let index = 0; index < lines.length; index += 1) {
+    const label = /^```css\s+\[([^\]]+)\]\s*$/.exec(lines[index])?.[1]
+    if (!label) continue
+    const end = lines.indexOf('```', index + 1)
+    if (end === -1) continue
+    const path = join(pageRoot, label)
+    await mkdir(dirname(path), { recursive: true })
+    await writeFile(path, lines.slice(index + 1, end).join('\n'))
   }
 }
 

@@ -1,0 +1,194 @@
+{
+  "profile": "table",
+  "invariants": [
+    "I9"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 7,
+    "rule": "documents"
+  },
+  "note": "T3 family, fixed in TB1: in a link cell (rooted in a view, centred), the first page part of a split text sat 2.8 pt right. Cause: measureText computed alignOffset once from all lines, but each split part's box took the width of its own lines. measureText now stores one box width (alignedBoxWidth) that split parts copy. The same failure appears with the HEAD table adapter, so it predates TB1. Found in the fixed-seed run once the H3 avoidances were removed (table document 7), reduced in 130 steps.",
+  "raw": {
+    "pages": [
+      {
+        "size": 0,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "text",
+            "n": 16,
+            "font": 0,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false
+          },
+          {
+            "t": "text",
+            "n": 7,
+            "font": 0,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false
+          }
+        ],
+        "bookmark": false
+      },
+      {
+        "size": 4,
+        "landscape": true,
+        "padding": [
+          14,
+          29,
+          15,
+          44
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "view",
+            "margin": [
+              11,
+              0,
+              3,
+              0
+            ],
+            "padding": [
+              13,
+              0,
+              10,
+              0
+            ],
+            "border": 0,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [],
+            "bookmark": false
+          },
+          {
+            "t": "table",
+            "font": 2,
+            "columns": [
+              {
+                "kind": 0,
+                "value": 0
+              },
+              {
+                "kind": 0,
+                "value": 0
+              },
+              {
+                "kind": 0,
+                "value": 0
+              }
+            ],
+            "header": true,
+            "headerCells": [],
+            "rows": [
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 5,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  },
+                  {
+                    "n": 1,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  },
+                  {
+                    "n": 13,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              },
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 2,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  },
+                  {
+                    "n": 35,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              },
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 21,
+                    "span": 0,
+                    "align": 1,
+                    "link": 1,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              }
+            ],
+            "marginTop": 1,
+            "marginBottom": 0
+          }
+        ],
+        "bookmark": false
+      }
+    ]
+  }
+}

@@ -5,6 +5,8 @@ export {
 export type {
   NuxtPdfErrorOptions,
   PdfErrorCode,
+  PdfInvoiceIssue,
+  PdfSourcePosition,
 } from './errors'
 export {
   PDF_DEFINITION_PROPERTY,
@@ -22,3 +24,37 @@ export type {
   PdfTemplate,
   ResolvedPdfMetadata,
 } from './template'
+export {
+  computeEInvoice,
+  renderEInvoiceXml,
+  validateEInvoice,
+} from '../einvoice'
+export type {
+  DecimalInput,
+  EInvoice,
+  EInvoiceAddress,
+  EInvoiceBuyer,
+  EInvoiceContact,
+  EInvoiceDelivery,
+  EInvoiceDocumentAllowanceCharge,
+  EInvoiceDocumentType,
+  EInvoiceElectronicAddress,
+  EInvoiceIssue,
+  EInvoiceLine,
+  EInvoiceLineAllowanceCharge,
+  EInvoiceLineTotals,
+  EInvoicePayment,
+  EInvoicePaymentMeans,
+  EInvoicePeriod,
+  EInvoicePrecedingInvoice,
+  EInvoiceProfile,
+  EInvoiceSeller,
+  EInvoiceTotals,
+  EInvoiceUnit,
+  EInvoiceUnitName,
+  EInvoiceVat,
+  EInvoiceVatBreakdown,
+  EInvoiceVatCategory,
+  RenderEInvoiceXmlOptions,
+  ValidateEInvoiceOptions,
+} from '../einvoice'

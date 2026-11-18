@@ -26,7 +26,7 @@ import type {
   PdfDocumentNode,
   PdfElementNode,
 } from '../src/runtime/renderer/types'
-import { PDF_PRIMITIVES } from '../src/runtime/authoring'
+import { PDF_PRIMITIVES } from '../src/runtime/primitives'
 
 const PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Zl9sAAAAASUVORK5CYII=',
@@ -280,7 +280,7 @@ describe('PDF image tree resolution', () => {
     await expectAssetError(
       resolvePdfImageAssets(documentWith(image({ src: 'images/logo.png' })), {
         assets,
-        limits: imageLimits({ maxImageBytes: PNG.byteLength - 1 }),
+        limits: imageLimits({ maxTotalImageBytes: PNG.byteLength - 1 }),
       }),
       PDF_ASSET_ERROR_CODES.LimitExceeded,
     )
@@ -384,7 +384,7 @@ describe('PDF image tree resolution', () => {
         {
           assets: {},
           limits: imageLimits({
-            maxImageBytes: PNG.byteLength - 1,
+            maxTotalImageBytes: PNG.byteLength - 1,
           }),
         },
       ),
@@ -408,19 +408,13 @@ describe('PDF image tree resolution', () => {
     expect(first.props.src).toBe('images/logo.png')
   })
 
-  it('enforces image count, aggregate bytes, and decoded pixel budgets', async () => {
+  // Catches a per-image check that lets many small images pass the budget.
+  it('sums bytes and decoded pixels of all images of a render', async () => {
     const twoImages = () => documentWith(
       image({ src: Buffer.from(PNG) }),
       image({ src: Buffer.from(PNG) }),
     )
 
-    await expectAssetError(
-      resolvePdfImageAssets(twoImages(), {
-        assets: {},
-        limits: imageLimits({ maxImages: 1 }),
-      }),
-      PDF_ASSET_ERROR_CODES.LimitExceeded,
-    )
     await expectAssetError(
       resolvePdfImageAssets(twoImages(), {
         assets: {},
@@ -447,7 +441,7 @@ describe('PDF image tree resolution', () => {
     await expectAssetError(
       resolvePdfImageAssets(documentWith(image({ src: oversized })), {
         assets: {},
-        limits: imageLimits({ maxImagePixels: 25_000_000 }),
+        limits: imageLimits({ maxTotalImagePixels: 25_000_000 }),
       }),
       PDF_ASSET_ERROR_CODES.LimitExceeded,
     )

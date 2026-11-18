@@ -40,11 +40,18 @@ const quote = (value: string): string => JSON.stringify(value)
 export const generatePdfPreviewConfig = (
   baseURL: string,
   buildAssetsDir: string,
-): string => `export const hmrClientPath = ${quote(joinURL(
-  baseURL.replace(/^\.\//, '/') || '/',
-  buildAssetsDir,
-  '@vite/client',
-))}\n`
+  rootDir: string,
+): string => {
+  const viteBase = joinURL(baseURL.replace(/^\.\//, '/') || '/', buildAssetsDir)
+  return [
+    `export const hmrClientPath = ${quote(joinURL(viteBase, '@vite/client'))}`,
+    // Vite's launch-editor middleware. It resolves a relative file against the
+    // process working directory, so the preview sends absolute paths.
+    `export const openInEditorPath = ${quote(joinURL(viteBase, '__open-in-editor'))}`,
+    `export const rootDir = ${quote(rootDir)}`,
+    '',
+  ].join('\n')
+}
 
 const importPath = (filePath: string): string =>
   filePath.replaceAll('\\', '/')
@@ -180,7 +187,7 @@ export const generatePdfRuntimeRegistry = (
     'export const renderPdf = registry.renderPdf',
     'export const getPdfTemplate = registry.getPdfTemplate',
     'export const pdfTemplateKeys = registry.pdfTemplateKeys',
-    `export { NuxtPdfError, PDF_ERROR_CODES } from ${quote(options.runtimeImport)}`,
+    `export { NuxtPdfError, PDF_ERROR_CODES, computeEInvoice, renderEInvoiceXml, validateEInvoice } from ${quote(options.runtimeImport)}`,
     '',
   )
 
@@ -245,8 +252,9 @@ export const generatePdfRegistryTypes = (
     '',
     `export declare const pdfTemplateKeys: readonly [${ordered.map(template => quote(template.key)).join(', ')}]`,
     'export type PdfTemplateKey = typeof pdfTemplateKeys[number]',
-    `export { NuxtPdfError, PDF_ERROR_CODES } from ${quote(options.runtimeImport)}`,
-    `export type { PdfErrorCode } from ${quote(options.runtimeImport)}`,
+    `export { NuxtPdfError, PDF_ERROR_CODES, computeEInvoice, renderEInvoiceXml, validateEInvoice } from ${quote(options.runtimeImport)}`,
+    `export type { PdfErrorCode, PdfLayoutWarning, PdfSourcePosition } from ${quote(options.runtimeImport)}`,
+    `export type { EInvoice, EInvoiceIssue, EInvoiceProfile, EInvoiceTotals, PdfInvoiceIssue } from ${quote(options.runtimeImport)}`,
     '',
   )
 

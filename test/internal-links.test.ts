@@ -9,17 +9,13 @@ import {
   View as ReactView,
   renderToBuffer as renderReactDocument,
 } from '@react-pdf/renderer'
-import type { DocumentNode } from '@react-pdf/layout'
-import {
-  PdfDocument,
-  PdfLink,
-  PdfPage,
-  PdfText,
-  PdfView,
-} from '../src/runtime/components'
+import type { DocumentNode } from '../src/runtime/server/engine/layout/index'
+import { PDF_COMPONENTS } from '../src/runtime/components'
 import { mountPdfComponent } from '../src/runtime/renderer'
 import { renderDocument } from '../src/runtime/server/engine/render-document'
 import { installPdfCanvasGlobals, parsePdf } from '../src/test/pdf'
+
+const { PdfDocument, PdfLink, PdfPage, PdfText, PdfView } = PDF_COMPONENTS
 
 // Paired React/Vue internal-link fixture. The link targets sit on small,
 // non-splitting heading nodes so React PDF (whose named-destination table is
@@ -124,10 +120,11 @@ describe('internal links (paired React/Vue)', () => {
   }, 20_000)
 })
 
-// Vue-only destination anchoring on the SINGLE-pass path (the shipped path for
-// link-only documents). React PDF cannot be the oracle here: its destination
-// table is last-writer-wins, the exact behavior these tests reject.
-describe('single-pass destination anchoring', () => {
+// Vue-only destination anchoring. React PDF cannot be the oracle here: its
+// destination table is last-writer-wins. The page-spanning case is in
+// test/page-primitives.test.ts, the unresolved destination in
+// test/renderer.test.ts.
+describe('destination anchoring', () => {
   const renderVue = async (component: Parameters<typeof mountPdfComponent>[0]) => {
     const mounted = await mountPdfComponent(component, {})
     try {
@@ -137,37 +134,6 @@ describe('single-pass destination anchoring', () => {
       mounted.unmount()
     }
   }
-
-  it('anchors a page-spanning id at its first page without multi-pass', async () => {
-    const SpanningDoc = defineComponent({
-      name: 'SpanningDoc',
-      setup() {
-        return () =>
-          h(PdfDocument, {}, {
-            default: () => [
-              h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
-                default: () => h(PdfLink, { href: '#long', style: { fontSize: 14 } }, { default: () => 'Jump to long' }),
-              }),
-              h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
-                default: () => h(PdfView, { id: 'long' }, {
-                  default: () => Array.from({ length: 80 }, (_, i) =>
-                    h(PdfText, { style: { fontSize: 12, marginBottom: 4 } }, { default: () => `long line ${i + 1}` }),
-                  ),
-                }),
-              }),
-            ],
-          })
-      },
-    })
-
-    const bytes = await renderVue(SpanningDoc)
-    const parsed = await parsePdf(bytes)
-    const startPage = parsed.pages.find(p => p.text.includes('long line 1'))!.number
-    const endPage = parsed.pages.find(p => p.text.includes('long line 80'))!.number
-    expect(endPage).toBeGreaterThan(startPage)
-
-    expect(await destinationPageNumbers(bytes, ['long'])).toEqual({ long: startPage })
-  }, 20_000)
 
   it('keeps the destination of a fixed node repeated on every page', async () => {
     // Pagination reuses ONE node object (and props object) for a fixed node on
@@ -202,23 +168,4 @@ describe('single-pass destination anchoring', () => {
     // The destination still exists and resolves to the first page.
     expect(await destinationPageNumbers(bytes, ['brand'])).toEqual({ brand: 1 })
   }, 20_000)
-
-  it('rejects an unresolved internal destination before layout', async () => {
-    const MissingDoc = defineComponent({
-      name: 'MissingDoc',
-      setup() {
-        return () =>
-          h(PdfDocument, {}, {
-            default: () => h(PdfPage, { size: 'A4' }, {
-              default: () => h(PdfLink, { href: '#missing' }, { default: () => 'Broken' }),
-            }),
-          })
-      },
-    })
-
-    await expect(mountPdfComponent(MissingDoc, {})).rejects.toMatchObject({
-      code: 'PDF_TREE_INVALID',
-      message: '<PdfLink> internal destination does not match any id in the document.',
-    })
-  })
 })

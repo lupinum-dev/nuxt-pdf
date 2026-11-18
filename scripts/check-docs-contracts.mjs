@@ -17,6 +17,7 @@ const contracts = await loadPdfDocumentationContracts(repositoryRoot)
 
 checkErrorCodes()
 checkPageSizes()
+checkPrimitiveReference()
 checkRenderLimits()
 await checkPublicExports()
 
@@ -25,7 +26,7 @@ if (failures.length > 0) {
   process.exitCode = 1
 }
 else {
-  console.log('Documentation contracts match public errors, page sizes, limits, and exports.')
+  console.log('Documentation contracts match public errors, page sizes, primitives, limits, and exports.')
 }
 
 function checkErrorCodes() {
@@ -41,6 +42,14 @@ function checkPageSizes() {
   const content = requiredContent(file)
   for (const size of contracts.PDF_PAGE_SIZE_NAMES) {
     if (!content.includes(`\`${size}\``)) failures.push(`${file}: missing page size ${size}.`)
+  }
+}
+
+function checkPrimitiveReference() {
+  const file = 'docs/content/docs/21.primitives.md'
+  const content = requiredContent(file)
+  for (const name of Object.keys(contracts.primitiveProps)) {
+    if (!content.includes(`\`${name}\``)) failures.push(`${file}: missing reference entry for <${name}>.`)
   }
 }
 

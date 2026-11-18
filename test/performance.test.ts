@@ -3,13 +3,14 @@ import { performance } from 'node:perf_hooks'
 import { resolve } from 'node:path'
 import { defineComponent, h, type Component } from 'vue'
 import { describe, expect, it } from 'vitest'
-import { PdfDocument, PdfPage, PdfText } from '../src/runtime/components'
-import { usePdfPageNumbers } from '../src/runtime/composables'
+import { PDF_COMPONENTS } from '../src/runtime/components'
 import { createPdfTemplate } from '../src/runtime/server/registry'
 import {
   PDF_DEFINITION_PROPERTY,
   type PdfDefinition,
 } from '../src/runtime/shared/template'
+
+const { PdfDocument, PdfPage, PdfPageRef, PdfText } = PDF_COMPONENTS
 
 type Metrics = Record<string, number>
 
@@ -48,11 +49,10 @@ const hundredPages = asTemplate(defineComponent({
 const multiPassReport = asTemplate(defineComponent({
   name: 'PerformanceMultiPass',
   setup() {
-    const pages = usePdfPageNumbers()
     return () => h(PdfDocument, {}, {
       default: () => [
         h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
-          default: () => h(PdfText, {}, { default: () => `Section ..... ${pages.section ?? ''}` }),
+          default: () => h(PdfText, {}, { default: () => ['Section ..... ', h(PdfPageRef, { to: 'section' })] }),
         }),
         h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
           default: () => [

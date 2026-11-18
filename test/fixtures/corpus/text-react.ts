@@ -16,7 +16,6 @@ import {
   inheritanceStyles,
   longToken,
   noHyphenation,
-  sixCharHyphenation,
   spacingStyles,
   spacingText,
   switchWord,
@@ -57,11 +56,7 @@ export const reactHyphenationDoc = () => doc(column(
       style: hyphenationStyles.text,
       hyphenationCallback: noHyphenation,
     }, longToken),
-    h(Text, {
-      key: 'split',
-      style: hyphenationStyles.text,
-      hyphenationCallback: sixCharHyphenation,
-    }, longToken),
+    h(Text, { key: 'split', style: hyphenationStyles.text }, longToken),
   ],
 ))
 

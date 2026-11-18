@@ -18,8 +18,10 @@ const fixtureRoot = fileURLToPath(new URL('./fixtures/basic', import.meta.url))
 const outputRoot = join(fixtureRoot, '.vercel', 'output')
 
 // Engine packages that MUST be present in the server bundle (the module renders
-// PDFs through React PDF's exact-pinned layout/render engine, server-side only).
-const ENGINE_MARKERS = ['@react-pdf/pdfkit', '@react-pdf/layout', '@react-pdf/render']
+// PDFs through React PDF's exact-pinned render engine and our copy of its layout
+// step, server-side only). The copy is bundled; `@react-pdf/textkit` is imported
+// only by it, so it marks the copy.
+const ENGINE_MARKERS = ['@react-pdf/pdfkit', '@react-pdf/textkit', '@react-pdf/render']
 
 // React renderer runtime that MUST NOT leak: the module drives a Vue custom
 // renderer, never React's reconciler or the full react-based @react-pdf/renderer.

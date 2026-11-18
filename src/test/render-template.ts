@@ -12,14 +12,17 @@ import {
   type PdfDefinition,
   type PdfRenderResult,
 } from '../runtime/shared/template'
-import { parsePdf, type ParsedPdf } from './pdf'
+import { parsePdf, type ParsedPdf, type ParsePdfOptions } from './pdf'
 
-/** User-shaped render policy, matching the corresponding Nuxt module options. */
-export type RenderPdfTemplateOptions = Pick<ModuleOptions, 'limits' | 'remote'>
+/**
+ * User-shaped render policy, matching the corresponding Nuxt module options,
+ * and the password that opens a protected PDF for parsing.
+ */
+export type RenderPdfTemplateOptions = Pick<ModuleOptions, 'limits' | 'remote'> & Pick<ParsePdfOptions, 'password'>
 
-const RENDER_PDF_TEMPLATE_OPTION_KEYS = ['limits', 'remote'] as const
+const RENDER_PDF_TEMPLATE_OPTION_KEYS = ['limits', 'password', 'remote'] as const
 
-type PreparedPdfTemplateOptions = PdfTemplateRuntimeOptions & {
+type PreparedPdfTemplateOptions = PdfTemplateRuntimeOptions & Pick<ParsePdfOptions, 'password'> & {
   key?: string
 }
 
@@ -84,7 +87,7 @@ export async function renderPreparedPdfTemplate<Props extends object>(
   props: Props,
   options: PreparedPdfTemplateOptions = {},
 ): Promise<RenderedPdfTemplate> {
-  const { key = componentName(component), ...runtimeOptions } = options
+  const { key = componentName(component), password, ...runtimeOptions } = options
   const template = createPdfTemplate<Props>(
     key,
     ensurePdfComponent(component),
@@ -93,7 +96,7 @@ export async function renderPreparedPdfTemplate<Props extends object>(
 
   const result = await template.render(props)
   const bytes = await result.toUint8Array()
-  const parsed = await parsePdf(bytes)
+  const parsed = await parsePdf(bytes, password === undefined ? {} : { password })
 
   return { bytes, parsed, result }
 }
@@ -117,5 +120,6 @@ export async function renderPdfTemplate<C extends Component>(
   return renderPreparedPdfTemplate(component, props, {
     limits: normalizePdfLimits(options.limits),
     remote: normalizeRemoteAssetPolicy(options.remote),
+    ...(options.password === undefined ? {} : { password: options.password }),
   })
 }

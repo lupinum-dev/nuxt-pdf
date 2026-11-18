@@ -57,6 +57,31 @@ describe('standalone production registry', () => {
     expect(text(parsed)).not.toContain('Other recipient')
   }, 60_000)
 
+  // Catches a standalone build that silently renders in-process: then the
+  // render deadline cannot stop a long layout (internals/decisions.md,
+  // "Render worker"). A child process counts the workers the runtime starts.
+  it('renders through the render worker, not in-process', async () => {
+    const options = await fixture()
+    await buildPdfRegistry({ ...options, fonts })
+    const script = join(options.rootDir, 'count-workers.mjs')
+    await writeFile(script, `import workerThreads from 'node:worker_threads'
+import { syncBuiltinESMExports } from 'node:module'
+const started = []
+workerThreads.Worker = class extends workerThreads.Worker {
+  constructor(url, options) { started.push(String(url)); super(url, options) }
+}
+syncBuiltinESMExports()
+const { pdf } = await import(${JSON.stringify(pathToFileURL(join(options.outDir, 'index.mjs')).href)})
+const result = await pdf.invoice.render(${JSON.stringify(props)})
+console.log(JSON.stringify({ started, pages: result.diagnostics.pageCount }))
+`)
+    const { stdout } = await execute(process.execPath, [script], { cwd: options.rootDir })
+    const report: { started: string[], pages: number } = JSON.parse(stdout.trim().split('\n').at(-1)!)
+    expect(report.pages).toBeGreaterThan(1)
+    expect(report.started).toHaveLength(1)
+    expect(report.started[0]).toMatch(/\/engine\/worker-entry\.(?:ts|mjs|js)$/)
+  }, 60_000)
+
   it('emits declarations checked by ordinary backend TypeScript without Vue source', async () => {
     const options = await fixture()
     await mkdir(join(options.rootDir, 'pdfs/shared'))
@@ -91,13 +116,33 @@ pdf.unknown.render({})
     expect(checked.stderr).toBe('')
   }, 60_000)
 
-  it('preserves runtime output limits and rejects invalid build resources', async () => {
+  it('preserves runtime limits and rejects invalid build resources', async () => {
     const options = await fixture()
-    await expect(buildPdfRegistry({ ...options, fonts, limits: { maxImageBytes: 1 } })).rejects.toThrow()
+    await expect(buildPdfRegistry({ ...options, fonts, limits: { maxTotalImageBytes: 1 } })).rejects.toThrow()
     await expect(buildPdfRegistry({ ...options, fonts: [{ family: 'Invalid', src: '../outside.ttf' }] })).rejects.toThrow('parent path')
-    await buildPdfRegistry({ ...options, fonts, limits: { maxOutputBytes: 100 } })
+    await buildPdfRegistry({ ...options, fonts, limits: { maxNodes: 3 } })
     const registry: { pdf: { invoice: PdfTemplate<typeof props> } } = await import(pathToFileURL(join(options.outDir, 'index.mjs')).href)
     await expect(registry.pdf.invoice.render(props)).rejects.toMatchObject({ code: 'PDF_LIMIT_EXCEEDED' })
+  }, 60_000)
+
+  // Catches a build that bounds style @import by the working directory: a
+  // template could then read any file under it into the shipped registry.
+  it('compiles style @import inside rootDir and rejects one that leaves it', async () => {
+    const options = await fixture()
+    const style = (path: string) => `<script setup lang="ts">\ndefinePdf({})\n</script>\n<template><PdfDocument><PdfPage><PdfText class="title">Styled</PdfText></PdfPage></PdfDocument></template>\n<style>\n@import '${path}';\n</style>\n`
+    await writeFile(join(options.rootDir, 'pdfs/theme.css'), '.title { font-size: 31pt }\n')
+    await writeFile(join(options.rootDir, 'pdfs/styled.vue'), style('./theme.css'))
+    await buildPdfRegistry({ ...options, fonts })
+    const registry: { pdf: { styled: PdfTemplate<Record<string, never>> } } = await import(pathToFileURL(join(options.outDir, 'index.mjs')).href)
+    const parsed = await parsePdf(await (await registry.pdf.styled.render({})).toUint8Array())
+    expect(parsed.pages[0]?.textRuns.find(run => run.text === 'Styled')?.fontSize).toBe(31)
+
+    // Outside rootDir, inside the working directory (the repository).
+    const outside = `${options.rootDir}-outside.css`
+    directories.push(outside)
+    await writeFile(outside, '.title { font-size: 9pt }\n')
+    await writeFile(join(options.rootDir, 'pdfs/styled.vue'), style(`../../${outside.split('/').at(-1)}`))
+    await expect(buildPdfRegistry({ ...options, fonts })).rejects.toThrow('leaves the project directory')
   }, 60_000)
 
   it('rejects missing templates and source-overlapping output', async () => {

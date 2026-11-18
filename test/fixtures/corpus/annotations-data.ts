@@ -3,7 +3,7 @@
 // difference the corpus test observes belongs to the renderer boundary rather
 // than to divergent test inputs.
 
-import type { PdfPageDimension } from '../../../src/runtime/components'
+import type { PdfPageDimension } from '../../../src/runtime/primitives'
 
 /** External link targets exercised as PDF Link annotation URIs. */
 export const linkTargets = {

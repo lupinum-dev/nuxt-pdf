@@ -11,7 +11,7 @@ import type {
   PdfDocumentNode,
   PdfElementNode,
 } from '../../renderer'
-import { PDF_PRIMITIVES } from '../../authoring'
+import { PDF_PRIMITIVES } from '../../primitives'
 import {
   PDF_ASSET_ERROR_CODES,
   PdfAssetError,
@@ -26,8 +26,8 @@ import {
   type RemoteRequestState,
 } from './remote'
 import {
-  DEFAULT_PDF_MAX_IMAGE_BYTES,
-  DEFAULT_PDF_MAX_IMAGE_PIXELS,
+  DEFAULT_PDF_MAX_TOTAL_IMAGE_BYTES,
+  DEFAULT_PDF_MAX_TOTAL_IMAGE_PIXELS,
   DEFAULT_PDF_RENDER_LIMITS,
   createRenderLimits,
   type RenderLimits,
@@ -127,7 +127,7 @@ const imageLimitExceeded = (message: string): never =>
   fail(PDF_ASSET_ERROR_CODES.LimitExceeded, message)
 
 const resolveMaxBytes = (value: number | undefined): number => {
-  const maxBytes = value ?? DEFAULT_PDF_MAX_IMAGE_BYTES
+  const maxBytes = value ?? DEFAULT_PDF_MAX_TOTAL_IMAGE_BYTES
 
   if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0) {
     invalid('The PDF image byte limit must be a positive safe integer.')
@@ -339,7 +339,7 @@ const validateImageBytes = (
   value: unknown,
   maxBytes: number,
   expectedFormat?: PdfImageFormat,
-  maxPixels = DEFAULT_PDF_MAX_IMAGE_PIXELS,
+  maxPixels = DEFAULT_PDF_MAX_TOTAL_IMAGE_PIXELS,
 ): ResolvedPdfImageAsset => {
   const data = asBuffer(value)
 
@@ -360,7 +360,7 @@ const validateImageBytes = (
   const pixels = inspected.width * inspected.height
   if (!Number.isSafeInteger(pixels) || pixels > maxPixels) {
     return imageLimitExceeded(
-      `The PDF image has ${pixels} decoded pixels, exceeding pdf.limits.maxImagePixels (${maxPixels}).`,
+      `The PDF image has ${pixels} decoded pixels, exceeding pdf.limits.maxTotalImagePixels (${maxPixels}).`,
     )
   }
 
@@ -428,7 +428,7 @@ export const loadPdfImageAsset = async (
   const key = canonicalAssetKey(relativePath)
   const expectedFormat = formatFromExtension(key)
   const maxBytes = resolveMaxBytes(options.maxBytes)
-  const maxPixels = options.maxPixels ?? DEFAULT_PDF_MAX_IMAGE_PIXELS
+  const maxPixels = options.maxPixels ?? DEFAULT_PDF_MAX_TOTAL_IMAGE_PIXELS
   const roots = await canonicalRoots(options.roots)
 
   for (const root of roots) {
@@ -717,23 +717,25 @@ const resolveImageBuffer = (
   const promise = resolveImageSource(
     source,
     assets,
-    limits.maxImageBytes,
-    limits.maxImagePixels,
+    limits.maxTotalImageBytes,
+    limits.maxTotalImagePixels,
     remote,
     remoteState,
     inflight,
   ).then((image) => {
+    // One image is checked against the whole budget while it loads; the sum
+    // of all images of the render is checked here.
     budget.bytes += image.data.byteLength
     if (budget.bytes > limits.maxTotalImageBytes) {
       return imageLimitExceeded(
-        `PDF image sources exceed pdf.limits.maxTotalImageBytes (${limits.maxTotalImageBytes}).`,
+        `PDF images of this render exceed pdf.limits.maxTotalImageBytes (${limits.maxTotalImageBytes} bytes in total).`,
       )
     }
 
     budget.pixels += image.pixels
     if (budget.pixels > limits.maxTotalImagePixels) {
       return imageLimitExceeded(
-        `PDF images exceed pdf.limits.maxTotalImagePixels (${limits.maxTotalImagePixels}).`,
+        `PDF images of this render exceed pdf.limits.maxTotalImagePixels (${limits.maxTotalImagePixels} decoded pixels in total).`,
       )
     }
 
@@ -803,12 +805,6 @@ export const resolvePdfImageAssets = async (
     targets.push({ node })
   }
 
-  if (targets.length > limits.maxImages) {
-    return imageLimitExceeded(
-      `PDF mounted ${targets.length} images, exceeding pdf.limits.maxImages (${limits.maxImages}).`,
-    )
-  }
-
   let resolved: Buffer[]
   try {
     resolved = await Promise.all(targets.map(target =>
@@ -830,12 +826,7 @@ export const resolvePdfImageAssets = async (
   }
 
   targets.forEach((target, index) => {
-    const data = resolved[index]!
-    target.node.props.src = data
-    // Vue can leave this resolved Buffer on the host node when an authored
-    // image prop is unchanged on the next feedback pass. Alias it to the
-    // already-admitted result so render-wide budgets charge the image once.
-    state.resolved.set(data, Promise.resolve(data))
+    target.node.props.src = resolved[index]!
   })
 
   return document

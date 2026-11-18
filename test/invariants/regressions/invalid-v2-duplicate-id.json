@@ -1,0 +1,34 @@
+{
+  "profile": "invalid",
+  "invariants": [
+    "I15"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 31,
+    "rule": "invalid"
+  },
+  "note": "V2 (fixed in slice V1): a destination id error did not name the element. The message now names it and the wrong id; a duplicate names both elements. Found by the first invalid run of H4 (document 31, fault duplicate-id, base fixed); reduced by the harness.",
+  "raw": {
+    "fault": "duplicate-id",
+    "pick": 9,
+    "base": "fixed",
+    "raw": {
+      "pages": [
+        {
+          "size": 0,
+          "landscape": false,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "fixed": [],
+          "children": [],
+          "bookmark": false
+        }
+      ]
+    }
+  }
+}

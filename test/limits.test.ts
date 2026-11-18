@@ -1,15 +1,6 @@
-import { readFileSync } from 'node:fs'
-import { Buffer } from 'node:buffer'
-import { fileURLToPath } from 'node:url'
 import { defineComponent, h, type Component } from 'vue'
 import { describe, expect, it } from 'vitest'
-import {
-  PdfDocument,
-  PdfImage,
-  PdfPage,
-  PdfText,
-} from '../src/runtime/components'
-import { usePdfPageNumbers } from '../src/runtime/composables'
+import { PDF_COMPONENTS } from '../src/runtime/components'
 import type { PdfLimitsOptions } from '../src/module'
 import { createPdfTemplate } from '../src/runtime/server/registry'
 import {
@@ -20,6 +11,8 @@ import {
 } from '../src/runtime/server/render-limits'
 import { PDF_DEFINITION_PROPERTY } from '../src/runtime/shared/template'
 import { parsePdf } from '../src/test/pdf'
+
+const { PdfDocument, PdfPage, PdfText } = PDF_COMPONENTS
 
 const asTemplate = (component: Component): Component =>
   Object.assign(component, { [PDF_DEFINITION_PROPERTY]: {} })
@@ -48,73 +41,6 @@ const OnePageDoc = asTemplate(defineComponent({
     return () => h(PdfDocument, {}, {
       default: () => h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
         default: () => h(PdfText, { style: { fontSize: 18 } }, { default: () => 'Hello' }),
-      }),
-    })
-  },
-}))
-
-const LateTreeDoc = asTemplate(defineComponent({
-  name: 'LateTreeDoc',
-  setup() {
-    const pages = usePdfPageNumbers()
-    return () => h(PdfDocument, {}, {
-      default: () => h(PdfPage, {}, {
-        default: () => [
-          h(PdfText, { id: 'target' }, { default: () => 'Target' }),
-          ...(pages.target === undefined
-            ? []
-            : Array.from({ length: 20 }, (_, index) =>
-                h(PdfText, { key: index }, { default: () => `Late ${index}` }))),
-        ],
-      }),
-    })
-  },
-}))
-
-const lateImageBytes = readFileSync(fileURLToPath(new URL(
-  './fixtures/assets/sample.png',
-  import.meta.url,
-)))
-const lateImagePath = fileURLToPath(new URL(
-  './fixtures/assets/sample.png',
-  import.meta.url,
-))
-
-const lateImageDocument = (source: string): Component => asTemplate(defineComponent({
-  name: 'LateImageDocument',
-  setup() {
-    const pages = usePdfPageNumbers()
-    return () => h(PdfDocument, {}, {
-      default: () => h(PdfPage, {}, {
-        default: () => [
-          h(PdfText, { id: 'target' }, { default: () => 'Target' }),
-          ...(pages.target === undefined
-            ? []
-            : [h(PdfImage, {
-                src: source,
-                style: { height: 100, width: 100 },
-              })]),
-        ],
-      }),
-    })
-  },
-}))
-
-const MultiPassImageDoc = asTemplate(defineComponent({
-  name: 'MultiPassImageDocument',
-  setup() {
-    const pages = usePdfPageNumbers()
-    return () => h(PdfDocument, {}, {
-      default: () => h(PdfPage, {}, {
-        default: () => [
-          h(PdfText, { id: 'target' }, {
-            default: () => `Target ${pages.target ?? ''}`,
-          }),
-          h(PdfImage, {
-            src: 'sample.png',
-            style: { height: 100, width: 100 },
-          }),
-        ],
       }),
     })
   },
@@ -177,101 +103,16 @@ describe('render limits', () => {
     expect(message).toContain('pdf.limits.timeoutMs')
   })
 
-  it.each([
-    ['maxNodes', { maxNodes: 3 }, 'more than 3 nodes'],
-    ['maxTreeDepth', { maxTreeDepth: 2 }, 'tree depth exceeded 2'],
-    ['maxTextCharacters', { maxTextCharacters: 4 }, 'text exceeded 4 characters'],
-  ] as const)('enforces the pre-layout %s admission budget', async (
-    _name,
-    override,
-    message,
-  ) => {
+  it('fails with PDF_LIMIT_EXCEEDED before layout when the tree exceeds maxNodes', async () => {
     const template = createPdfTemplate('admission', OnePageDoc, {
-      limits: renderLimits(override),
+      limits: renderLimits({ maxNodes: 3 }),
     })
 
     await expect(template.render({})).rejects.toMatchObject({
       code: 'PDF_LIMIT_EXCEEDED',
-      message: expect.stringContaining(message),
+      message: expect.stringContaining('more than 3 nodes'),
       templateKey: 'admission',
     })
-  })
-
-  it('destroys serialization when output exceeds maxOutputBytes', async () => {
-    const template = createPdfTemplate('output-cap', OnePageDoc, {
-      limits: renderLimits({ maxOutputBytes: 100 }),
-    })
-
-    await expect(template.render({})).rejects.toMatchObject({
-      code: 'PDF_LIMIT_EXCEEDED',
-      message: expect.stringContaining('pdf.limits.maxOutputBytes (100)'),
-      templateKey: 'output-cap',
-    })
-  })
-
-  it('re-applies tree admission after page-number feedback changes the tree', async () => {
-    const template = createPdfTemplate('late-tree', LateTreeDoc, {
-      limits: renderLimits({ maxNodes: 10 }),
-    })
-
-    await expect(template.render({})).rejects.toMatchObject({
-      code: 'PDF_LIMIT_EXCEEDED',
-      message: expect.stringContaining('more than 10 nodes'),
-      templateKey: 'late-tree',
-    })
-  })
-
-  it('re-applies image admission after page-number feedback introduces an image', async () => {
-    const template = createPdfTemplate('late-image', lateImageDocument('sample.png'), {
-      assets: {
-        'sample.png': {
-          dataB64: Buffer.from(lateImageBytes).toString('base64'),
-          format: 'png',
-        },
-      },
-      limits: renderLimits({
-        maxImageBytes: 100,
-        maxTotalImageBytes: 100,
-      }),
-    })
-
-    await expect(template.render({})).rejects.toMatchObject({
-      code: 'PDF_LIMIT_EXCEEDED',
-      message: expect.stringContaining('100-byte source limit'),
-      templateKey: 'late-image',
-    })
-  })
-
-  it('blocks an absolute image introduced after page-number feedback', async () => {
-    const template = createPdfTemplate(
-      'late-absolute-image',
-      lateImageDocument(lateImagePath),
-    )
-
-    await expect(template.render({})).rejects.toMatchObject({
-      code: 'PDF_ASSET_BLOCKED',
-      message: expect.stringContaining('relative local asset path'),
-      templateKey: 'late-absolute-image',
-    })
-  })
-
-  it('charges a stable image once across multi-pass re-admission', async () => {
-    const template = createPdfTemplate('multi-pass-image', MultiPassImageDoc, {
-      assets: {
-        'sample.png': {
-          dataB64: Buffer.from(lateImageBytes).toString('base64'),
-          format: 'png',
-        },
-      },
-      limits: renderLimits({
-        maxImageBytes: lateImageBytes.byteLength,
-        maxTotalImageBytes: lateImageBytes.byteLength,
-      }),
-    })
-
-    const result = await template.render({})
-    expect(result.diagnostics.passes).toBeGreaterThanOrEqual(2)
-    expect(result.diagnostics.pageCount).toBe(1)
   })
 })
 
@@ -302,8 +143,8 @@ describe('normalizePdfLimits', () => {
       .toThrow('pdf.limits.timeoutMs must be a positive safe integer.')
     expect(() => normalizePdfLimits({ maxPages: '2000' as unknown as number }))
       .toThrow('pdf.limits.maxPages must be a positive safe integer.')
-    expect(() => normalizePdfLimits({ maxOutputBytes: Number.MAX_SAFE_INTEGER + 1 }))
-      .toThrow('pdf.limits.maxOutputBytes must be a positive safe integer.')
+    expect(() => normalizePdfLimits({ maxRemoteRequests: Number.MAX_SAFE_INTEGER + 1 }))
+      .toThrow('pdf.limits.maxRemoteRequests must be a positive safe integer.')
   })
 
   it('rejects invalid containers and unknown fields', () => {
@@ -311,5 +152,41 @@ describe('normalizePdfLimits', () => {
       .toThrow('pdf.limits must be an object.')
     expect(() => normalizePdfLimits({ legacyCap: 1 } as PdfLimitsOptions))
       .toThrow('pdf.limits.legacyCap is not supported.')
+  })
+
+  // Catches a removed option that is silently ignored, or kept under an old
+  // name with a new meaning: an operator who set it must learn what to set.
+  it.each([
+    ['maxImageBytes', 'there is no per-image cap any more. Set pdf.limits.maxTotalImageBytes'],
+    ['maxImagePixels', 'there is no per-image cap any more. Set pdf.limits.maxTotalImagePixels'],
+    ['maxAttachmentBytes', 'rename it to pdf.limits.maxTotalAttachmentBytes.'],
+    ['maxTreeDepth', 'remove it. pdf.limits.maxNodes bounds the tree.'],
+    ['maxTextCharacters', 'remove it.'],
+    ['maxImages', 'remove it.'],
+    ['maxRemoteConcurrency', 'remove it. A render runs at most four remote requests at a time'],
+    ['maxOutputBytes', 'remove it.'],
+  ])('rejects the removed option %s with what to do instead', (key, hint) => {
+    expect(() => normalizePdfLimits({ [key]: 1 } as PdfLimitsOptions))
+      .toThrow(`pdf.limits.${key} was removed: ${hint}`)
+  })
+
+  it.each([
+    'maxTotalImageBytes',
+    'maxTotalImagePixels',
+    'maxTotalAttachmentBytes',
+  ] as const)('accepts the total budget %s', (key) => {
+    expect(normalizePdfLimits({ [key]: 7 })?.[key]).toBe(7)
+  })
+
+  it('keeps seven options', () => {
+    expect(Object.keys(DEFAULT_PDF_RENDER_LIMITS)).toEqual([
+      'timeoutMs',
+      'maxPages',
+      'maxNodes',
+      'maxTotalImageBytes',
+      'maxTotalImagePixels',
+      'maxRemoteRequests',
+      'maxTotalAttachmentBytes',
+    ])
   })
 })

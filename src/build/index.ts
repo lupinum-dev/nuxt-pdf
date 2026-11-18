@@ -11,7 +11,8 @@ import { bundlePdfFonts } from './fonts'
 import { generateAuthoringTypes } from './generate-authoring-types'
 import { generatePdfRegistryTypes, generatePdfRuntimeRegistry } from './generate-registry'
 import { preparePdfImageAssets } from './image-assets'
-import { compilePdfSfc } from './pdf-sfc-plugin'
+import { loadOptionalPeer } from './optional-peer'
+import { createPdfSfcEsbuildPlugin } from './pdf-sfc-plugin'
 import type { PdfFontDeclaration } from '../runtime/fonts'
 import { normalizeRemoteAssetPolicy, type RemoteAssetOptions } from '../runtime/server/assets/remote'
 import { DEFAULT_PDF_RENDER_LIMITS, normalizePdfLimits, type PdfLimitsOptions } from '../runtime/server/render-limits'
@@ -131,16 +132,13 @@ export async function buildPdfRegistry(options: BuildPdfRegistryOptions): Promis
     target: 'node22',
     tsconfigRaw: {},
     write: false,
-    plugins: [{
-      name: 'nuxt-pdf:standalone',
-      setup(builder) {
-        builder.onLoad({ filter: /\.vue$/ }, async ({ path }) => ({
-          contents: (await compilePdfSfc(await readFile(path, 'utf8'), path, entries.has(path) ? 'template' : 'component', true, runtimeImport)).code,
-          loader: 'js',
-          resolveDir: dirname(path),
-        }))
-      },
-    }],
+    // `rootDir` bounds style `@import` to the application, not the working
+    // directory. No `alias`: without Nuxt there is no alias table, so
+    // `@import` takes relative paths only.
+    plugins: [createPdfSfcEsbuildPlugin({
+      kind: path => entries.has(path) ? 'template' : 'component',
+      compileOptions: { rootDir, einvoiceImport: runtimeImport },
+    })],
   })
   const output = result.outputFiles[0]
   if (!output) throw new Error('PDF registry compilation produced no output.')
@@ -162,14 +160,17 @@ export async function buildPdfRegistry(options: BuildPdfRegistryOptions): Promis
 
 async function emitDeclarations(rootDir: string, outDir: string, templates: PdfTemplate[]): Promise<void> {
   // Vue owns prop inference. Only the build uses vue-tsc; backend consumers use tsc.
+  // Both are optional peers; a missing one fails here with an install hint.
+  const ts = await loadOptionalPeer('typescript', 'to rewrite the imports of the emitted template types', async () => (await import('typescript')).default)
+  const vueTsc = await loadOptionalPeer('vue-tsc', 'to emit the prop types of PDF templates', () => createRequire(import.meta.url).resolve('vue-tsc/bin/vue-tsc.js'))
   const temporary = await mkdtemp(join(outDir, '.types-'))
   try {
     const globals = join(temporary, 'authoring.d.ts')
     const runtimeDirectory = join(dirname(fileURLToPath(import.meta.resolve(runtimeImport))), 'runtime')
     await writeFile(globals, generateAuthoringTypes(
       join(runtimeDirectory, 'components/index'),
-      join(runtimeDirectory, 'composables/index'),
       join(runtimeDirectory, 'define-pdf'),
+      join(runtimeDirectory, 'einvoice/index'),
     ))
     const config = join(temporary, 'tsconfig.json')
     await writeFile(config, JSON.stringify({
@@ -181,13 +182,13 @@ async function emitDeclarations(rootDir: string, outDir: string, templates: PdfT
       files: [...templates.map(template => template.filePath), globals],
     }))
     try {
-      await execute(process.execPath, [createRequire(import.meta.url).resolve('vue-tsc/bin/vue-tsc.js'), '--project', config], { cwd: rootDir, maxBuffer: 4 * 1024 * 1024 })
+      await execute(process.execPath, [vueTsc, '--project', config], { cwd: rootDir, maxBuffer: 4 * 1024 * 1024 })
     }
     catch (error) {
       const diagnostics = error instanceof Error && 'stdout' in error ? String(error.stdout) : ''
       throw new Error(`PDF template type checking failed.\n${diagnostics}`, { cause: error })
     }
-    await normalizeDeclarationImports(join(outDir, 'types'))
+    await normalizeDeclarationImports(join(outDir, 'types'), ts)
     const declarationTemplates = templates.map(template => ({
       ...template,
       filePath: `./types/${relative(rootDir, template.filePath).replaceAll('\\', '/')}.js`,

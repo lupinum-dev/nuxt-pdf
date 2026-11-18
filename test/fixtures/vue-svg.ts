@@ -1,26 +1,8 @@
 import { defineComponent, h } from 'vue'
-import {
-  PdfCircle,
-  PdfClipPath,
-  PdfDefs,
-  PdfDocument,
-  PdfEllipse,
-  PdfG,
-  PdfLine,
-  PdfLinearGradient,
-  PdfPage,
-  PdfPath,
-  PdfPolygon,
-  PdfPolyline,
-  PdfRadialGradient,
-  PdfRect,
-  PdfStop,
-  PdfSvg,
-  PdfText,
-  PdfTspan,
-  PdfView,
-} from '../../src/runtime/components'
+import { PDF_COMPONENTS } from '../../src/runtime/components'
 import { logo, showcase, svgStyles as styles } from './svg-data'
+
+const { PdfCircle, PdfClipPath, PdfDefs, PdfDocument, PdfEllipse, PdfG, PdfLine, PdfLinearGradient, PdfPage, PdfPath, PdfPolygon, PdfPolyline, PdfRadialGradient, PdfRect, PdfStop, PdfSvg, PdfText, PdfTspan, PdfView } = PDF_COMPONENTS
 
 export const VueSvgDocument = defineComponent({
   name: 'VueSvgDocument',

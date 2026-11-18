@@ -10,7 +10,7 @@ import {
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
-import type { DocumentNode } from '@react-pdf/layout'
+import type { DocumentNode } from '../src/runtime/server/engine/layout/index'
 import * as P from '@react-pdf/primitives'
 import { afterEach, describe, expect, it } from 'vitest'
 import {

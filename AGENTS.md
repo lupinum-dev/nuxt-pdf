@@ -40,8 +40,13 @@ Focused commands:
 - `pnpm test:docs` checks docs snippets, docs contracts and the docs app types.
 - `pnpm test:production` builds the module and checks the production and
   serverless Nuxt boundaries and the playground build.
+- `pnpm test:invariants` runs the invariant harness (`test/invariants/`) at CI
+  size, about 150 s; `pnpm test` runs only its saved cases and one generated
+  document per rule. Its own job in CI.
 - `pnpm test:raster` compares reviewed PDF images. CI runs it in a pinned Linux
   image; local results can differ.
+- `pnpm test:pdfa` validates PDF/A-3b output with veraPDF in a pinned Docker
+  image (`test/pdfa.test.ts`). It needs a running Docker daemon.
 - `pnpm test:performance` measures render time and memory against
   `test/fixtures/performance/linux-node24.json`. It is not part of CI; run it
   when a change can affect performance (see `internals/performance.md`).
@@ -58,7 +63,8 @@ The "Agent setup" section of the README tells those agents how to add a
 pointer to it. Keep the `./agent-docs` export and that section.
 
 CI also runs the tests on the Node floor and the newest Node major, the raster
-suite in a pinned Linux image, and the path and asset tests on Windows.
+suite in a pinned Linux image, the veraPDF PDF/A suite (`pnpm test:pdfa`), and
+the path and asset tests on Windows.
 
 ## Hard rules
 

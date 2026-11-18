@@ -2,38 +2,14 @@ import {
   createRenderer,
   createVNode,
   defineComponent,
+  Fragment,
   getCurrentInstance,
   nextTick,
-  reactive,
-  shallowRef,
   type Component,
+  type ConcreteComponent,
 } from 'vue'
-import { PDF_PAGE_NUMBERS_KEY } from '../composables/use-pdf-page-numbers'
-import { PDF_PRIMITIVES } from '../authoring'
-import {
-  PdfCircle,
-  PdfClipPath,
-  PdfDefs,
-  PdfDocument,
-  PdfEllipse,
-  PdfG,
-  PdfImage,
-  PdfLine,
-  PdfLinearGradient,
-  PdfLink,
-  PdfNote,
-  PdfPage,
-  PdfPath,
-  PdfPolygon,
-  PdfPolyline,
-  PdfRadialGradient,
-  PdfRect,
-  PdfStop,
-  PdfSvg,
-  PdfText,
-  PdfTspan,
-  PdfView,
-} from '../components'
+import { PDF_PRIMITIVES } from '../primitives'
+import { PDF_COMPONENTS } from '../components'
 import {
   createPdfNodeOps,
   createPdfRoot,
@@ -46,49 +22,42 @@ import type {
   PdfRoot,
 } from './types'
 import { validatePdfDocumentTree } from './validate-tree'
-
-const PDF_COMPONENTS = {
-  PdfCircle,
-  PdfClipPath,
-  PdfDefs,
-  PdfDocument,
-  PdfEllipse,
-  PdfG,
-  PdfImage,
-  PdfLine,
-  PdfLinearGradient,
-  PdfLink,
-  PdfNote,
-  PdfPage,
-  PdfPath,
-  PdfPolygon,
-  PdfPolyline,
-  PdfRadialGradient,
-  PdfRect,
-  PdfStop,
-  PdfSvg,
-  PdfText,
-  PdfTspan,
-  PdfView,
-}
+import { resolvePdfClasses } from './classes'
 
 export type PdfComponentProps = Record<string, unknown>
 
+/**
+ * Document values that win over the template's own `PdfDocument` props: the
+ * resolved `definePdf` `title` and `language`. They are set before every
+ * validation, so the tagged checks see the values the PDF will carry.
+ */
+export type PdfDocumentOverrides = {
+  readonly title?: string
+  readonly language?: string
+}
+
 export type MountedPdfComponent = {
+  /** The current tree, flushed and validated. Vue may still change it. */
   readonly document: PdfDocumentNode
   readonly root: PdfRoot
-  /** Whether `usePdfPageNumbers()` was called during mount (flags multi-pass). */
-  readonly usesPageNumbers: boolean
-  update(props: PdfComponentProps): Promise<PdfDocumentNode>
-  /** Push a destination `id → page` map into the live tree for the next layout. */
-  feedPageNumbers(pages: Record<string, number>): Promise<PdfDocumentNode>
+  /**
+   * Flush, validate and stop the application in one synchronous step. The
+   * returned tree is final: no later Vue update can reach it, so checks and
+   * admission done on it afterwards stay true.
+   */
+  take(): PdfDocumentNode
   unmount(): void
 }
 
 const ASYNC_AUTHORING_ERROR
   = 'Async setup and async components are not supported in PDF templates. Load request data before render(props) and pass it through typed props.'
 
-const requireDocument = (root: PdfRoot): PdfDocumentNode => {
+/** The name an author knows a component by: its `name`, or the SFC file name. */
+const componentName = (type: ConcreteComponent): string =>
+  (typeof type === 'function' ? type.displayName ?? type.name : type.name ?? type.__name)
+  || 'anonymous component'
+
+const requireDocument = (root: PdfRoot, overrides: PdfDocumentOverrides): PdfDocumentNode => {
   if (root.document?.type !== PDF_PRIMITIVES.Document) {
     throw new NuxtPdfError(
       PDF_ERROR_CODES.TreeInvalid,
@@ -96,6 +65,8 @@ const requireDocument = (root: PdfRoot): PdfDocumentNode => {
     )
   }
 
+  if (overrides.title !== undefined) root.document.props.title = overrides.title
+  if (overrides.language !== undefined) root.document.props.language = overrides.language
   validatePdfDocumentTree(root.document)
   return root.document
 }
@@ -103,6 +74,7 @@ const requireDocument = (root: PdfRoot): PdfDocumentNode => {
 export const mountPdfComponent = async (
   component: Component,
   initialProps: PdfComponentProps = {},
+  overrides: PdfDocumentOverrides = {},
 ): Promise<MountedPdfComponent> => {
   let hasRenderError = false
   let renderError: unknown
@@ -121,14 +93,12 @@ export const mountPdfComponent = async (
     resetRenderError()
     throw error
   }
-  const renderer = createRenderer<PdfHostNode, PdfHostElement>(
-    createPdfNodeOps(recordRenderError),
-  )
+  const nodeOps = createPdfNodeOps(recordRenderError)
+  const renderer = createRenderer<PdfHostNode, PdfHostElement>(nodeOps)
   const root = createPdfRoot()
-  const currentProps = shallowRef(initialProps)
   const RootComponent = defineComponent({
     name: 'NuxtPdfRenderRoot',
-    setup: () => () => createVNode(component, currentProps.value),
+    setup: () => () => createVNode(component, initialProps),
   })
 
   const app = renderer.createApp(RootComponent)
@@ -155,28 +125,41 @@ export const mountPdfComponent = async (
   // successful document with missing content.
   app.config.errorHandler = recordRenderError
   app.config.throwUnhandledErrorInProduction = true
-  app.config.warnHandler = message => recordRenderError(new NuxtPdfError(
+  const recordWarning = (message: string) => recordRenderError(new NuxtPdfError(
     PDF_ERROR_CODES.TemplateInvalid,
     message.includes('async setup()')
       ? ASYNC_AUTHORING_ERROR
       : `Vue reported an invalid PDF authoring pattern: ${message}`,
   ))
+  app.config.warnHandler = (message, instance) => {
+    if (!instance || !('style' in instance.$attrs)) {
+      recordWarning(message)
+      return
+    }
+    // A compiled `class` reaches a component as a `style` attribute. With
+    // several root elements Vue cannot choose one to pass it to, and the style
+    // would be lost. Vue checks this before it stores the rendered root in
+    // `subTree`, so look once the render has finished (before the mount's own
+    // `nextTick` resolves).
+    void nextTick(() => {
+      if (instance.$.subTree.type === Fragment) {
+        recordRenderError(new NuxtPdfError(
+          PDF_ERROR_CODES.TreeInvalid,
+          `A class on <${componentName(instance.$.type)}> needs a single root element in that component, or v-bind="$attrs" on one element.`,
+        ))
+      }
+      else {
+        recordWarning(message)
+      }
+    })
+  }
+
+  // Compiled `class` / `:class` bindings call this helper (see build/pdf-style.ts).
+  app.config.globalProperties.$nuxtPdfClass = resolvePdfClasses
 
   for (const [name, primitive] of Object.entries(PDF_COMPONENTS)) {
     app.component(name, primitive)
   }
-
-  // Back `usePdfPageNumbers()` with a reactive map the render loop feeds each
-  // pass. Injecting it (during setup) flips `pageNumbersUsed`, which the render
-  // path reads to decide between the single-pass and multi-pass pipelines.
-  const pageNumbers = reactive<Record<string, number | undefined>>({})
-  let pageNumbersUsed = false
-  app.provide(PDF_PAGE_NUMBERS_KEY, {
-    pages: pageNumbers,
-    markUsed: () => {
-      pageNumbersUsed = true
-    },
-  })
 
   let mounted = false
   const dispose = (surfaceCleanupError: boolean) => {
@@ -184,6 +167,8 @@ export const mountPdfComponent = async (
     resetRenderError()
     try {
       app.unmount()
+      // Unmounting only removes host nodes; this flush clears `root.document`.
+      nodeOps.flush()
       if (surfaceCleanupError) throwRenderError()
     }
     finally {
@@ -201,21 +186,36 @@ export const mountPdfComponent = async (
     throw error
   }
   const requireSuccessfulDocument = (): PdfDocumentNode => {
+    // After `take` or `unmount`, a flush would apply Vue's teardown to the
+    // tree that was handed out.
+    if (!mounted) throw new Error('This PDF component was already taken or unmounted.')
     throwRenderError()
-    return requireDocument(root)
+    // Vue has finished this flush: derive every changed element's `children`
+    // once, then validate the complete tree.
+    nodeOps.flush()
+    return requireDocument(root, overrides)
   }
-  const updateDocument = async (
-    mutate: () => void,
-  ): Promise<PdfDocumentNode> => {
-    resetRenderError()
+  const take = (): PdfDocumentNode => {
+    let document: PdfDocumentNode
     try {
-      mutate()
-      await nextTick()
-      return requireSuccessfulDocument()
+      document = requireSuccessfulDocument()
     }
     catch (error) {
       return fail(error)
     }
+    // Unmount without the flush `dispose` runs: Vue's teardown only unlinks
+    // host nodes from the per-parent lists, and only a flush would copy that
+    // into the `children` arrays. The taken tree keeps its last validated
+    // shape, and with the effects stopped nothing patches its props again.
+    resetRenderError()
+    try {
+      app.unmount()
+      throwRenderError()
+    }
+    finally {
+      mounted = false
+    }
+    return document
   }
 
   try {
@@ -233,25 +233,10 @@ export const mountPdfComponent = async (
 
   return {
     get document() {
-      return requireDocument(root)
+      return requireSuccessfulDocument()
     },
     root,
-    get usesPageNumbers() {
-      return pageNumbersUsed
-    },
-    async update(props) {
-      return updateDocument(() => {
-        currentProps.value = props
-      })
-    },
-    async feedPageNumbers(pages) {
-      return updateDocument(() => {
-        for (const key of Object.keys(pageNumbers)) {
-          if (!(key in pages)) Reflect.deleteProperty(pageNumbers, key)
-        }
-        Object.assign(pageNumbers, pages)
-      })
-    },
+    take,
     unmount() {
       dispose(true)
     },

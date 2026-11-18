@@ -51,6 +51,10 @@ describe('Nuxt PDF production boundary', () => {
     expect(viewerBody).not.toContain('class="diagnostics"')
     expect(viewerBody).not.toContain('Layout passes')
     expect(viewerBody).not.toContain('<iframe')
+
+    // Nor the layout-box switch of the raw preview route.
+    const debugResponse = await nuxtFetch('/_pdf/invoice.pdf?debug=1')
+    expect(debugResponse.headers.get('content-type')).not.toContain('application/pdf')
   })
 
   it('rejects component failures instead of returning a partial PDF', async () => {

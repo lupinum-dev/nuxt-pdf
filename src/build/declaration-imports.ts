@@ -1,15 +1,15 @@
 import { readFile, readdir, writeFile } from 'node:fs/promises'
 import { dirname, join, relative } from 'node:path'
-import ts from 'typescript'
+import type TypeScript from 'typescript'
 
 /** Make Vue's declarations resolve in ordinary NodeNext TypeScript consumers. */
-export async function normalizeDeclarationImports(directory: string): Promise<void> {
+export async function normalizeDeclarationImports(directory: string, ts: typeof TypeScript): Promise<void> {
   for (const file of await readdir(directory, { recursive: true })) {
     if (!/\.d\.[cm]?ts$/.test(file)) continue
     const path = join(directory, file)
     const source = ts.createSourceFile(path, await readFile(path, 'utf8'), ts.ScriptTarget.Latest, true)
     const transformed = ts.transform(source, [(context) => {
-      const visit: ts.Visitor = (node) => {
+      const visit: TypeScript.Visitor = (node) => {
         if (ts.isStringLiteral(node) && node.text.startsWith('.')) {
           const parent = node.parent
           const isImport = ts.isImportDeclaration(parent) || ts.isExportDeclaration(parent)
@@ -23,7 +23,7 @@ export async function normalizeDeclarationImports(directory: string): Promise<vo
         }
         return ts.visitEachChild(node, visit, context)
       }
-      return node => ts.visitNode(node, visit) as ts.SourceFile
+      return node => ts.visitNode(node, visit) as TypeScript.SourceFile
     }])
     try {
       await writeFile(path, ts.createPrinter().printFile(transformed.transformed[0]!))

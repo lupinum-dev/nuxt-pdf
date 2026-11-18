@@ -68,6 +68,25 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
 
+  # The invariant harness at CI size (about 150 s); `pnpm test` checks its saved
+  # cases and one generated document per rule.
+  invariants:
+    name: invariants (CI size)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: corepack enable pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm dev:prepare
+      - run: pnpm test:invariants
+
   # Raster baselines depend on the platform's font rendering, so they run in a pinned image.
   raster:
     name: raster (pinned Linux)
@@ -102,6 +121,24 @@ jobs:
           path: reports/pdf-snapshots
           if-no-files-found: ignore
 
+  # PDF/A-3b fixtures validated by veraPDF (image pinned by digest in test/pdfa.test.ts).
+  pdfa:
+    name: PDF/A (veraPDF)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: corepack enable pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm dev:prepare
+      - run: pnpm test:pdfa
+
   windows:
     name: test (Windows paths and assets)
     runs-on: windows-2025
@@ -123,7 +160,7 @@ jobs:
   ci:
     name: ci
     if: always()
-    needs: [check, node, raster, windows]
+    needs: [check, node, invariants, raster, pdfa, windows]
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:

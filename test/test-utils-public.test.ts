@@ -3,13 +3,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { defineComponent, h } from 'vue'
 import { describe, expect, it } from 'vitest'
-import {
-  PdfDocument,
-  PdfLink,
-  PdfPage,
-  PdfText,
-  PdfView,
-} from '../src/runtime/components'
+import { PDF_COMPONENTS } from '../src/runtime/components'
 // Import through the shipped public entry so the test exercises exactly what
 // users get from `@lupinum/nuxt-pdf/test`.
 import {
@@ -23,6 +17,8 @@ import {
   type RenderPdfTemplateOptions,
 } from '../src/test/index'
 import { sampleInvoice } from '../playground/shared/invoice'
+
+const { PdfDocument, PdfLink, PdfPage, PdfText, PdfView } = PDF_COMPONENTS
 
 // A realistic, self-contained template: two explicit pages, an internal link to
 // a bookmarked section, and an external link — no Nuxt and no SFC.

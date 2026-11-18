@@ -9,25 +9,14 @@ import {
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { DocumentNode } from '@react-pdf/layout'
+import type { DocumentNode } from '../src/runtime/server/engine/layout/index'
 import {
   Font as ReactFont,
   renderToBuffer as renderReactDocument,
 } from '@react-pdf/renderer'
 import { describe, expect, it } from 'vitest'
 import { defineComponent, h } from 'vue'
-import {
-  PdfDefs,
-  PdfDocument,
-  PdfLine,
-  PdfLinearGradient,
-  PdfPage,
-  PdfRadialGradient,
-  PdfRect,
-  PdfStop,
-  PdfSvg,
-  PdfText,
-} from '../src/runtime/components'
+import { PDF_COMPONENTS } from '../src/runtime/components'
 import { mountPdfComponent } from '../src/runtime/renderer'
 import { bundlePdfFonts } from '../src/build/fonts'
 import { renderDocument } from '../src/runtime/server/engine/render-document'
@@ -41,6 +30,8 @@ import {
   parsePdf,
   rasterizePdf,
 } from '../src/test/pdf'
+
+const { PdfDefs, PdfDocument, PdfLine, PdfLinearGradient, PdfPage, PdfRadialGradient, PdfRect, PdfStop, PdfSvg, PdfText } = PDF_COMPONENTS
 
 const fontPath = fileURLToPath(new URL(
   './fixtures/assets/Roboto-Regular.ttf',

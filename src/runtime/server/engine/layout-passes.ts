@@ -1,45 +1,52 @@
-import type { DocumentNode, SafeDocumentNode } from '@react-pdf/layout'
+import type { DocumentNode, SafeDocumentNode } from './layout/index'
 import { createPdfFontStore, type PdfFontStore } from './fonts'
 import { NuxtPdfError, PDF_ERROR_CODES } from '../../shared/errors'
-import type { PdfElementNode, PdfNode } from '../../renderer'
 import type { RenderLimits } from '../render-limits'
 import {
   extractDestinationPages,
   layoutPdfTree,
   serializePdfLayout,
   type DestinationPageMap,
+  type PdfEngineAttachment,
 } from './render-document'
 
 export { extractDestinationPages, type DestinationPageMap }
 
-// The shipped multi-pass layout loop that resolves table-of-contents page
-// numbers. It is a fixed-point iteration over the existing single-pass pipeline:
+// The fixed-point layout loop. It resolves what one layout can only learn from
+// a finished layout: page-reference (`PAGE_REF`) numbers and views that must
+// start on a new page so a repeated header is not left alone:
 //
-//   feed(map) → layoutPdfTree → extract id→page map → repeat until stable → serialize ONCE
+//   feed(facts) → layoutPdfTree → extract facts → repeat until stable → serialize ONCE
 //
-// The document is authored once and mounted once. Between passes the id→page map
-// is fed back into the LIVE Vue tree; our custom renderer re-patches the same
-// node objects in place (proven by node-identity assertions in
-// test/toc-multipass.test.ts — no re-mount per pass). `layoutDocument` treats its
-// input as immutable for every non-bookmark node (Object.assign copies at each
-// step; see CONTRACTS.md "Layout purity contract"), so the same mounted tree is
-// safe to lay out repeatedly without cloning. registry.ts gates entry to this
-// loop on `usePdfPageNumbers()` usage — the only thing that consumes resolved
-// page numbers. Internal `#id` links alone do NOT need it: a named destination
-// is resolved by name in a single pass (`serializePdfLayout` anchors it at the
-// section's first page), so link-only documents stay single-pass.
+// `feed` rebuilds the engine tree from the plain-data document with the latest
+// facts (`toEngineDocument` in plain-tree.ts). Every pass lays out a fresh copy, so
+// the one layout step that writes into its input (`resolveBookmarks` replaces
+// `props.bookmark`, see CONTRACTS.md "Layout purity contract") never reaches the
+// next pass or the mounted tree. Internal `#id` links alone do not need the loop:
+// a named destination is resolved by name in a single pass.
 
 /**
- * A mountable document whose page-number feedback can be re-fed between passes.
- * In production the registry backs `feed` with `MountedPdfComponent.feedPageNumbers`,
- * which pushes the map into the reactive record the `usePdfPageNumbers()`
- * composable exposes; engine tests back it with a reactive prop through `update`.
+ * What one layout pass reports and the next pass is built with. `Facts` is the
+ * adapter's choice (plain-tree.ts: destination pages and views that must
+ * start on a new page).
  */
-export interface MultiPassSource {
-  /** The live mounted document root; re-patched in place by `feed`. */
+export interface MultiPassSource<Facts> {
+  /** The engine tree of the current pass, rebuilt by `feed` before each layout. */
   readonly document: DocumentNode
-  /** Push the latest id→page map into the live tree and await the renderer flush. */
-  feed: (pages: DestinationPageMap) => Promise<void>
+  /** Facts for pass 1, before any layout ran. */
+  readonly initial: Facts
+  /** Build the engine tree for the next pass from the latest facts. */
+  feed: (facts: Facts) => Promise<void>
+  /** Read the facts from a laid-out document, given the facts it was built with. */
+  extract: (layout: SafeDocumentNode, fed: Facts) => Facts
+  same: (a: Facts, b: Facts) => boolean
+  /** Short text for the non-convergence error. */
+  describe: (facts: Facts) => string
+  /**
+   * Remove adapter-only nodes from a laid-out pass before anything reads or
+   * serializes it (the page guard in plain-tree.ts).
+   */
+  clean?: (layout: SafeDocumentNode) => SafeDocumentNode
 }
 
 export interface MultiPassOptions {
@@ -49,48 +56,20 @@ export interface MultiPassOptions {
   maxPasses?: number
   /** Render limits bounding the whole loop (page cap + shared time budget). */
   limits?: RenderLimits
+  /** Files embedded once, when the converged layout is serialized. */
+  attachments?: readonly PdfEngineAttachment[]
 }
 
-export interface MultiPassResult {
+export interface MultiPassResult<Facts> {
   bytes: Uint8Array
   layout: SafeDocumentNode
-  /** Number of layout passes actually run (a converged doc needs ≥ 2). */
+  /** Number of layout passes actually run (1 when pass 1 already reports its own input). */
   passes: number
-  /** The stable id→page map the serialized PDF was produced with. */
-  pages: DestinationPageMap
+  /** The stable facts the serialized PDF was produced with. */
+  facts: Facts
 }
 
 const DEFAULT_MAX_PASSES = 5
-
-// `resolveBookmarks` is the one layout step that writes derived state back onto
-// the input tree: it REPLACES `props.bookmark` with a resolved `{ ref, parent,
-// …bookmark }` hierarchy on the mounted node (`resolveBookmarks.ts:52`; see
-// CONTRACTS.md "Layout purity contract"). Across passes that resolved object
-// feeds back into the next pass's `getBookmarkValue`, whose `{ …bookmark }` spread
-// carries the STALE `ref`/`parent` forward and corrupts the outline hierarchy.
-// The reset restores each bookmark-carrying node's ORIGINAL authored value before
-// every pass. resolveBookmarks only reassigns the reference (never mutates the
-// object), so restoring the captured reference is a complete reset. The snapshot
-// is merged before EVERY pass, not captured once: a bookmark that first appears
-// mid-loop (e.g. behind a v-if on a resolved page number) is recorded with its
-// authored value the first time it is seen, before any layout resolves it.
-type BookmarkSnapshot = Map<PdfElementNode, unknown>
-
-const resetBookmarks = (
-  root: PdfElementNode,
-  snapshot: BookmarkSnapshot,
-): void => {
-  const visit = (node: PdfNode): void => {
-    if (!('children' in node)) return
-    const element = node as PdfElementNode
-    if ('bookmark' in element.props) {
-      if (snapshot.has(element)) element.props.bookmark = snapshot.get(element)
-      else snapshot.set(element, element.props.bookmark)
-    }
-    for (const child of element.children) visit(child)
-  }
-  visit(root)
-}
 
 const samePages = (a: DestinationPageMap, b: DestinationPageMap): boolean => {
   const keys = Object.keys(a)
@@ -104,54 +83,69 @@ const describeMap = (map: DestinationPageMap): string => {
   return entries.map(([id, page]) => `#${id}→p${page}`).join(', ')
 }
 
+/** Facts that are only the destination pages; for sources that feed a page map. */
+export const DESTINATION_FACTS = {
+  initial: {} as DestinationPageMap,
+  extract: (layout: SafeDocumentNode) => extractDestinationPages(layout),
+  same: samePages,
+  describe: describeMap,
+}
+
+export { samePages, describeMap }
+
 /**
- * Lay the mounted document out repeatedly, feeding each pass's destination→page
- * map back into the live tree, until the map the layout PRODUCES equals the map
- * it was laid out WITH (a fixed point). Serializes that converged layout once.
+ * Lay the document out repeatedly, feeding each pass's facts into the next
+ * engine tree, until the facts a layout PRODUCES equal the facts it was laid
+ * out WITH (a fixed point). Serializes that converged layout once.
  *
  * Throws a `PDF_LIMIT_EXCEEDED` NuxtPdfError on non-convergence rather than
  * looping forever or shipping silently wrong page numbers.
  */
-export const renderDocumentMultiPass = async (
-  source: MultiPassSource,
+export const renderDocumentMultiPass = async <Facts>(
+  source: MultiPassSource<Facts>,
   options: MultiPassOptions = {},
-): Promise<MultiPassResult> => {
+): Promise<MultiPassResult<Facts>> => {
   const fontStore = options.fontStore ?? createPdfFontStore()
   const maxPasses = options.maxPasses ?? DEFAULT_MAX_PASSES
-  const bookmarks: BookmarkSnapshot = new Map()
 
-  let fed: DestinationPageMap = {}
-  let produced: DestinationPageMap = {}
+  let next = source.initial
+  let fed = next
+  let produced = next
 
   for (let pass = 1; pass <= maxPasses; pass += 1) {
+    fed = next
     await source.feed(fed)
-    resetBookmarks(source.document as unknown as PdfElementNode, bookmarks)
     // layoutPdfTree checks the shared deadline before and after each pass and
     // enforces the page cap on every laid-out result, so the whole loop is
     // bounded by the same budget without a second enforcement site here.
-    const layout = await layoutPdfTree(source.document, fontStore, options.limits)
-    produced = extractDestinationPages(layout)
+    const laidOut = await layoutPdfTree(source.document, fontStore, options.limits)
+    const layout = source.clean ? source.clean(laidOut) : laidOut
+    produced = source.extract(layout, fed)
 
-    if (samePages(produced, fed)) {
+    if (source.same(produced, fed)) {
       const bytes = await serializePdfLayout(
         source.document.props,
         layout,
         options.compress ?? true,
         options.limits,
+        options.attachments,
       )
-      return { bytes, layout, passes: pass, pages: produced }
+      return { bytes, layout, passes: pass, facts: produced }
     }
 
-    fed = produced
+    next = produced
   }
+
+  // `fed` and `produced` belong to the last pass, so the message shows what
+  // that pass was laid out with and what it reported instead.
 
   throw new NuxtPdfError(
     PDF_ERROR_CODES.LimitExceeded,
-    `Table-of-contents page numbers did not stabilize after ${maxPasses} layout passes. `
+    `Page numbers did not stabilize after ${maxPasses} layout passes. `
     + `This means a document's layout depends on the page numbers it prints — usually a `
     + `table-of-contents entry whose height changes with the page number it shows, forming a `
     + `feedback loop. Fix the entry so its size does not depend on the number (e.g. a fixed-width `
     + `number column, or reserve the line height up front), or raise maxPasses if the document is `
-    + `legitimately this deep. Last fed map: ${describeMap(fed)}; last produced map: ${describeMap(produced)}.`,
+    + `legitimately this deep. Last fed: ${source.describe(fed)}; last produced: ${source.describe(produced)}.`,
   )
 }

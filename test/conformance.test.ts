@@ -10,7 +10,6 @@ import {
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { DocumentNode } from '@react-pdf/layout'
 import {
   Font as ReactFont,
   renderToBuffer as renderReactDocument,
@@ -18,8 +17,8 @@ import {
 import { describe, expect, it } from 'vitest'
 import { mountPdfComponent } from '../src/runtime/renderer'
 import { bundlePdfFonts } from '../src/build/fonts'
-import { renderDocument } from '../src/runtime/server/engine/render-document'
 import { createPdfFontStore } from '../src/runtime/server/engine/fonts'
+import { renderPlainDocument } from '../src/runtime/server/engine/plain-tree'
 import { createReactConformanceDocument } from './fixtures/react-conformance'
 import { VueConformanceDocument } from './fixtures/vue-conformance'
 import {
@@ -80,19 +79,18 @@ describe('React PDF compatibility', () => {
     await mkdir(dirname(bundledFontPath), { recursive: true })
     await copyFile(fontPath, bundledFontPath)
 
-    let vueResult: Awaited<ReturnType<typeof renderDocument>>
+    let vueResult: Awaited<ReturnType<typeof renderPlainDocument>>
     try {
       const fonts = await bundlePdfFonts(
         [{ family: 'Roboto', src: 'Roboto-Regular.ttf' }],
         { fontRoots: [fontRoot] },
       )
       const mounted = await mountPdfComponent(VueConformanceDocument, {
-        imagePath,
+        image: await readFile(imagePath),
         showConditional: true,
       })
       try {
-        vueResult = await renderDocument(
-          mounted.document as unknown as DocumentNode,
+        vueResult = await renderPlainDocument(mounted.document,
           { fontStore: createPdfFontStore(fonts) },
         )
       }

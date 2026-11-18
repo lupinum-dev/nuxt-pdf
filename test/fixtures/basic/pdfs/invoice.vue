@@ -58,8 +58,9 @@ definePdf<InvoiceProps>({
       <PdfText
         fixed
         :style="{ bottom: 24, position: 'absolute', right: 48 }"
-        :render="({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`"
-      />
+      >
+        Page <PdfPageNumber /> of <PdfPageCount />
+      </PdfText>
     </PdfPage>
   </PdfDocument>
 </template>

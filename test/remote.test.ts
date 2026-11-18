@@ -13,7 +13,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { DocumentNode } from '@react-pdf/layout'
+import type { DocumentNode } from '../src/runtime/server/engine/layout/index'
 import {
   afterAll,
   beforeAll,
@@ -38,7 +38,7 @@ import type {
   PdfDocumentNode,
   PdfElementNode,
 } from '../src/runtime/renderer/types'
-import { PDF_PRIMITIVES } from '../src/runtime/authoring'
+import { PDF_PRIMITIVES } from '../src/runtime/primitives'
 
 // The remote policy is https-only, so the fixtures are served over a real TLS
 // loopback with a per-run self-signed cert. Client verification is disabled
@@ -377,7 +377,7 @@ describe('remote images', () => {
     await expectAssetError(
       resolvePdfImageAssets(documentWith(image({ src: `${origin}/declared-oversized` })), {
         assets: {},
-        limits: imageLimits({ maxImageBytes: 1024 }),
+        limits: imageLimits({ maxTotalImageBytes: 1024 }),
         remote: policyFor(),
       }),
       'PDF_LIMIT_EXCEEDED',
@@ -390,7 +390,7 @@ describe('remote images', () => {
     await expectAssetError(
       resolvePdfImageAssets(documentWith(image({ src: `${origin}/streamed-oversized` })), {
         assets: {},
-        limits: imageLimits({ maxImageBytes: 512 }),
+        limits: imageLimits({ maxTotalImageBytes: 512 }),
         remote: policyFor(),
       }),
       'PDF_LIMIT_EXCEEDED',
@@ -469,7 +469,7 @@ describe('remote images', () => {
     )
   }, 5000)
 
-  it('enforces render-wide request and concurrency budgets', async () => {
+  it('enforces the render-wide request budget and a fixed concurrency of 4', async () => {
     await expectAssetError(
       resolvePdfImageAssets(documentWith(
         image({ src: `${origin}/redirect-internal` }),
@@ -488,10 +488,9 @@ describe('remote images', () => {
         image({ src: `${origin}/slow-png?case=${index}` })),
     ), {
       assets: {},
-      limits: imageLimits({ maxRemoteConcurrency: 2 }),
       remote: policyFor(),
     })
-    expect(peakActiveRequests).toBe(2)
+    expect(peakActiveRequests).toBe(4)
   })
 
   it('uses a fixed three-redirect maximum', async () => {

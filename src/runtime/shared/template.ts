@@ -6,7 +6,21 @@ import type {
   VNodeProps,
 } from 'vue'
 
+import type { PdfPageFlowName } from '../primitives'
+import type { PdfSourcePosition } from './errors'
+
 export const PDF_DEFINITION_PROPERTY = '__nuxtPdf' as const
+/** Compiled `<style>` rules on a PDF component: `[classNames, style][]` in source order. */
+export const PDF_CLASSES_PROPERTY = '__nuxtPdfClasses' as const
+/** The `v-bind()` expressions of a PDF component's `<style>` block, by index; error messages name them. */
+export const PDF_BINDINGS_PROPERTY = '__nuxtPdfBindings' as const
+
+/**
+ * Internal attribute that development builds put on every `Pdf*` element of a
+ * template: `"<file>:<line>:<column>"` of its opening tag. The renderer keeps
+ * it on the host node (`PdfElementNode.source`), never as an engine prop.
+ */
+export const PDF_SOURCE_PROP = '__nuxtPdfSource' as const
 
 export type PdfMetadataValue<Props extends object>
   = | string
@@ -17,11 +31,11 @@ export interface PdfDefinition<Props extends object = Record<string, unknown>> {
   filename?: PdfMetadataValue<Props>
   language?: string
   /**
-   * Maximum number of layout passes the multi-pass (table-of-contents) loop runs
-   * before it declares the page numbers non-convergent and throws
-   * `PDF_LIMIT_EXCEEDED`. A positive integer; defaults to 5. Only relevant to
-   * documents that read `usePdfPageNumbers()` — internal `#id` links alone
-   * resolve in a single pass and never enter the loop.
+   * Maximum number of layout passes before the render declares the page numbers
+   * non-convergent and throws `PDF_LIMIT_EXCEEDED`. A positive integer;
+   * defaults to 5. A document needs more than one pass only when it prints a
+   * `PdfPageRef`, limits `fixed` content with `pages`, or has a view that would
+   * end a page with only its `fixed` children.
    */
   maxPasses?: number
   sampleData?: Props
@@ -70,9 +84,12 @@ export interface PdfRenderDiagnostics {
 export interface PdfLayoutWarning {
   readonly code: 'PDF_UNBREAKABLE_NODE_OVERFLOW'
   readonly pageNumber: number
-  readonly nodeType: 'PdfImage' | 'PdfLink' | 'PdfNote' | 'PdfSvg' | 'PdfText' | 'PdfView'
+  /** A page-flow primitive: one that a `PdfPage` holds directly. */
+  readonly nodeType: PdfPageFlowName
   readonly nodeHeight: number
   readonly availableHeight: number
+  /** The template element of the node, in development builds. */
+  readonly source?: PdfSourcePosition
 }
 
 export interface PdfRegisteredFontFace {

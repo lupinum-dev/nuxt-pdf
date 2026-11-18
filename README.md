@@ -43,7 +43,9 @@ server output, and PDF-specific test helpers in one Nuxt module.
 ## When to use it
 
 Use Nuxt PDF for structured documents such as invoices, reports,
-certificates, tickets, and labels.
+certificates, tickets, and labels. It also writes PDF/A-3b documents,
+Factur-X (ZUGFeRD) hybrid invoices, and accessible tagged PDF (PDF/UA-1 and
+PDF/A-3a).
 
 Do not use Nuxt PDF to print an existing web page, display an existing PDF, or
 edit and sign an existing PDF.
@@ -92,7 +94,6 @@ const props = defineProps<InvoiceProps>()
 definePdf<InvoiceProps>({
   title: ({ invoice }) => `Invoice ${invoice.number}`,
   filename: ({ invoice }) => `invoice-${invoice.number}.pdf`,
-  language: 'en-GB',
   sampleData: {
     invoice: {
       customer: 'Ada Lovelace',
@@ -105,17 +106,31 @@ definePdf<InvoiceProps>({
 
 <template>
   <PdfDocument>
-    <PdfPage size="A4" :style="{ fontSize: 11, padding: 48 }">
-      <PdfText :style="{ fontSize: 24, marginBottom: 24 }">
+    <PdfPage class="page">
+      <PdfText class="title">
         Invoice {{ props.invoice.number }}
       </PdfText>
       <PdfText>{{ props.invoice.customer }}</PdfText>
-      <PdfText :style="{ marginTop: 12 }">
+      <PdfText class="total">
         Total: {{ props.invoice.total }}
       </PdfText>
     </PdfPage>
   </PdfDocument>
 </template>
+
+<style>
+.page {
+  padding: 48pt;
+  font-size: 11pt;
+}
+.title {
+  margin-bottom: 24pt;
+  font-size: 24pt;
+}
+.total {
+  margin-top: 12pt;
+}
+</style>
 ```
 
 Create `server/api/invoice.get.ts`:
@@ -222,7 +237,8 @@ what you build.
 
 PDF templates use typed props, interpolation, `v-if`, keyed `v-for`, slots,
 and local Vue components. Nuxt PDF provides document, page, text, image, link,
-note, and SVG primitives.
+note, table, attachment, and SVG primitives. A plain `<style>` block styles
+them with class selectors, variables, and `v-bind()`.
 
 Templates run in an isolated Vue application on the Node server. They do not
 inherit Nuxt plugins, app-level provides, browser globals, or DOM components.
@@ -263,8 +279,9 @@ baselines.
 ## Documentation
 
 Read the [Nuxt PDF documentation](https://nuxt-pdf.lupinum.com) for authoring,
-assets, links, bookmarks, tables of contents, testing, and the complete API
-reference. Read [CONFORMANCE.md](./CONFORMANCE.md) for the exact tested behavior
+assets, links, bookmarks, tables of contents, PDF/A and Factur-X, accessible
+PDF, testing, and
+the complete API reference. Read [CONFORMANCE.md](./CONFORMANCE.md) for the exact tested behavior
 and known limitations.
 
 Coding agents should start with

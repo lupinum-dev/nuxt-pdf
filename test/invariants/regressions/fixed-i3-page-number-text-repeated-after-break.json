@@ -1,0 +1,295 @@
+{
+  "profile": "fixed",
+  "invariants": [
+    "I3"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 18,
+    "rule": "documents"
+  },
+  "note": "Finding F4, fixed by the layout copy (D19, internals/harness-r1/causes.md). It was: an in-flow PdfText with PdfPageNumber, the last child of a view that continues on the next page, is painted on both pages (\"w457 n1p7\" at the bottom of page 7 and \"w457 n1p8\" on page 8). Guess: upstream keeps nodes with a render callback in both halves of a split, as it does for fixed nodes.",
+  "raw": {
+    "pages": [
+      {
+        "size": 4,
+        "landscape": false,
+        "padding": [
+          34,
+          0,
+          23,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "text",
+            "n": 1,
+            "font": 0,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0
+          },
+          {
+            "t": "text",
+            "n": 1,
+            "font": 0,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0
+          },
+          {
+            "t": "view",
+            "margin": [
+              0,
+              0,
+              0,
+              5
+            ],
+            "padding": [
+              0,
+              0,
+              0,
+              20
+            ],
+            "border": 1,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "text",
+                "n": 1,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 13,
+                "marginBottom": 16,
+                "extra": 0,
+                "ref": 0
+              },
+              {
+                "t": "view",
+                "margin": [
+                  2,
+                  2,
+                  0,
+                  7
+                ],
+                "padding": [
+                  12,
+                  3,
+                  0,
+                  8
+                ],
+                "border": 0,
+                "minHeight": 0,
+                "wrap": true,
+                "brk": false,
+                "children": [
+                  {
+                    "t": "text",
+                    "n": 13,
+                    "font": 4,
+                    "lineHeight": 2,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 17,
+                    "marginBottom": 22,
+                    "extra": 0,
+                    "ref": 0
+                  },
+                  {
+                    "t": "view",
+                    "margin": [
+                      17,
+                      11,
+                      0,
+                      5
+                    ],
+                    "padding": [
+                      12,
+                      17,
+                      6,
+                      1
+                    ],
+                    "border": 2,
+                    "minHeight": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "children": [
+                      {
+                        "t": "text",
+                        "n": 8,
+                        "font": 5,
+                        "lineHeight": 0,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 9,
+                        "marginBottom": 21,
+                        "extra": 0,
+                        "ref": 0
+                      },
+                      {
+                        "t": "text",
+                        "n": 1,
+                        "font": 0,
+                        "lineHeight": 0,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 0,
+                        "marginBottom": 0,
+                        "extra": 0,
+                        "ref": 0
+                      },
+                      {
+                        "t": "text",
+                        "n": 1,
+                        "font": 0,
+                        "lineHeight": 0,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 3,
+                        "marginBottom": 10,
+                        "extra": 0,
+                        "ref": 0
+                      },
+                      {
+                        "t": "text",
+                        "n": 1,
+                        "font": 3,
+                        "lineHeight": 0,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 8,
+                        "marginBottom": 21,
+                        "extra": 0,
+                        "ref": 0
+                      },
+                      {
+                        "t": "text",
+                        "n": 18,
+                        "font": 0,
+                        "lineHeight": 0,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 17,
+                        "marginBottom": 8,
+                        "extra": 0,
+                        "ref": 0
+                      },
+                      {
+                        "t": "text",
+                        "n": 25,
+                        "font": 4,
+                        "lineHeight": 0,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 0,
+                        "marginBottom": 3,
+                        "extra": 0,
+                        "ref": 0
+                      },
+                      {
+                        "t": "text",
+                        "n": 1,
+                        "font": 3,
+                        "lineHeight": 0,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 19,
+                        "marginBottom": 8,
+                        "extra": 0,
+                        "ref": 0
+                      },
+                      {
+                        "t": "text",
+                        "n": 7,
+                        "font": 4,
+                        "lineHeight": 3,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 8,
+                        "marginBottom": 5,
+                        "extra": 0,
+                        "ref": 0
+                      }
+                    ]
+                  },
+                  {
+                    "t": "view",
+                    "margin": [
+                      5,
+                      0,
+                      0,
+                      0
+                    ],
+                    "padding": [
+                      17,
+                      6,
+                      0,
+                      1
+                    ],
+                    "border": 0,
+                    "minHeight": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "children": [
+                      {
+                        "t": "text",
+                        "n": 378,
+                        "font": 5,
+                        "lineHeight": 4,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 5,
+                        "marginBottom": 21,
+                        "extra": 0,
+                        "ref": 0
+                      },
+                      {
+                        "t": "text",
+                        "n": 1,
+                        "font": 0,
+                        "lineHeight": 0,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 6,
+                        "marginBottom": 0,
+                        "extra": 1,
+                        "ref": 0
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

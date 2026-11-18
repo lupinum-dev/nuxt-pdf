@@ -2,8 +2,10 @@
 
 ## React PDF
 
-Nuxt PDF uses the published lower-level React PDF engine packages and carries
-paired test fixtures derived from the React PDF repository at commit
+Nuxt PDF uses the published lower-level React PDF engine packages, ships a
+modified copy of `@react-pdf/layout` 4.6.1 (`dist/runtime/server/engine/layout/`,
+written by `scripts/vendor-layout.mjs`), and carries paired test fixtures
+derived from the React PDF repository at commit
 `d41a8207fb06a56e60fcb53ac0e18ce27e7d32d6`.
 
 React PDF is distributed under the following MIT license:

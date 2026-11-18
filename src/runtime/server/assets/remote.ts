@@ -163,6 +163,9 @@ export interface RemoteRequestState {
   readonly waiters: RemoteWaiter[]
 }
 
+/** Remote requests of one render that run at the same time. */
+const MAX_REMOTE_CONCURRENCY = 4
+
 export const createRemoteRequestState = (
   limits: RenderLimits,
 ): RemoteRequestState => ({ limits, active: 0, requests: 0, waiters: [] })
@@ -178,7 +181,7 @@ const acquireRequestSlot = async (state: RemoteRequestState): Promise<void> => {
       `PDF remote requests exceed pdf.limits.maxRemoteRequests (${state.limits.maxRemoteRequests}).`,
     )
   }
-  if (state.active < state.limits.maxRemoteConcurrency) {
+  if (state.active < MAX_REMOTE_CONCURRENCY) {
     state.active += 1
     return
   }
@@ -223,7 +226,7 @@ const readCapped = async (
     if (total > maxBytes) {
       controller.abort()
       return limitExceeded(
-        `A remote PDF image exceeds pdf.limits.maxImageBytes (${maxBytes}).`,
+        `A remote PDF image exceeds pdf.limits.maxTotalImageBytes (${maxBytes}).`,
       )
     }
     chunks.push(Buffer.from(chunk))
@@ -275,7 +278,7 @@ const fetchOnce = async (
     if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
       controller.abort()
       return limitExceeded(
-        `A remote PDF image exceeds pdf.limits.maxImageBytes (${maxBytes}).`,
+        `A remote PDF image exceeds pdf.limits.maxTotalImageBytes (${maxBytes}).`,
       )
     }
     return { buffer: await readCapped(response, maxBytes, controller) }

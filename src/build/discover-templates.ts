@@ -31,7 +31,13 @@ export type PdfImageFile = {
   layerIndex: number
 }
 
-export type PdfWatchAction = 'ignore' | 'refresh' | 'restart'
+/**
+ * - `refresh`: a source edit; Nitro rebuilds on its own.
+ * - `rediscover`: a `.vue` file appeared or disappeared; rebuild the registry
+ *   without a restart.
+ * - `restart`: fonts, images or directories changed; restart Nuxt.
+ */
+export type PdfWatchAction = 'ignore' | 'refresh' | 'rediscover' | 'restart'
 
 const PDF_STRUCTURE_EVENTS = new Set(['add', 'addDir', 'unlink', 'unlinkDir'])
 
@@ -55,13 +61,16 @@ export const classifyPdfWatchEvent = (
       continue
     }
 
-    if (PDF_STRUCTURE_EVENTS.has(event)) return 'restart'
-    if (event !== 'change') return 'ignore'
-
     // Fonts are bundled into the registry at setup, so a change needs a
     // restart. Images resolve from disk on every dev render, so an edited
-    // image only needs a preview refresh.
+    // image only needs a preview refresh. Templates and components are
+    // rediscovered in place; image and font sets still need a restart.
     const [rootDirectory] = pathWithinPdfs.split(/[\\/]/)
+    if (PDF_STRUCTURE_EVENTS.has(event)) {
+      const vueFile = (event === 'add' || event === 'unlink') && absolutePath.endsWith('.vue')
+      return vueFile && rootDirectory !== 'assets' && rootDirectory !== 'fonts' ? 'rediscover' : 'restart'
+    }
+    if (event !== 'change') return 'ignore'
     return rootDirectory === 'fonts' ? 'restart' : 'refresh'
   }
 

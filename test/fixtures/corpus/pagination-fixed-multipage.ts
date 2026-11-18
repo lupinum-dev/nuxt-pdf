@@ -5,11 +5,9 @@ import {
   Page,
   Text,
 } from '@react-pdf/renderer'
-import {
-  PdfDocument,
-  PdfPage,
-  PdfText,
-} from '../../../src/runtime/components'
+import { PDF_COMPONENTS } from '../../../src/runtime/components'
+
+const { PdfDocument, PdfPage, PdfText } = PDF_COMPONENTS
 
 // A body long enough to span four+ pages, with a `fixed` header and footer that
 // must repeat on EVERY page of the wrapped flow.

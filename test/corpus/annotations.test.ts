@@ -1,4 +1,4 @@
-import type { DocumentNode } from '@react-pdf/layout'
+import type { DocumentNode } from '../../src/runtime/server/engine/layout/index'
 import type { PDFDocumentProxy } from 'pdfjs-dist/legacy/build/pdf.mjs'
 import { renderToBuffer as renderReactDocument } from '@react-pdf/renderer'
 import type { Component } from 'vue'

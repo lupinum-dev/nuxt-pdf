@@ -5,11 +5,9 @@ import {
   Page,
   Text,
 } from '@react-pdf/renderer'
-import {
-  PdfDocument,
-  PdfPage,
-  PdfText,
-} from '../../../src/runtime/components'
+import { PDF_COMPONENTS } from '../../../src/runtime/components'
+
+const { PdfDocument, PdfPage, PdfText } = PDF_COMPONENTS
 
 // Filler pushes a single long paragraph so it starts low on page one and must
 // wrap across the page boundary. `orphans`/`widows` control how many wrapped

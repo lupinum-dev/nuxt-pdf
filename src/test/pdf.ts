@@ -242,8 +242,16 @@ const flattenLinks = (pages: readonly ParsedPdfPage[]): ParsedPdfLink[] =>
       }),
   )
 
+export interface ParsePdfOptions {
+  /**
+   * The open or owner password of a protected PDF. Without the right one,
+   * pdf.js fails with a `PasswordException`.
+   */
+  password?: string
+}
+
 /** Parse stable, semantic information from every page of a PDF. */
-export async function parsePdf(input: PdfInput): Promise<ParsedPdf> {
+export async function parsePdf(input: PdfInput, options: ParsePdfOptions = {}): Promise<ParsedPdf> {
   return withPdfDocument(await toPdfBytes(input), async (document) => {
     const pages: ParsedPdfPage[] = []
 
@@ -299,6 +307,28 @@ export async function parsePdf(input: PdfInput): Promise<ParsedPdf> {
       links: flattenLinks(pages),
       outline: outline ? simplifyOutline(outline) : [],
     }
+  }, options.password)
+}
+
+export interface ParsedPdfAttachment {
+  filename: string
+  description: string
+  content: Uint8Array
+}
+
+/** Read the embedded files of the document, in the order the PDF lists them. */
+export async function getPdfAttachments(input: PdfInput): Promise<ParsedPdfAttachment[]> {
+  return withPdfDocument(await toPdfBytes(input), async (document) => {
+    const attachments = await document.getAttachments()
+    const result: ParsedPdfAttachment[] = []
+    for (const [id, attachment] of attachments ?? []) {
+      result.push({
+        filename: attachment.filename,
+        description: attachment.description,
+        content: attachment.content ?? await document.getAttachmentContent(id) ?? new Uint8Array(),
+      })
+    }
+    return result
   })
 }
 
@@ -482,11 +512,13 @@ async function getPdfJs(): Promise<PdfJs> {
 async function withPdfDocument<Result>(
   data: PdfData,
   read: (document: PDFDocumentProxy) => Promise<Result>,
+  password?: string,
 ): Promise<Result> {
   const pdfJs = await getPdfJs()
   const loadingTask = pdfJs.getDocument({
     CanvasFactory: NapiCanvasFactory,
     data: copyPdfData(data),
+    ...(password === undefined ? {} : { password }),
     stopAtErrors: true,
     useWorkerFetch: false,
     verbosity: 0,

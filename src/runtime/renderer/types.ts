@@ -1,37 +1,7 @@
-import {
-  PDF_PRIMITIVES,
-  type PdfStyleValue,
-} from '../authoring'
-
-export type PdfElementType = Exclude<
-  (typeof PDF_PRIMITIVES)[keyof typeof PDF_PRIMITIVES],
-  typeof PDF_PRIMITIVES.TextInstance
->
-
-export const PDF_PRIMITIVE_NAMES: Record<PdfElementType, string> = {
-  [PDF_PRIMITIVES.Document]: 'PdfDocument',
-  [PDF_PRIMITIVES.Page]: 'PdfPage',
-  [PDF_PRIMITIVES.View]: 'PdfView',
-  [PDF_PRIMITIVES.Text]: 'PdfText',
-  [PDF_PRIMITIVES.Image]: 'PdfImage',
-  [PDF_PRIMITIVES.Link]: 'PdfLink',
-  [PDF_PRIMITIVES.Note]: 'PdfNote',
-  [PDF_PRIMITIVES.Tspan]: 'PdfTspan',
-  [PDF_PRIMITIVES.Svg]: 'PdfSvg',
-  [PDF_PRIMITIVES.G]: 'PdfG',
-  [PDF_PRIMITIVES.Path]: 'PdfPath',
-  [PDF_PRIMITIVES.Rect]: 'PdfRect',
-  [PDF_PRIMITIVES.Circle]: 'PdfCircle',
-  [PDF_PRIMITIVES.Ellipse]: 'PdfEllipse',
-  [PDF_PRIMITIVES.Line]: 'PdfLine',
-  [PDF_PRIMITIVES.Polyline]: 'PdfPolyline',
-  [PDF_PRIMITIVES.Polygon]: 'PdfPolygon',
-  [PDF_PRIMITIVES.Defs]: 'PdfDefs',
-  [PDF_PRIMITIVES.ClipPath]: 'PdfClipPath',
-  [PDF_PRIMITIVES.LinearGradient]: 'PdfLinearGradient',
-  [PDF_PRIMITIVES.RadialGradient]: 'PdfRadialGradient',
-  [PDF_PRIMITIVES.Stop]: 'PdfStop',
-}
+import type { PdfStyleValue } from '../authoring'
+import { PDF_PRIMITIVE_NAMES, PDF_PRIMITIVES, type PdfElementType } from '../primitives'
+import type { PdfTableComponentName } from '../component-names'
+import { describePdfValue } from '../shared/describe-value'
 
 export type PdfTextInstance = {
   type: typeof PDF_PRIMITIVES.TextInstance
@@ -44,6 +14,16 @@ export type PdfElementNode = {
   style: PdfStyleValue
   props: Record<string, unknown>
   children: PdfNode[]
+  /**
+   * `"<file>:<line>:<column>"` of the template element, in development
+   * builds. Host data only: it never becomes an engine prop or style.
+   */
+  source?: string
+  /**
+   * The table component that rendered this element, such as `'PdfTableCell'`.
+   * Host data only, like `source`.
+   */
+  component?: PdfTableComponentName
 }
 
 export type PdfDocumentNode = PdfElementNode & {
@@ -67,34 +47,6 @@ export type PdfCommentNode = {
 export type PdfHostNode = PdfNode | PdfCommentNode
 export type PdfHostElement = PdfRoot | PdfElementNode
 
-const ELEMENT_TYPES = new Set<string>([
-  PDF_PRIMITIVES.Document,
-  PDF_PRIMITIVES.Page,
-  PDF_PRIMITIVES.View,
-  PDF_PRIMITIVES.Text,
-  PDF_PRIMITIVES.Image,
-  PDF_PRIMITIVES.Link,
-  PDF_PRIMITIVES.Note,
-  PDF_PRIMITIVES.Tspan,
-  PDF_PRIMITIVES.Svg,
-  PDF_PRIMITIVES.G,
-  PDF_PRIMITIVES.Path,
-  PDF_PRIMITIVES.Rect,
-  PDF_PRIMITIVES.Circle,
-  PDF_PRIMITIVES.Ellipse,
-  PDF_PRIMITIVES.Line,
-  PDF_PRIMITIVES.Polyline,
-  PDF_PRIMITIVES.Polygon,
-  PDF_PRIMITIVES.Defs,
-  PDF_PRIMITIVES.ClipPath,
-  PDF_PRIMITIVES.LinearGradient,
-  PDF_PRIMITIVES.RadialGradient,
-  PDF_PRIMITIVES.Stop,
-])
-
-export const isPdfElementType = (value: string): value is PdfElementType =>
-  ELEMENT_TYPES.has(value)
-
 export const isPdfElementNode = (
   node: PdfHostNode,
 ): node is PdfElementNode =>
@@ -108,3 +60,17 @@ export const isPdfTextInstance = (
 export const isPdfCommentNode = (
   node: PdfHostNode,
 ): node is PdfCommentNode => PDF_COMMENT in node
+
+/** The component name an error about this element shows to the author. */
+export const pdfElementName = (node: PdfElementNode): string =>
+  node.component ?? PDF_PRIMITIVE_NAMES[node.type]
+
+/**
+ * The element in an error message, written by the caller inside `<…>`: its
+ * name, and its id when it has one, such as `PdfText id="intro"`.
+ */
+export const pdfElementLabel = (node: PdfElementNode): string => {
+  const name = pdfElementName(node)
+  const { id } = node.props
+  return typeof id === 'string' && id.trim() !== '' ? `${name} id=${describePdfValue(id)}` : name
+}

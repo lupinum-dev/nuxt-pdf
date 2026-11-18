@@ -1,0 +1,117 @@
+{
+  "profile": "flow",
+  "invariants": [
+    "I14"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 3,
+    "rule": "documents"
+  },
+  "note": "L1, fixed in TB1: a split block PdfLink left an empty part of its box on the next page with a 0 pt high annotation. Cause: splitView gave a view a next part even when all its flow children ended on the page (only its bottom padding or margin crossed the page end). A view without a height or min height now gets no next part then (scripts/vendor-layout.mjs, splitView). Found with keep [L1] in H3, reduced in 75 steps.",
+  "raw": {
+    "pages": [
+      {
+        "size": 5,
+        "landscape": false,
+        "padding": [
+          35,
+          0,
+          59,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "view",
+            "margin": [
+              0,
+              9,
+              0,
+              1
+            ],
+            "padding": [
+              0,
+              9,
+              0,
+              15
+            ],
+            "border": 3,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "text",
+                "n": 1,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 2,
+                "marginBottom": 16,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false
+              },
+              {
+                "t": "view",
+                "margin": [
+                  20,
+                  8,
+                  0,
+                  9
+                ],
+                "padding": [
+                  14,
+                  0,
+                  0,
+                  6
+                ],
+                "border": 0,
+                "minHeight": 0,
+                "wrap": true,
+                "brk": false,
+                "children": [
+                  {
+                    "t": "link",
+                    "kind": 0,
+                    "linkTo": 0,
+                    "children": [
+                      {
+                        "t": "text",
+                        "n": 305,
+                        "font": 0,
+                        "lineHeight": 4,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 7,
+                        "marginBottom": 7,
+                        "extra": 0,
+                        "ref": 0,
+                        "link": 0,
+                        "linkAt": 0,
+                        "linkSize": 0,
+                        "linkTo": 0,
+                        "bookmark": false
+                      }
+                    ]
+                  }
+                ],
+                "bookmark": false
+              }
+            ],
+            "bookmark": false
+          }
+        ],
+        "bookmark": false
+      }
+    ]
+  }
+}

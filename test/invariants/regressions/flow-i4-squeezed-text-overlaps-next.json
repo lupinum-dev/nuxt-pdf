@@ -1,0 +1,190 @@
+{
+  "profile": "flow",
+  "invariants": [
+    "I4"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 29,
+    "rule": "documents"
+  },
+  "note": "Finding E2, fixed by the layout copy (D19, internals/harness-r1/causes.md). It was: two consecutive texts overlap: the first text box is shorter than its lines, so the next text starts 2.9 pt below the last line (\"w61w62\" in the extracted text). Content after them overflows the page (minHeight 211 view at the end). Guess: same cause as E1 (text boxes shrunk when content overflows the page), in a milder form the E1 detector does not count. The first text (one token) is the marker text the generator used to put first on every page; it keeps the case reproducing the old layout.",
+  "raw": {
+    "pages": [
+      {
+        "size": 2,
+        "landscape": false,
+        "padding": [
+          58,
+          17,
+          47,
+          56
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "text",
+            "n": 1,
+            "font": 2,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0
+          },
+          {
+            "t": "view",
+            "margin": [
+              2,
+              11,
+              0,
+              4
+            ],
+            "padding": [
+              2,
+              7,
+              0,
+              9
+            ],
+            "border": 0,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "view",
+                "margin": [
+                  0,
+                  8,
+                  0,
+                  6
+                ],
+                "padding": [
+                  3,
+                  1,
+                  0,
+                  9
+                ],
+                "border": 0,
+                "minHeight": 0,
+                "wrap": true,
+                "brk": false,
+                "children": [
+                  {
+                    "t": "text",
+                    "n": 10,
+                    "font": 4,
+                    "lineHeight": 3,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 5,
+                    "marginBottom": 22,
+                    "extra": 0,
+                    "ref": 0
+                  },
+                  {
+                    "t": "view",
+                    "margin": [
+                      7,
+                      18,
+                      0,
+                      12
+                    ],
+                    "padding": [
+                      1,
+                      0,
+                      0,
+                      1
+                    ],
+                    "border": 0,
+                    "minHeight": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "children": [
+                      {
+                        "t": "text",
+                        "n": 26,
+                        "font": 4,
+                        "lineHeight": 3,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 17,
+                        "marginBottom": 16,
+                        "extra": 0,
+                        "ref": 0
+                      },
+                      {
+                        "t": "text",
+                        "n": 7,
+                        "font": 3,
+                        "lineHeight": 2,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 13,
+                        "marginBottom": 2,
+                        "extra": 0,
+                        "ref": 0
+                      },
+                      {
+                        "t": "text",
+                        "n": 18,
+                        "font": 2,
+                        "lineHeight": 0,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 11,
+                        "marginBottom": 0,
+                        "extra": 0,
+                        "ref": 0
+                      },
+                      {
+                        "t": "text",
+                        "n": 42,
+                        "font": 2,
+                        "lineHeight": 2,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 0,
+                        "marginBottom": 6,
+                        "extra": 0,
+                        "ref": 0
+                      },
+                      {
+                        "t": "view",
+                        "margin": [
+                          0,
+                          0,
+                          0,
+                          0
+                        ],
+                        "padding": [
+                          0,
+                          0,
+                          0,
+                          0
+                        ],
+                        "border": 0,
+                        "minHeight": 211,
+                        "wrap": true,
+                        "brk": false,
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -7,7 +7,8 @@ export {
   NuxtPdfError,
   PDF_ERROR_CODES,
 } from '../shared/errors'
-export type { PdfErrorCode } from '../shared/errors'
+export type { PdfErrorCode, PdfInvoiceIssue, PdfSourcePosition } from '../shared/errors'
+export { computeEInvoice, renderEInvoiceXml, validateEInvoice } from '../einvoice'
 export type {
   PdfPreviewEntry,
   PdfPreviewEntryOptions,

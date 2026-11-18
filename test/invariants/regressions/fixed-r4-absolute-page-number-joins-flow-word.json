@@ -1,0 +1,157 @@
+{
+  "profile": "fixed",
+  "invariants": [
+    "I3",
+    "I7"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 1071,
+    "rule": "documents"
+  },
+  "note": "R4, a wrong rule, corrected in H3 (exclusion absolute-over-text): absolute fixed texts go into the top or bottom padding band, stacked one line apart, and a band too low grows. Before, an absolute page-number text at the top of a page with padding top 0 touched flow word w143 on one baseline, pdf.js read \"n1p2w143\" as one word, and I3 and I7 missed both. The reader stays strict: it does not split words at token borders, which could hide a real join. Reduced from fixed document 1071 of seed 20261116 (L3b, 2,000-document run).",
+  "raw": {
+    "pages": [
+      {
+        "size": 1,
+        "landscape": false,
+        "padding": [
+          0,
+          40,
+          22,
+          11
+        ],
+        "fixed": [
+          {
+            "kind": 0,
+            "pages": 0,
+            "absolute": true,
+            "n": 1,
+            "font": 0,
+            "numbers": 0,
+            "offset": 0,
+            "fromBottom": false,
+            "inset": 0,
+            "marginBottom": 0
+          },
+          {
+            "kind": 0,
+            "pages": 0,
+            "absolute": true,
+            "n": 3,
+            "font": 5,
+            "numbers": 1,
+            "offset": 0,
+            "fromBottom": false,
+            "inset": 23,
+            "marginBottom": 0
+          }
+        ],
+        "children": [
+          {
+            "t": "view",
+            "margin": [
+              1,
+              3,
+              0,
+              2
+            ],
+            "padding": [
+              10,
+              6,
+              0,
+              19
+            ],
+            "border": 0,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "view",
+                "margin": [
+                  9,
+                  6,
+                  0,
+                  6
+                ],
+                "padding": [
+                  11,
+                  6,
+                  0,
+                  18
+                ],
+                "border": 4,
+                "minHeight": 0,
+                "wrap": true,
+                "brk": false,
+                "children": [
+                  {
+                    "t": "text",
+                    "n": 23,
+                    "font": 3,
+                    "lineHeight": 0,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 19,
+                    "marginBottom": 16,
+                    "extra": 0,
+                    "ref": 0
+                  },
+                  {
+                    "t": "view",
+                    "margin": [
+                      1,
+                      14,
+                      0,
+                      17
+                    ],
+                    "padding": [
+                      2,
+                      7,
+                      0,
+                      7
+                    ],
+                    "border": 0,
+                    "minHeight": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "children": [
+                      {
+                        "t": "text",
+                        "n": 115,
+                        "font": 5,
+                        "lineHeight": 0,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 22,
+                        "marginBottom": 21,
+                        "extra": 0,
+                        "ref": 0
+                      },
+                      {
+                        "t": "text",
+                        "n": 61,
+                        "font": 5,
+                        "lineHeight": 0,
+                        "align": 2,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 0,
+                        "marginBottom": 2,
+                        "extra": 0,
+                        "ref": 0
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

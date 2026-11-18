@@ -13,86 +13,6 @@ type CertificateProps = { certificate: Certificate }
 const props = defineProps<CertificateProps>()
 const certificate = props.certificate
 
-const ink = '#1B2229'
-const muted = '#6B7078'
-const bronze = '#7E5F2B'
-
-const pageStyle = {
-  backgroundColor: '#FFFFFF',
-  color: ink,
-  fontFamily: 'Inter',
-} as const
-
-// The composition lives in one absolutely-positioned, full-page flex column so
-// the decorative SVG layers never enter the flow and the page can never spill to
-// a second sheet. `space-between` seats the three zones with optical rhythm.
-const contentStyle = {
-  alignItems: 'center',
-  flexDirection: 'column',
-  height: 595,
-  justifyContent: 'space-between',
-  left: 0,
-  paddingHorizontal: 96,
-  paddingVertical: 60,
-  position: 'absolute',
-  top: 0,
-  width: 842,
-} as const
-
-const eyebrowStyle = {
-  color: bronze,
-  fontFamily: 'Inter',
-  fontSize: 13,
-  fontWeight: 600,
-  letterSpacing: 4,
-  textAlign: 'center',
-} as const
-
-const scriptLabel = {
-  color: muted,
-  fontFamily: 'Lora',
-  fontSize: 12,
-  fontStyle: 'italic',
-  textAlign: 'center',
-} as const
-
-const recipientStyle = {
-  color: ink,
-  fontFamily: 'Lora',
-  fontSize: 40,
-  fontStyle: 'italic',
-  lineHeight: 1.15,
-  textAlign: 'center',
-} as const
-
-const courseStyle = {
-  color: ink,
-  fontFamily: 'Inter',
-  fontSize: 17,
-  fontWeight: 600,
-  lineHeight: 1.3,
-  textAlign: 'center',
-} as const
-
-// Signature column: a value seated on a hairline rule with a small-caps label.
-const signatureColumn = { alignItems: 'center', width: 232 } as const
-const valueWell = { height: 26, justifyContent: 'flex-end' } as const
-const ruleStyle = {
-  borderBottomColor: '#B9AE93',
-  borderBottomWidth: 0.75,
-  marginTop: 6,
-  width: '100%',
-} as const
-const columnLabel = {
-  color: muted,
-  fontFamily: 'Inter',
-  fontSize: 7.5,
-  fontWeight: 600,
-  letterSpacing: 1.6,
-  marginTop: 7,
-  textAlign: 'center',
-} as const
-
 definePdf<CertificateProps>({
   title: ({ certificate }) => `Certificate — ${certificate.recipient}`,
   filename: ({ certificate }) =>
@@ -115,89 +35,75 @@ definePdf<CertificateProps>({
     <PdfPage
       size="A4"
       orientation="landscape"
-      :style="pageStyle"
+      class="page"
     >
       <CertificateBackground :opacity="0.025" />
       <CertificateBorder />
 
-      <PdfView :style="contentStyle">
+      <PdfView class="content">
         <!-- Crest -->
-        <PdfView :style="{ alignItems: 'center' }">
+        <PdfView class="crest">
           <CertificateSeal :size="80" />
-          <PdfText :style="{ ...eyebrowStyle, marginTop: 16 }">
+          <PdfText class="eyebrow">
             CERTIFICATE OF COMPLETION
           </PdfText>
-          <PdfView
-            :style="{ alignItems: 'center', flexDirection: 'row', justifyContent: 'center', marginTop: 12 }"
-          >
-            <PdfView :style="{ backgroundColor: bronze, height: 0.75, width: 46 }" />
-            <PdfView
-              :style="{
-                backgroundColor: bronze,
-                height: 5,
-                marginHorizontal: 7,
-                transform: 'rotate(45deg)',
-                width: 5,
-              }"
-            />
-            <PdfView :style="{ backgroundColor: bronze, height: 0.75, width: 46 }" />
+          <PdfView class="ornament">
+            <PdfView class="ornament-rule" />
+            <PdfView class="ornament-diamond" />
+            <PdfView class="ornament-rule" />
           </PdfView>
-          <PdfText :style="{ ...eyebrowStyle, color: muted, fontSize: 8.5, letterSpacing: 2, marginTop: 12 }">
+          <PdfText class="program">
             {{ certificate.program.toUpperCase() }}
           </PdfText>
         </PdfView>
 
         <!-- The optical heart of the page -->
-        <PdfView :style="{ alignItems: 'center', width: 640 }">
-          <PdfText :style="scriptLabel">
+        <PdfView class="presentation">
+          <PdfText class="script-label">
             This certificate is proudly presented to
           </PdfText>
           <CertificateHeadline
-            :sx="{ ...recipientStyle, marginTop: 14 }"
+            class="recipient"
             :text="certificate.recipient"
           />
-          <PdfText :style="{ ...scriptLabel, fontStyle: 'normal', fontFamily: 'Inter', fontSize: 10, marginTop: 18 }">
+          <PdfText class="recognition">
             in recognition of the successful completion of
           </PdfText>
           <CertificateHeadline
-            :sx="{ ...courseStyle, marginTop: 9 }"
+            class="course"
             :text="certificate.course"
           />
         </PdfView>
 
         <!-- Signatures -->
-        <PdfView :style="{ alignItems: 'center', width: '100%' }">
-          <PdfView
-            :style="{ flexDirection: 'row', justifyContent: 'space-between', width: 620 }"
-          >
-            <PdfView :style="signatureColumn">
-              <PdfView :style="valueWell">
-                <PdfText :style="{ color: ink, fontFamily: 'Inter', fontSize: 12, fontWeight: 500, textAlign: 'center' }">
+        <PdfView class="signatures">
+          <PdfView class="signature-row">
+            <PdfView class="signature-column">
+              <PdfView class="value-well">
+                <PdfText class="date-value">
                   {{ certificate.date }}
                 </PdfText>
               </PdfView>
-              <PdfView :style="ruleStyle" />
-              <PdfText :style="columnLabel">
+              <PdfView class="signature-rule" />
+              <PdfText class="column-label">
                 DATE OF COMPLETION
               </PdfText>
             </PdfView>
 
-            <PdfView :style="signatureColumn">
-              <PdfView :style="valueWell">
-                <PdfText :style="{ color: ink, fontFamily: 'Lora', fontSize: 16, fontStyle: 'italic', textAlign: 'center' }">
+            <PdfView class="signature-column">
+              <PdfView class="value-well">
+                <PdfText class="issuer-value">
                   {{ certificate.issuer }}
                 </PdfText>
               </PdfView>
-              <PdfView :style="ruleStyle" />
-              <PdfText :style="columnLabel">
+              <PdfView class="signature-rule" />
+              <PdfText class="column-label">
                 {{ certificate.issuerTitle.toUpperCase() }}
               </PdfText>
             </PdfView>
           </PdfView>
 
-          <PdfText
-            :style="{ color: muted, fontFamily: 'Inter', fontSize: 7.5, letterSpacing: 1.2, marginTop: 18, textAlign: 'center' }"
-          >
+          <PdfText class="credential">
             CREDENTIAL ID · {{ certificate.credentialId }}
           </PdfText>
         </PdfView>
@@ -205,3 +111,184 @@ definePdf<CertificateProps>({
     </PdfPage>
   </PdfDocument>
 </template>
+
+<style>
+:root {
+  --ink: #1B2229;
+  --muted: #6B7078;
+  --accent: #7E5F2B;
+  --font-body: Inter;
+  --font-display: Lora;
+}
+.page {
+  font-family: var(--font-body);
+  background-color: #FFFFFF;
+  color: var(--ink);
+}
+
+/* One absolutely positioned, full-page flex column: the decorative SVG layers
+   never enter the flow and the page never spills to a second sheet.
+   space-between seats the three zones with optical rhythm. */
+.content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  width: 842pt;
+  height: 595pt;
+  padding: 60pt 96pt;
+}
+
+.crest {
+  align-items: center;
+}
+
+.eyebrow {
+  margin-top: 16pt;
+  font-family: var(--font-body);
+  font-size: 13pt;
+  font-weight: 600;
+  letter-spacing: 4pt;
+  text-align: center;
+  color: var(--accent);
+}
+
+.ornament {
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  margin-top: 12pt;
+}
+
+.ornament-rule {
+  width: 46pt;
+  height: 0.75pt;
+  background-color: var(--accent);
+}
+
+.ornament-diamond {
+  width: 5pt;
+  height: 5pt;
+  margin-horizontal: 7pt;
+  transform: rotate(45deg);
+  background-color: var(--accent);
+}
+
+.program {
+  margin-top: 12pt;
+  font-family: var(--font-body);
+  font-size: 8.5pt;
+  font-weight: 600;
+  letter-spacing: 2pt;
+  text-align: center;
+  color: var(--muted);
+}
+
+.presentation {
+  align-items: center;
+  width: 640pt;
+}
+
+.script-label {
+  font-family: var(--font-display);
+  font-size: 12pt;
+  font-style: italic;
+  text-align: center;
+  color: var(--muted);
+}
+
+.recipient {
+  margin-top: 14pt;
+  font-family: var(--font-display);
+  font-size: 40pt;
+  font-style: italic;
+  line-height: 1.15;
+  text-align: center;
+  color: var(--ink);
+}
+
+.recognition {
+  margin-top: 18pt;
+  font-family: var(--font-body);
+  font-size: 10pt;
+  font-style: normal;
+  text-align: center;
+  color: var(--muted);
+}
+
+.course {
+  margin-top: 9pt;
+  font-family: var(--font-body);
+  font-size: 17pt;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  color: var(--ink);
+}
+
+.signatures {
+  align-items: center;
+  width: 100%;
+}
+
+.signature-row {
+  flex-direction: row;
+  justify-content: space-between;
+  width: 620pt;
+}
+
+/* A value seated on a hairline rule above a small-caps label. */
+.signature-column {
+  align-items: center;
+  width: 232pt;
+}
+
+.value-well {
+  justify-content: flex-end;
+  height: 26pt;
+}
+
+.date-value {
+  font-family: var(--font-body);
+  font-size: 12pt;
+  font-weight: 500;
+  text-align: center;
+  color: var(--ink);
+}
+
+.issuer-value {
+  font-family: var(--font-display);
+  font-size: 16pt;
+  font-style: italic;
+  text-align: center;
+  color: var(--ink);
+}
+
+.signature-rule {
+  width: 100%;
+  margin-top: 6pt;
+  border-bottom-width: 0.75pt;
+  border-bottom-color: #B9AE93;
+}
+
+.column-label {
+  margin-top: 7pt;
+  font-family: var(--font-body);
+  font-size: 7.5pt;
+  font-weight: 600;
+  letter-spacing: 1.6pt;
+  text-align: center;
+  color: var(--muted);
+}
+
+.credential {
+  margin-top: 18pt;
+  font-family: var(--font-body);
+  font-size: 7.5pt;
+  letter-spacing: 1.2pt;
+  text-align: center;
+  color: var(--muted);
+}
+</style>

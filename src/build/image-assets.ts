@@ -19,8 +19,8 @@ export async function preparePdfImageAssets(
     }
     const loaded = await loadPdfImageAsset(image.key, {
       roots: [image.rootDir],
-      maxBytes: limits.maxImageBytes,
-      maxPixels: limits.maxImagePixels,
+      maxBytes: limits.maxTotalImageBytes,
+      maxPixels: limits.maxTotalImagePixels,
     })
     entries.push({ dataB64: Buffer.from(loaded.data).toString('base64'), format, key: image.key })
   }

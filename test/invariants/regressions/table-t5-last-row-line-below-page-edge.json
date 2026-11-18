@@ -1,0 +1,121 @@
+{
+  "profile": "table",
+  "invariants": [
+    "I3",
+    "I9"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 560,
+    "rule": "documents"
+  },
+  "note": "T5 (fixed): getLineBreak measured the room for lines from the top of the cell box, not from below its top padding, so the one line of the last row ended 1.7 pt below the page edge and was lost. Found in the 1,000-document table run after TB1 (document 560). Reduced in 163 steps.",
+  "raw": {
+    "pages": [
+      {
+        "size": 5,
+        "landscape": false,
+        "padding": [
+          56,
+          0,
+          0,
+          17
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "view",
+            "margin": [
+              0,
+              16,
+              0,
+              10
+            ],
+            "padding": [
+              0,
+              12,
+              0,
+              7
+            ],
+            "border": 0,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "table",
+                "font": 1,
+                "columns": [],
+                "header": false,
+                "headerCells": [],
+                "rows": [
+                  {
+                    "wrap": true,
+                    "cells": []
+                  },
+                  {
+                    "wrap": true,
+                    "cells": []
+                  },
+                  {
+                    "wrap": true,
+                    "cells": []
+                  }
+                ],
+                "marginTop": 0,
+                "marginBottom": 2
+              },
+              {
+                "t": "text",
+                "n": 112,
+                "font": 3,
+                "lineHeight": 1,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 6,
+                "marginBottom": 2,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false
+              },
+              {
+                "t": "table",
+                "font": 0,
+                "columns": [],
+                "header": true,
+                "headerCells": [],
+                "rows": [
+                  {
+                    "wrap": true,
+                    "cells": []
+                  },
+                  {
+                    "wrap": true,
+                    "cells": []
+                  },
+                  {
+                    "wrap": true,
+                    "cells": []
+                  },
+                  {
+                    "wrap": true,
+                    "cells": []
+                  }
+                ],
+                "marginTop": 15,
+                "marginBottom": 0
+              }
+            ],
+            "bookmark": false
+          }
+        ],
+        "bookmark": false
+      }
+    ]
+  }
+}

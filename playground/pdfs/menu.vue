@@ -13,94 +13,9 @@ const menu = props.menu
 // A restrained alpine palette: warm near-black ink on a cream ground, one dusty
 // rose accent for the section marks, a warm taupe for descriptions, and a light
 // warm tone for the dotted leaders. No borders, no boxes — the type is the design.
-const ink = '#23201c'
+// These two colours feed component props; the styles carry the same literals.
 const accent = '#8f4a46'
-const muted = '#857a68'
 const leader = '#cdbfa6'
-
-const pageStyle = {
-  backgroundColor: '#faf7f0',
-  color: ink,
-  fontFamily: 'Inter',
-  paddingBottom: 38,
-  paddingHorizontal: 52,
-  paddingTop: 42,
-} as const
-
-const footerStyle = {
-  bottom: 38,
-  color: accent,
-  fontFamily: 'Inter',
-  fontSize: 7,
-  left: 52,
-  letterSpacing: 2,
-  position: 'absolute',
-  right: 52,
-  textAlign: 'center',
-  textTransform: 'uppercase',
-} as const
-
-// Course head: a tiny alpine-rose lozenge mark, the letterspaced small-caps
-// label, and one short hairline rule beneath — mark and rule share a single
-// 0.75pt weight so the ornament reads as engineered, not decorative.
-const headWrapStyle = { alignItems: 'center', marginBottom: 11 } as const
-const headLabelStyle = {
-  color: ink,
-  fontFamily: 'Inter',
-  fontSize: 9.5,
-  fontWeight: 600,
-  letterSpacing: 2,
-  textAlign: 'center',
-  textTransform: 'uppercase',
-} as const
-const headRuleStyle = {
-  borderBottomColor: accent,
-  borderBottomWidth: 0.75,
-  marginTop: 6,
-  width: 28,
-} as const
-
-// Dish row shared by every course.
-const dishRowStyle = { alignItems: 'flex-end', flexDirection: 'row' } as const
-const dishNameStyle = { color: ink, fontFamily: 'Inter', fontSize: 10, fontWeight: 600 } as const
-const dishPriceStyle = {
-  color: ink,
-  fontFamily: 'Inter',
-  fontSize: 10,
-  fontWeight: 500,
-  textAlign: 'right',
-  width: 32,
-} as const
-const dishDescStyle = {
-  color: muted,
-  fontFamily: 'Lora',
-  fontSize: 8,
-  fontStyle: 'italic',
-  lineHeight: 1.3,
-  marginTop: 2,
-  maxWidth: 235,
-} as const
-
-const columnHeadStyle = {
-  color: muted,
-  fontFamily: 'Inter',
-  fontSize: 7,
-  fontWeight: 500,
-  letterSpacing: 1.4,
-  textAlign: 'right',
-  textTransform: 'uppercase',
-  width: 42,
-} as const
-const columnHeadLastStyle = { ...columnHeadStyle, marginLeft: 14 } as const
-const winePriceStyle = {
-  color: ink,
-  fontFamily: 'Inter',
-  fontSize: 10,
-  fontWeight: 500,
-  textAlign: 'right',
-  width: 42,
-} as const
-const winePriceLastStyle = { ...winePriceStyle, marginLeft: 14 } as const
 
 const bookmarkTitles: Record<MenuCourse['id'] | 'wines', string> = {
   starters: 'Starters',
@@ -129,53 +44,17 @@ definePdf<MenuProps>({
     <!-- Page 1: masthead, starters, mains -->
     <PdfPage
       size="A5"
-      :style="pageStyle"
+      class="page"
     >
-      <PdfView :style="{ alignItems: 'center', marginBottom: 20 }">
-        <PdfText
-          :style="{
-            color: ink,
-            fontFamily: 'Lora',
-            fontSize: 23,
-            fontWeight: 700,
-            textAlign: 'center',
-          }"
-        >
+      <PdfView class="masthead">
+        <PdfText class="menu-name">
           {{ menu.name }}
         </PdfText>
-        <PdfText
-          :style="{
-            color: muted,
-            fontFamily: 'Lora',
-            fontSize: 10,
-            fontStyle: 'italic',
-            lineHeight: 1.4,
-            marginTop: 7,
-            maxWidth: 230,
-            textAlign: 'center',
-          }"
-        >
+        <PdfText class="ethos">
           {{ menu.ethos }}
         </PdfText>
-        <PdfView
-          :style="{
-            borderBottomColor: accent,
-            borderBottomWidth: 0.75,
-            marginTop: 10,
-            width: 34,
-          }"
-        />
-        <PdfText
-          :style="{
-            color: muted,
-            fontFamily: 'Inter',
-            fontSize: 7,
-            fontWeight: 500,
-            letterSpacing: 0.8,
-            marginTop: 10,
-            textAlign: 'center',
-          }"
-        >
+        <PdfView class="masthead-rule" />
+        <PdfText class="established">
           {{ menu.established }}
         </PdfText>
       </PdfView>
@@ -187,14 +66,14 @@ definePdf<MenuProps>({
         <PdfView
           :id="course.id"
           :bookmark="{ title: bookmarkTitles[course.id], expanded: false }"
-          :style="{ marginTop: course.id === menu.mains.id ? 15 : 0 }"
+          :class="{ 'course-following': course.id === menu.mains.id }"
         >
-          <PdfView :style="headWrapStyle">
+          <PdfView class="course-head">
             <PdfSvg
               :width="11"
               :height="11"
               view-box="0 0 13 13"
-              :style="{ marginBottom: 6 }"
+              class="course-mark"
             >
               <PdfPath
                 d="M6.5 0.6 L12.4 6.5 L6.5 12.4 L0.6 6.5 Z"
@@ -209,20 +88,20 @@ definePdf<MenuProps>({
                 :fill="accent"
               />
             </PdfSvg>
-            <PdfText :style="headLabelStyle">
+            <PdfText class="course-label">
               {{ course.label }}
             </PdfText>
-            <PdfView :style="headRuleStyle" />
+            <PdfView class="course-rule" />
           </PdfView>
 
           <PdfView
             v-for="dish in course.dishes"
             :key="dish.name"
-            :style="{ marginBottom: 9 }"
+            class="dish"
             :wrap="false"
           >
-            <PdfView :style="dishRowStyle">
-              <PdfText :style="dishNameStyle">
+            <PdfView class="dish-row">
+              <PdfText class="dish-name">
                 {{ dish.name }}
               </PdfText>
               <DotLeader
@@ -231,11 +110,11 @@ definePdf<MenuProps>({
                 :color="leader"
                 :width="0.75"
               />
-              <PdfText :style="dishPriceStyle">
+              <PdfText class="dish-price">
                 {{ formatMenuPrice(dish.price) }}
               </PdfText>
             </PdfView>
-            <PdfText :style="dishDescStyle">
+            <PdfText class="dish-description">
               {{ dish.description }}
             </PdfText>
           </PdfView>
@@ -244,7 +123,7 @@ definePdf<MenuProps>({
 
       <PdfText
         fixed
-        :style="footerStyle"
+        class="footer"
       >
         {{ menu.name }}
       </PdfText>
@@ -253,18 +132,18 @@ definePdf<MenuProps>({
     <!-- Page 2: desserts, wine list -->
     <PdfPage
       size="A5"
-      :style="pageStyle"
+      class="page"
     >
       <PdfView
         :id="menu.desserts.id"
         :bookmark="{ title: bookmarkTitles.desserts, expanded: false }"
       >
-        <PdfView :style="headWrapStyle">
+        <PdfView class="course-head">
           <PdfSvg
             :width="11"
             :height="11"
             view-box="0 0 13 13"
-            :style="{ marginBottom: 6 }"
+            class="course-mark"
           >
             <PdfPath
               d="M6.5 0.6 L12.4 6.5 L6.5 12.4 L0.6 6.5 Z"
@@ -279,20 +158,20 @@ definePdf<MenuProps>({
               :fill="accent"
             />
           </PdfSvg>
-          <PdfText :style="headLabelStyle">
+          <PdfText class="course-label">
             {{ menu.desserts.label }}
           </PdfText>
-          <PdfView :style="headRuleStyle" />
+          <PdfView class="course-rule" />
         </PdfView>
 
         <PdfView
           v-for="dish in menu.desserts.dishes"
           :key="dish.name"
-          :style="{ marginBottom: 9 }"
+          class="dish"
           :wrap="false"
         >
-          <PdfView :style="dishRowStyle">
-            <PdfText :style="dishNameStyle">
+          <PdfView class="dish-row">
+            <PdfText class="dish-name">
               {{ dish.name }}
             </PdfText>
             <DotLeader
@@ -301,11 +180,11 @@ definePdf<MenuProps>({
               :color="leader"
               :width="0.75"
             />
-            <PdfText :style="dishPriceStyle">
+            <PdfText class="dish-price">
               {{ formatMenuPrice(dish.price) }}
             </PdfText>
           </PdfView>
-          <PdfText :style="dishDescStyle">
+          <PdfText class="dish-description">
             {{ dish.description }}
           </PdfText>
         </PdfView>
@@ -314,14 +193,14 @@ definePdf<MenuProps>({
       <PdfView
         :id="menu.wines.id"
         :bookmark="{ title: bookmarkTitles.wines, expanded: false }"
-        :style="{ marginTop: 22 }"
+        class="wines"
       >
-        <PdfView :style="headWrapStyle">
+        <PdfView class="course-head">
           <PdfSvg
             :width="11"
             :height="11"
             view-box="0 0 13 13"
-            :style="{ marginBottom: 6 }"
+            class="course-mark"
           >
             <PdfPath
               d="M6.5 0.6 L12.4 6.5 L6.5 12.4 L0.6 6.5 Z"
@@ -336,39 +215,20 @@ definePdf<MenuProps>({
               :fill="accent"
             />
           </PdfSvg>
-          <PdfText :style="headLabelStyle">
+          <PdfText class="course-label">
             {{ menu.wines.label }}
           </PdfText>
-          <PdfView :style="headRuleStyle" />
+          <PdfView class="course-rule" />
         </PdfView>
 
-        <PdfView
-          :style="{
-            alignItems: 'flex-end',
-            borderBottomColor: leader,
-            borderBottomWidth: 0.5,
-            flexDirection: 'row',
-            marginBottom: 11,
-            paddingBottom: 5,
-          }"
-        >
-          <PdfText
-            :style="{
-              color: muted,
-              flex: 1,
-              fontFamily: 'Inter',
-              fontSize: 7,
-              fontWeight: 500,
-              letterSpacing: 1.4,
-              textTransform: 'uppercase',
-            }"
-          >
+        <PdfView class="wine-head">
+          <PdfText class="wine-head-label">
             Offene Weine
           </PdfText>
-          <PdfText :style="columnHeadStyle">
+          <PdfText class="column-head">
             Glas
           </PdfText>
-          <PdfText :style="columnHeadLastStyle">
+          <PdfText class="column-head bottle-column">
             Flasche
           </PdfText>
         </PdfView>
@@ -376,29 +236,21 @@ definePdf<MenuProps>({
         <PdfView
           v-for="wine in menu.wines.entries"
           :key="wine.name"
-          :style="{ alignItems: 'flex-start', flexDirection: 'row', marginBottom: 9 }"
+          class="wine"
           :wrap="false"
         >
-          <PdfView :style="{ flex: 1, paddingRight: 12 }">
-            <PdfText :style="{ color: ink, fontFamily: 'Inter', fontSize: 10, fontWeight: 600 }">
+          <PdfView class="wine-info">
+            <PdfText class="wine-name">
               {{ wine.name }}
             </PdfText>
-            <PdfText
-              :style="{
-                color: muted,
-                fontFamily: 'Lora',
-                fontSize: 8,
-                fontStyle: 'italic',
-                marginTop: 2,
-              }"
-            >
+            <PdfText class="wine-origin">
               {{ wine.region }} · {{ wine.year }}
             </PdfText>
           </PdfView>
-          <PdfText :style="winePriceStyle">
+          <PdfText class="wine-price">
             {{ formatMenuPrice(wine.glass) }}
           </PdfText>
-          <PdfText :style="winePriceLastStyle">
+          <PdfText class="wine-price bottle-column">
             {{ formatWinePrice(wine.bottle) }}
           </PdfText>
         </PdfView>
@@ -406,27 +258,241 @@ definePdf<MenuProps>({
 
       <PdfText
         fixed
-        :style="{
-          bottom: 56,
-          color: muted,
-          fontFamily: 'Lora',
-          fontSize: 8,
-          fontStyle: 'italic',
-          left: 52,
-          position: 'absolute',
-          right: 52,
-          textAlign: 'center',
-        }"
+        class="price-note"
       >
         {{ menu.priceNote }}
       </PdfText>
 
       <PdfText
         fixed
-        :style="footerStyle"
+        class="footer"
       >
         {{ menu.name }}
       </PdfText>
     </PdfPage>
   </PdfDocument>
 </template>
+
+<style>
+:root {
+  --ink: #23201c;
+  --muted: #857a68;
+  --accent: #8f4a46;
+  --font-body: Inter;
+  --font-display: Lora;
+  --page-margin: 52pt;
+}
+.page {
+  padding: 42pt var(--page-margin) 38pt;
+  font-family: var(--font-body);
+  color: var(--ink);
+  background-color: #faf7f0;
+}
+
+.masthead {
+  align-items: center;
+  margin-bottom: 20pt;
+}
+
+.menu-name {
+  font-family: var(--font-display);
+  font-size: 23pt;
+  font-weight: 700;
+  text-align: center;
+  color: var(--ink);
+}
+
+.ethos {
+  margin-top: 7pt;
+  max-width: 230pt;
+  font-family: var(--font-display);
+  font-size: 10pt;
+  font-style: italic;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--muted);
+}
+
+.masthead-rule {
+  margin-top: 10pt;
+  width: 34pt;
+  border-bottom-width: 0.75pt;
+  border-bottom-color: var(--accent);
+}
+
+.established {
+  margin-top: 10pt;
+  font-family: var(--font-body);
+  font-size: 7pt;
+  font-weight: 500;
+  letter-spacing: 0.8pt;
+  text-align: center;
+  color: var(--muted);
+}
+
+.course-following {
+  margin-top: 15pt;
+}
+
+/* Course head: a tiny alpine-rose lozenge mark, the letterspaced small-caps
+   label, and one short hairline rule beneath. Mark and rule share a single
+   0.75pt weight so the ornament reads as engineered, not decorative. */
+.course-head {
+  align-items: center;
+  margin-bottom: 11pt;
+}
+
+.course-mark {
+  margin-bottom: 6pt;
+}
+
+.course-label {
+  font-family: var(--font-body);
+  font-size: 9.5pt;
+  font-weight: 600;
+  letter-spacing: 2pt;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.course-rule {
+  margin-top: 6pt;
+  width: 28pt;
+  border-bottom-width: 0.75pt;
+  border-bottom-color: var(--accent);
+}
+
+.dish {
+  margin-bottom: 9pt;
+}
+
+.dish-row {
+  flex-direction: row;
+  align-items: flex-end;
+}
+
+.dish-name {
+  font-family: var(--font-body);
+  font-size: 10pt;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.dish-price {
+  width: 32pt;
+  font-family: var(--font-body);
+  font-size: 10pt;
+  font-weight: 500;
+  text-align: right;
+  color: var(--ink);
+}
+
+.dish-description {
+  margin-top: 2pt;
+  max-width: 235pt;
+  font-family: var(--font-display);
+  font-size: 8pt;
+  font-style: italic;
+  line-height: 1.3;
+  color: var(--muted);
+}
+
+.footer {
+  position: absolute;
+  right: var(--page-margin);
+  bottom: 38pt;
+  left: var(--page-margin);
+  font-family: var(--font-body);
+  font-size: 7pt;
+  letter-spacing: 2pt;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.wines {
+  margin-top: 22pt;
+}
+
+.wine-head {
+  flex-direction: row;
+  align-items: flex-end;
+  margin-bottom: 11pt;
+  padding-bottom: 5pt;
+  border-bottom-width: 0.5pt;
+  border-bottom-color: #cdbfa6;
+}
+
+.wine-head-label {
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: 7pt;
+  font-weight: 500;
+  letter-spacing: 1.4pt;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.column-head {
+  width: 42pt;
+  font-family: var(--font-body);
+  font-size: 7pt;
+  font-weight: 500;
+  letter-spacing: 1.4pt;
+  text-align: right;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.bottle-column {
+  margin-left: 14pt;
+}
+
+.wine {
+  flex-direction: row;
+  align-items: flex-start;
+  margin-bottom: 9pt;
+}
+
+.wine-info {
+  flex: 1;
+  padding-right: 12pt;
+}
+
+.wine-name {
+  font-family: var(--font-body);
+  font-size: 10pt;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.wine-origin {
+  margin-top: 2pt;
+  font-family: var(--font-display);
+  font-size: 8pt;
+  font-style: italic;
+  color: var(--muted);
+}
+
+.wine-price {
+  width: 42pt;
+  font-family: var(--font-body);
+  font-size: 10pt;
+  font-weight: 500;
+  text-align: right;
+  color: var(--ink);
+}
+
+.price-note {
+  position: absolute;
+  right: var(--page-margin);
+  bottom: 56pt;
+  left: var(--page-margin);
+  font-family: var(--font-display);
+  font-size: 8pt;
+  font-style: italic;
+  text-align: center;
+  color: var(--muted);
+}
+</style>

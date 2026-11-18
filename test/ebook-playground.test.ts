@@ -12,10 +12,9 @@ import {
 } from '../src/test/pdf'
 
 // The shipped ebook showcase, compiled and rendered through the shipped test
-// helper (auto-injecting the usePdfPageNumbers import). Proves the flagship
-// usePdfPageNumbers story end-to-end: multi-pass numbering feeds BOTH the
-// Contents dot-leaders and the chapter-aware running foot, plus the per-chapter
-// outline and internal links.
+// helper. Proves the page-reference story end-to-end: `PdfPageRef` numbers
+// feed the Contents dot-leaders, each chapter prints its own running foot,
+// plus the per-chapter outline and internal links.
 const ebookSource = resolve('playground/pdfs/ebook.vue')
 
 const baselineDirectory = fileURLToPath(new URL('./fixtures/baselines/ebook', import.meta.url))
@@ -36,7 +35,7 @@ const playgroundFonts = [
   { family: 'Lora', src: './Lora-700.ttf', fontWeight: 700 },
 ]
 
-describe('playground ebook.vue (usePdfPageNumbers showcase)', () => {
+describe('playground ebook.vue (PdfPageRef showcase)', () => {
   it('auto-injects the composable, resolves the TOC + chapter-aware foot, and matches its raster baseline', async () => {
     const { bytes, parsed, result } = await renderPdfSfc(
       ebookSource,

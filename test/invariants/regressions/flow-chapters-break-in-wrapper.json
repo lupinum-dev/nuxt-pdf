@@ -1,0 +1,191 @@
+{
+  "profile": "flow",
+  "invariants": [
+    "I3"
+  ],
+  "origin": {
+    "seed": 0,
+    "index": 0,
+    "rule": "documents"
+  },
+  "note": "Built by hand from the chapter pattern in internals/harness-r1/causes.md: chapters in a wrapper view, each with break (page > view > [view(break) > [heading, text], …]), A5. The upstream layout kept the wrapper on page 1 and lost most of the words; plain @react-pdf/renderer 4.5.1 does the same (1 page, 919 of 1,200 words in the causes probe). Fixed by the layout copy (D19).",
+  "raw": {
+    "pages": [
+      {
+        "size": 1,
+        "landscape": false,
+        "padding": [
+          30,
+          30,
+          30,
+          30
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "view",
+            "margin": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "padding": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "border": 0,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "view",
+                "margin": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "padding": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "border": 0,
+                "minHeight": 0,
+                "wrap": true,
+                "brk": true,
+                "children": [
+                  {
+                    "t": "text",
+                    "n": 3,
+                    "font": 4,
+                    "lineHeight": 0,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 0,
+                    "marginBottom": 6,
+                    "extra": 0,
+                    "ref": 0
+                  },
+                  {
+                    "t": "text",
+                    "n": 400,
+                    "font": 2,
+                    "lineHeight": 0,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 0,
+                    "marginBottom": 6,
+                    "extra": 0,
+                    "ref": 0
+                  }
+                ]
+              },
+              {
+                "t": "view",
+                "margin": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "padding": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "border": 0,
+                "minHeight": 0,
+                "wrap": true,
+                "brk": true,
+                "children": [
+                  {
+                    "t": "text",
+                    "n": 3,
+                    "font": 4,
+                    "lineHeight": 0,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 0,
+                    "marginBottom": 6,
+                    "extra": 0,
+                    "ref": 0
+                  },
+                  {
+                    "t": "text",
+                    "n": 400,
+                    "font": 2,
+                    "lineHeight": 0,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 0,
+                    "marginBottom": 6,
+                    "extra": 0,
+                    "ref": 0
+                  }
+                ]
+              },
+              {
+                "t": "view",
+                "margin": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "padding": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "border": 0,
+                "minHeight": 0,
+                "wrap": true,
+                "brk": true,
+                "children": [
+                  {
+                    "t": "text",
+                    "n": 3,
+                    "font": 4,
+                    "lineHeight": 0,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 0,
+                    "marginBottom": 6,
+                    "extra": 0,
+                    "ref": 0
+                  },
+                  {
+                    "t": "text",
+                    "n": 400,
+                    "font": 2,
+                    "lineHeight": 0,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 0,
+                    "marginBottom": 6,
+                    "extra": 0,
+                    "ref": 0
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

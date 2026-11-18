@@ -7,7 +7,7 @@ import {
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { DocumentNode, SafeDocumentNode } from '@react-pdf/layout'
+import type { SafeDocumentNode } from '../../src/runtime/server/engine/layout/index'
 import {
   Font as ReactFont,
   renderToBuffer as renderReactDocument,
@@ -16,7 +16,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Component } from 'vue'
 import { mountPdfComponent } from '../../src/runtime/renderer'
 import { bundlePdfFonts } from '../../src/build/fonts'
-import { renderDocument } from '../../src/runtime/server/engine/render-document'
+import { renderPlainDocument } from '../../src/runtime/server/engine/plain-tree'
 import { createPdfFontStore, type PdfFontStore } from '../../src/runtime/server/engine/fonts'
 import {
   VueAlignDoc,
@@ -93,7 +93,7 @@ const renderReactBytes = async (element: Parameters<typeof renderReactDocument>[
 const renderVueResult = async (component: Component) => {
   const mounted = await mountPdfComponent(component)
   try {
-    return await renderDocument(mounted.document as unknown as DocumentNode, { fontStore })
+    return await renderPlainDocument(mounted.document, { fontStore })
   }
   finally {
     mounted.unmount()
@@ -214,8 +214,8 @@ const rasterParity = async (a: Uint8Array, b: Uint8Array) => {
 // ---------------------------------------------------------------------------
 
 describe('text-behaviour conformance', () => {
-  // (1) hyphenationCallback custom splitting + (2) long-word overflow.
-  it('hyphenation callback controls where a long token breaks', async () => {
+  // (1) default hyphenation + (2) long-word overflow with `hyphenate: false`.
+  it('hyphenate: false keeps a long token whole; default hyphenation breaks it', async () => {
     const { vue, vueLayout } = await renderPair(reactHyphenationDoc(), VueHyphenationDoc)
     const [noHyphenLines, splitLines] = textNodeLines(vueLayout)
 
@@ -225,7 +225,7 @@ describe('text-behaviour conformance', () => {
     expect(noHyphenLines![0]!.string).toBe('Supercalifragilisticexpialidocious')
     expect(noHyphenLines![0]!.xAdvance).toBeGreaterThan(hyphenationStyles.column.width)
 
-    // (1) The custom six-char splitter introduces break opportunities, so the
+    // (1) The default hyphenation introduces break opportunities, so the
     // same token now wraps across several lines, each broken line ending in a
     // hyphen glyph.
     expect(splitLines!.length).toBeGreaterThan(noHyphenLines!.length)
@@ -234,7 +234,7 @@ describe('text-behaviour conformance', () => {
     for (const line of broken) expect(line.string.endsWith('-')).toBe(true)
 
     // The break structure survives to the actual PDF text on both renderers.
-    expect(vue.pages[0]!.rawText).toContain('Supercalifra-\ngilisticexpi-')
+    expect(vue.pages[0]!.rawText).toContain('Supercalifrag-\nilisticexpialido-')
   }, 30_000)
 
   // (3) letterSpacing changes wrapping; inert wordSpacing is not public API.

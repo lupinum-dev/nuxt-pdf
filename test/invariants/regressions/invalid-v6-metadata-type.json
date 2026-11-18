@@ -1,0 +1,34 @@
+{
+  "profile": "invalid",
+  "invariants": [
+    "I15"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 50,
+    "rule": "invalid"
+  },
+  "note": "V6 (fixed in slice V1): the document metadata props were not checked, so title: 42 rendered. They must now be strings. Found by the first invalid run of H4 (document 50, fault metadata-type, base fixed); reduced by the harness.",
+  "raw": {
+    "fault": "metadata-type",
+    "pick": 2,
+    "base": "fixed",
+    "raw": {
+      "pages": [
+        {
+          "size": 0,
+          "landscape": false,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "fixed": [],
+          "children": [],
+          "bookmark": false
+        }
+      ]
+    }
+  }
+}

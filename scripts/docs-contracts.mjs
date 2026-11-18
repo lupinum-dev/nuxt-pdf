@@ -8,24 +8,38 @@ const normalizePropName = key =>
     ? key
     : key.replace(KEBAB_SEGMENT, (_, letter) => letter.toUpperCase())
 
+// The module is imported from a data: URL, which cannot resolve bare package
+// names, so the packages the style compiler needs stay external under their
+// resolved file URLs.
+const EXTERNAL_PACKAGES = /^(?:postcss|@vue\/compiler-sfc)$/
+const externalPackages = {
+  name: 'external-packages',
+  setup(build) {
+    build.onResolve({ filter: EXTERNAL_PACKAGES }, args => ({
+      external: true,
+      path: import.meta.resolve(args.path),
+    }))
+  },
+}
+
 export async function loadPdfDocumentationContracts(repositoryRoot) {
   const result = await build({
     bundle: true,
     format: 'esm',
     platform: 'node',
+    plugins: [externalPackages],
     stdin: {
       contents: `
-        import { PDF_PAGE_SIZE_NAMES } from './src/runtime/components/_props.ts'
-        import { PDF_PROP_KEYS } from './src/runtime/renderer/patch-prop.ts'
+        import { PDF_PAGE_SIZE_NAMES, PDF_PRIMITIVE_TABLE } from './src/runtime/primitives.ts'
         import { PDF_ERROR_CODES } from './src/runtime/shared/errors.ts'
         import { DEFAULT_PDF_RENDER_LIMITS } from './src/runtime/server/render-limits.ts'
-        import { PDF_PRIMITIVE_NAMES } from './src/runtime/renderer/types.ts'
 
+        export { compilePdfStyles } from './src/build/pdf-style.ts'
         export { PDF_ERROR_CODES, PDF_PAGE_SIZE_NAMES, DEFAULT_PDF_RENDER_LIMITS }
         export const primitiveProps = Object.fromEntries(
-          Object.entries(PDF_PROP_KEYS).map(([type, keys]) => [
-            PDF_PRIMITIVE_NAMES[type],
-            [...keys],
+          Object.entries(PDF_PRIMITIVE_TABLE).map(([name, spec]) => [
+            name,
+            Object.keys(spec.props),
           ]),
         )
       `,
@@ -53,8 +67,27 @@ export function findUnsupportedPrimitiveProps(ast, primitiveProps) {
     for (const prop of node.props) {
       const name = getStaticPropName(prop)
       if (!name || VUE_RESERVED_PROPS.has(name) || allowedProps.has(name)) continue
+      // The SFC compiler turns `class` into `style`, so a primitive that takes
+      // a style takes a class.
+      if (name === 'class' && allowedProps.has('style')) continue
 
       failures.push(`Unsupported prop "${name}" on <${node.tag}>.`)
+    }
+  })
+
+  return failures
+}
+
+/** Static `class` names in a template that no rule of the `<style>` block defines. */
+export function findUndefinedClasses(ast, definedClasses) {
+  const failures = []
+
+  walkTemplate(ast, (node) => {
+    for (const prop of node.props) {
+      if (prop.type !== 6 || prop.name !== 'class' || !prop.value) continue
+      for (const name of prop.value.content.split(/\s+/).filter(Boolean)) {
+        if (!definedClasses.has(name)) failures.push(`Undefined class "${name}" on <${node.tag}>.`)
+      }
     }
   })
 

@@ -92,7 +92,9 @@ export const createPdfRenderResult = (
     byteLength: bytes.byteLength,
     durationMs: diagnostics.durationMs,
     layoutWarnings: Object.freeze(diagnostics.layoutWarnings.map(warning =>
-      Object.freeze({ ...warning }))),
+      Object.freeze(warning.source
+        ? { ...warning, source: Object.freeze({ ...warning.source }) }
+        : { ...warning }))),
     pageCount: diagnostics.pageCount,
     passes: diagnostics.passes,
     registeredFontFaces: Object.freeze(diagnostics.registeredFontFaces.map(face =>

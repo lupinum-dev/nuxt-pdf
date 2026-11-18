@@ -16,13 +16,19 @@ defineProps<{
 
 <template>
   <PdfView
+    class="leader"
     :style="{
       borderBottomColor: color,
-      borderBottomStyle: 'dotted',
       borderBottomWidth: width ?? 1,
-      flex: 1,
       marginBottom: baseline ?? 3,
       marginHorizontal: gap ?? 7,
     }"
   />
 </template>
+
+<style>
+.leader {
+  flex: 1;
+  border-bottom-style: dotted;
+}
+</style>

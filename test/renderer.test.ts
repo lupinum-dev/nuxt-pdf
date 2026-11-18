@@ -1,4 +1,5 @@
 import {
+  Comment,
   Fragment,
   defineAsyncComponent,
   defineComponent,
@@ -10,8 +11,10 @@ import {
   onServerPrefetch,
   onUnmounted,
   onUpdated,
+  reactive,
   ref,
   resolveComponent,
+  shallowRef,
   vShow,
   watchEffect,
   withDirectives,
@@ -24,43 +27,27 @@ import FontStore from '@react-pdf/font'
 import layoutDocument, {
   type DocumentNode,
   type SafeDocumentNode,
-} from '@react-pdf/layout'
+} from '../src/runtime/server/engine/layout/index'
 import * as UpstreamPrimitives from '@react-pdf/primitives'
-import {
-  PdfCircle,
-  PdfClipPath,
-  PdfDefs,
-  PdfDocument,
-  PdfEllipse,
-  PdfG,
-  PdfImage,
-  PdfLine,
-  PdfLinearGradient,
-  PdfLink,
-  PdfNote,
-  PdfPage,
-  PdfPath,
-  PdfPolygon,
-  PdfPolyline,
-  PdfRadialGradient,
-  PdfRect,
-  PdfStop,
-  PdfSvg,
-  PdfText,
-  PdfTspan,
-  PdfView,
-} from '../src/runtime/components'
+import { PDF_COMPONENTS } from '../src/runtime/components'
 import { mountPdfComponent } from '../src/runtime/renderer'
 import { renderDocument } from '../src/runtime/server/engine/render-document'
+import type { PdfStyle } from '../src/runtime/authoring'
 import {
+  PDF_PRIMITIVE_COMPONENT_NAMES,
+  PDF_PRIMITIVE_TABLE,
   PDF_PRIMITIVES,
-  type PdfStyle,
-} from '../src/runtime/authoring'
+  type PdfPrimitiveName,
+} from '../src/runtime/primitives'
+import { PDF_SOURCE_PROP } from '../src/runtime/shared/template'
 import type {
   PdfElementNode,
   PdfTextInstance,
 } from '../src/runtime/renderer/types'
+import { renderPdfTemplate } from '../src/test'
 import { rasterizePdf } from '../src/test/pdf'
+
+const { PdfCircle, PdfClipPath, PdfDefs, PdfDocument, PdfEllipse, PdfG, PdfImage, PdfLine, PdfLinearGradient, PdfLink, PdfNote, PdfPage, PdfPath, PdfPolygon, PdfPolyline, PdfRadialGradient, PdfRect, PdfPageNumber, PdfStop, PdfSvg, PdfText, PdfTspan, PdfView } = PDF_COMPONENTS
 
 type Item = {
   id: string
@@ -80,6 +67,18 @@ const textChild = (
 afterEach(() => {
   vi.restoreAllMocks()
 })
+
+// Re-renders a mounted template with new props, the way a component's own
+// reactive state does before the tree is taken (an onMounted change, say).
+const mountWithProps = async (component: Component, initial: Record<string, unknown>) => {
+  const props = shallowRef(initial)
+  const mounted = await mountPdfComponent(defineComponent(() => () => h(component, props.value)))
+  const setProps = async (next: Record<string, unknown>) => {
+    props.value = next
+    await nextTick()
+  }
+  return { mounted, setProps }
+}
 
 describe('Vue PDF host renderer', () => {
   it('uses runtime-core lifecycle semantics in Node', async () => {
@@ -244,7 +243,6 @@ describe('Vue PDF host renderer', () => {
   }, 20_000)
 
   it('mounts and patches one layout-compatible document tree', async () => {
-    const renderPageNumber = vi.fn(() => 0)
     const Fixture = defineComponent({
       props: {
         title: { type: String, required: true },
@@ -277,15 +275,15 @@ describe('Vue PDF host renderer', () => {
               )),
               h(PdfText, {
                 id: 'page-number',
-                render: props.showDynamic ? renderPageNumber : undefined,
-              }),
+                hyphenate: props.showDynamic ? false : undefined,
+              }, () => 'Long words stay whole'),
             ],
           }),
         })
       },
     })
 
-    const mounted = await mountPdfComponent(Fixture, {
+    const { mounted, setProps } = await mountWithProps(Fixture, {
       title: 'Before',
       showConditional: true,
       showDynamic: true,
@@ -318,14 +316,9 @@ describe('Vue PDF host renderer', () => {
     expect(page.type).toBe(PDF_PRIMITIVES.Page)
     expect(title.style).toEqual({ color: 'red' })
     expect(initialTitleText.value).toBe('Before')
-    expect(dynamic.props.render).toBeTypeOf('function')
-    expect(
-      (dynamic.props.render as (props: { pageNumber: number }) => string)({
-        pageNumber: 1,
-      }),
-    ).toBe('0')
+    expect(dynamic.props.hyphenate).toBe(false)
 
-    await mounted.update({
+    await setProps({
       title: 'After',
       showConditional: false,
       showDynamic: false,
@@ -357,7 +350,7 @@ describe('Vue PDF host renderer', () => {
       'Beta updated',
       'Alpha updated',
     ])
-    expect(updatedDynamic.props).not.toHaveProperty('render')
+    expect(updatedDynamic.props).not.toHaveProperty('hyphenate')
 
     const assertOnlyPdfNodes = (node: PdfElementNode) => {
       for (const child of node.children) {
@@ -369,6 +362,101 @@ describe('Vue PDF host renderer', () => {
     assertOnlyPdfNodes(mounted.document)
     mounted.unmount()
     expect(mounted.root.document).toBeNull()
+  })
+
+  it('keeps sibling order through keyed moves, inserts, and removals', async () => {
+    const Fixture = defineComponent({
+      props: {
+        ids: { type: Array as PropType<number[]>, required: true },
+      },
+      setup: props => () => h(PdfDocument, null, () => h(PdfPage, null, () => [
+        h(PdfText, { id: 'head' }, () => 'Head'),
+        h(Fragment, null, props.ids.map(id =>
+          h(PdfText, { id: `row-${id}`, key: id }, () => `Row ${id}`))),
+        h(PdfText, { id: 'tail' }, () => 'Tail'),
+      ])),
+    })
+    const pageIds = (mounted: Awaited<ReturnType<typeof mountPdfComponent>>) =>
+      elementChild(mounted.document, 0).children.map(
+        child => (child as PdfElementNode).props.id,
+      )
+    const expected = (ids: number[]) =>
+      ['head', ...ids.map(id => `row-${id}`), 'tail']
+
+    const initial = Array.from({ length: 40 }, (_, index) => index)
+    const { mounted, setProps } = await mountWithProps(Fixture, { ids: initial })
+    expect(pageIds(mounted)).toEqual(expected(initial))
+
+    // Reverse, drop every third row, and add new rows at both ends and inside.
+    const next = [100, ...initial.toReversed().filter(id => id % 3 !== 0), 101]
+    next.splice(10, 0, 102)
+    await setProps({ ids: next })
+    expect(pageIds(mounted)).toEqual(expected(next))
+
+    await setProps({ ids: [] })
+    expect(pageIds(mounted)).toEqual(expected([]))
+    mounted.unmount()
+  })
+
+  // Catches a linked list that loses, duplicates, or misorders nodes when Vue
+  // moves a keyed fragment: it inserts the start anchor, each child, and the end
+  // anchor one by one before a sibling that may itself be a fragment anchor.
+  it('keeps order when keyed fragments move between keyed fragments', async () => {
+    const Fixture = defineComponent({
+      props: {
+        ids: { type: Array as PropType<number[]>, required: true },
+      },
+      setup: props => () => h(PdfDocument, null, () => h(PdfPage, null, () =>
+        h(PdfView, null, () => props.ids.map(id => h(Fragment, { key: id }, [
+          h(PdfText, { id: `a-${id}` }, () => `A ${id}`),
+          h(PdfText, { id: `b-${id}` }, () => `B ${id}`),
+        ]))))),
+    })
+    const listIds = (mounted: Awaited<ReturnType<typeof mountPdfComponent>>) =>
+      elementChild(elementChild(mounted.document, 0), 0).children.map(
+        child => (child as PdfElementNode).props.id,
+      )
+    const expected = (ids: number[]) => ids.flatMap(id => [`a-${id}`, `b-${id}`])
+
+    // A fixed linear congruential sequence keeps the permutations reproducible.
+    let seed = 7
+    const random = () => (seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648) / 2_147_483_648
+    const shuffled = (ids: number[]) => ids
+      .map(id => ({ id, order: random() }))
+      .toSorted((left, right) => left.order - right.order)
+      .map(({ id }) => id)
+
+    let ids = Array.from({ length: 30 }, (_, index) => index)
+    const { mounted, setProps } = await mountWithProps(Fixture, { ids })
+    expect(listIds(mounted)).toEqual(expected(ids))
+
+    for (let round = 0; round < 20; round++) {
+      ids = shuffled([...ids.filter(() => random() > 0.2), 100 + round * 3, 101 + round * 3])
+      await setProps({ ids })
+      expect(listIds(mounted)).toEqual(expected(ids))
+    }
+    mounted.unmount()
+  })
+
+  it('mounts 16,000 sibling rows in linear time', async () => {
+    const rows = 16_000
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, () => h(PdfPage, null, () => h(PdfView, null, () =>
+        Array.from({ length: rows }, (_, index) =>
+          h(PdfView, { key: index }, () => h(PdfText, null, () => `Row ${index}`)))))))
+
+    const start = performance.now()
+    const mounted = await mountPdfComponent(Fixture)
+    const elapsed = performance.now() - start
+
+    const list = elementChild(elementChild(mounted.document, 0), 0)
+    expect(list.children).toHaveLength(rows)
+    expect(textChild(elementChild(elementChild(list, rows - 1), 0)).value)
+      .toBe(`Row ${rows - 1}`)
+    // Rebuilding the children array on every insert took 36 s here; the linear
+    // mount takes about 0.4 s. The bound leaves room for a loaded CI machine.
+    expect(elapsed).toBeLessThan(5_000)
+    mounted.unmount()
   })
 
   it('fails closed on orphan text without echoing document content', async () => {
@@ -386,6 +474,49 @@ describe('Vue PDF host renderer', () => {
       message: '<PdfView> cannot contain text. Wrap it in <PdfText>.',
     })
     expect((error as Error).message).not.toContain('private customer text')
+  })
+
+  // Wrong behavior caught: a migration hint that leads to the next error (wrap
+  // the token inside the link that sits in a text), that is missing (a token
+  // in a view), or that omits pages for a render callback that hid content on
+  // some pages.
+  it.each([
+    {
+      label: 'the removed render prop',
+      child: () => h(PdfText as Component, { fixed: true, render: () => 'Page 1' }),
+      message: 'Unsupported prop "render" on <PdfText>. Use <PdfPageNumber /> and <PdfPageCount /> inside the text. Use pages="first" or pages="continuation" on a fixed text to show it on some pages only.',
+    },
+    {
+      label: 'a page token in a link inside a text',
+      child: () => h(PdfText, { fixed: true }, () => [
+        h(PdfLink, { href: 'https://example.com/' }, () => h(PdfPageNumber)),
+        ' Head',
+      ]),
+      message: 'Invalid PDF nesting: <PdfLink> cannot contain <PdfPageNumber>. Wrap it in <PdfText>. Keep that <PdfLink> outside any other text: <PdfLink><PdfText>… <PdfPageNumber /></PdfText></PdfLink>.',
+    },
+    {
+      label: 'a page token directly in a view',
+      child: () => h(PdfView, { fixed: true }, () => h(PdfPageNumber)),
+      message: 'Invalid PDF nesting: <PdfView> cannot contain <PdfPageNumber>. Put it inside a <PdfText>.',
+    },
+  ])('rejects $label with a hint that leads to valid markup', async ({ child, message }) => {
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, () => h(PdfPage, null, child)))
+
+    await expect(mountPdfComponent(Fixture)).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message,
+    })
+  })
+
+  // Catches a hint whose suggested markup does not render.
+  it('renders the markup the page-token link hint suggests', async () => {
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, () => h(PdfPage, null, () => h(PdfView, { fixed: true }, () =>
+        h(PdfLink, { href: 'https://example.com/' }, () =>
+          h(PdfText, null, () => ['Page ', h(PdfPageNumber)]))))))
+
+    await expect(renderPdfTemplate(Fixture, {})).resolves.toMatchObject({ bytes: expect.any(Uint8Array) })
   })
 
   it.each([
@@ -501,7 +632,7 @@ describe('Vue PDF host renderer', () => {
 
     await expect(mountPdfComponent(Fixture)).rejects.toMatchObject({
       code: 'PDF_TREE_INVALID',
-      message: 'Unsupported PDF style "display".',
+      message: 'Unsupported PDF style "display" on <PdfText>.',
     })
   })
 
@@ -520,16 +651,21 @@ describe('Vue PDF host renderer', () => {
     mounted.unmount()
   })
 
+  // The later invalid prop also catches a nesting check deferred past mount:
+  // the first defect in mount order must stay the reported one.
   it('fails closed on unsupported primitive nesting', async () => {
     const Fixture = defineComponent(() => () =>
       h(PdfDocument, null, {
         default: () => h(PdfPage, null, {
-          default: () => h(PdfView, null, {
-            default: () => [
-              h(PdfPage, { key: 'invalid-page' }),
-              h(PdfText, { key: 'valid-text' }, () => 'Still valid'),
-            ],
-          }),
+          default: () => [
+            h(PdfView, null, {
+              default: () => [
+                h(PdfPage, { key: 'invalid-page' }),
+                h(PdfText, { key: 'valid-text' }, () => 'Still valid'),
+              ],
+            }),
+            h(PdfImage as Component, { src: 'logo.png', title: 'later defect' }),
+          ],
         }),
       }),
     )
@@ -540,24 +676,24 @@ describe('Vue PDF host renderer', () => {
     })
   })
 
-  it('rejects duplicate destination ids without echoing the identifier', async () => {
+  // The message names the id and both elements (slice V1; it left the id
+  // out before), so the author finds them without a source position.
+  it('rejects duplicate destination ids and names both elements', async () => {
     const Fixture = defineComponent(() => () =>
       h(PdfDocument, null, {
         default: () => h(PdfPage, null, {
           default: () => [
-            h(PdfView, { id: 'private-customer-id' }),
-            h(PdfText, { id: 'private-customer-id' }, () => 'Duplicate'),
+            h(PdfView, { id: 'section-2' }),
+            h(PdfText, { id: 'section-2' }, () => 'Duplicate'),
           ],
         }),
       }),
     )
 
-    const error = await mountPdfComponent(Fixture).catch(cause => cause)
-    expect(error).toMatchObject({
+    await expect(mountPdfComponent(Fixture)).rejects.toMatchObject({
       code: 'PDF_TREE_INVALID',
-      message: 'PDF destination ids must be unique within a document.',
+      message: '<PdfView id="section-2"> and <PdfText id="section-2"> have the same id; ids must be unique within a document.',
     })
-    expect((error as Error).message).not.toContain('private-customer-id')
   })
 
   it('rejects a document with no PdfPage', async () => {
@@ -621,7 +757,6 @@ describe('Vue PDF host renderer', () => {
 
   it.each([
     'aria-label',
-    'class',
     'data-testid',
     'role',
   ])('rejects the DOM-only "$attribute" attribute', async (attribute) => {
@@ -640,11 +775,28 @@ describe('Vue PDF host renderer', () => {
     )
   })
 
+  // A class that bypasses the SFC compiler (render function, v-bind object)
+  // must fail and point to the <style> block, not vanish.
+  it('rejects a class that did not come from a compiled template', async () => {
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, {
+        default: () => h(PdfPage, null, {
+          default: () => h(PdfText, { class: 'title' }, () => 'PDF text'),
+        }),
+      }),
+    )
+
+    await expect(mountPdfComponent(Fixture)).rejects.toThrow(
+      'Unsupported "class" on <PdfText>. Classes come from the <style> block of a PDF component',
+    )
+  })
+
   it('normalizes ordinary kebab-case PDF props before mounting', async () => {
     const Fixture = defineComponent(() => () =>
       h(PdfDocument, { 'page-layout': 'singlePage' }, {
         default: () => h(PdfPage, null, {
-          default: () => h(PdfView, { 'min-presence-ahead': 48 }, {
+          // A bare boolean attribute in a template (`<PdfView fixed>`) arrives as ''.
+          default: () => h(PdfView as Component, { 'min-presence-ahead': 48, 'fixed': '' }, {
             default: () => h(PdfNote, null, () => 'Reviewer note'),
           }),
         }),
@@ -659,6 +811,7 @@ describe('Vue PDF host renderer', () => {
     expect(mounted.document.props).not.toHaveProperty('page-layout')
     expect(view.props.minPresenceAhead).toBe(48)
     expect(view.props).not.toHaveProperty('min-presence-ahead')
+    expect(view.props.fixed).toBe(true)
     expect(note.type).toBe(PDF_PRIMITIVES.Note)
     expect(textChild(note).value).toBe('Reviewer note')
 
@@ -690,6 +843,59 @@ describe('Vue PDF host renderer', () => {
     expect(error).toMatchObject({ code: 'PDF_TREE_INVALID' })
     expect((error as Error).message).toContain(prop.replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase()))
     expect((error as Error).message).not.toContain(secret)
+  })
+
+  // Catches Vue proxies left in the tree: postMessage to the render worker
+  // throws DataCloneError on a reactive style or prop object.
+  it('stores plain copies of reactive props and styles', async () => {
+    const style = reactive({ color: 'red', margin: 4 })
+    const bookmark = reactive({ title: 'Start', expanded: true })
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, () => h(PdfPage, null, () =>
+        h(PdfView, { style, bookmark }, () => h(PdfText, null, () => 'Body')))))
+
+    const mounted = await mountPdfComponent(Fixture)
+    const view = elementChild(elementChild(mounted.document, 0), 0)
+
+    expect(() => structuredClone(mounted.document)).not.toThrow()
+    expect(view.style).toEqual({ color: 'red', margin: 4 })
+    expect(view.props.bookmark).toEqual({ title: 'Start', expanded: true })
+    style.margin = 9
+    expect(view.style).toEqual({ color: 'red', margin: 4 })
+    mounted.unmount()
+  })
+
+  // Catches a non-cloneable value that would only fail later, in postMessage,
+  // without naming where it came from.
+  it.each([
+    {
+      label: 'a function inside a style',
+      props: { style: { color: () => 'red' } },
+      message: 'The "style" prop on <PdfView> must be plain data: it contains a function.',
+    },
+    {
+      label: 'a class instance',
+      props: { bookmark: new (class Bookmark { title = 'x' })() },
+      message: 'The "bookmark" prop on <PdfView> must be plain data: it contains a class instance.',
+    },
+    {
+      label: 'a circular object',
+      props: { style: (() => {
+        const value: Record<string, unknown> = { color: 'red' }
+        value.self = value
+        return value
+      })() },
+      message: 'The "style" prop on <PdfView> must be plain data: it contains a circular reference.',
+    },
+  ])('rejects $label in a prop with PDF_TREE_INVALID', async ({ props, message }) => {
+    const Fixture = defineComponent(() => () =>
+      h(PdfDocument, null, () => h(PdfPage, null, () =>
+        h(PdfView as Component, props))))
+
+    await expect(mountPdfComponent(Fixture)).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message,
+    })
   })
 
   it('rejects a valid prop on the wrong primitive', async () => {
@@ -770,7 +976,7 @@ describe('Vue PDF host renderer', () => {
 
     await expect(mountPdfComponent(Fixture)).rejects.toMatchObject({
       code: 'PDF_TREE_INVALID',
-      message: 'The PdfText fill, x, and y props are only supported inside <PdfSvg>.',
+      message: '<PdfText> takes "fill", "x" and "y" only inside <PdfSvg>.',
     })
   })
 
@@ -783,6 +989,63 @@ describe('Vue PDF host renderer', () => {
     await expect(mountPdfComponent(InvalidRoot)).rejects.toThrow(
       'A PDF component must render exactly one PdfDocument at its root.',
     )
+  })
+})
+
+// V1 to V7 (internals/harness-r1/v1-validator-gaps.md): every message names
+// the element, its id when it has one, the prop or style key and the wrong
+// value, so the author finds the element without a source position; values
+// that rendered silently before now fail.
+describe('tree validation messages', () => {
+  // The fixtures pass wrong values on purpose, which the typed props reject,
+  // so the components are used as plain Vue components here.
+  const PLAIN: Readonly<Record<keyof typeof PDF_COMPONENTS, Component>> = PDF_COMPONENTS
+  const { PdfDocument, PdfPage, PdfText, PdfView } = PLAIN
+  const documentWith = (children: () => VNodeChild, documentProps: Record<string, unknown> = {}) =>
+    defineComponent(() => () => h(PdfDocument, documentProps, {
+      default: () => h(PdfPage, null, { default: children }),
+    }))
+
+  it.each([
+    ['an unknown style key', () => h(PdfText, { id: 'intro', style: { colour: 'red' } }, () => 'x'), {}, 'Unsupported PDF style "colour" on <PdfText id="intro">.'],
+    ['a style value in a wrong unit', () => h(PdfView, { style: { marginTop: '3furlong' } }), {}, '<PdfView> :style value "3furlong" for "marginTop" is invalid: expected a number of points, a length such as 12pt, a percentage or auto.'],
+    ['a negative font size', () => h(PdfText, { style: { fontSize: -4 } }, () => 'x'), {}, '<PdfText> :style value -4 for "fontSize" is invalid: expected a value of 0 or more.'],
+    ['a negative part of a padding shorthand', () => h(PdfView, { style: { padding: '4pt -2pt' } }), {}, '<PdfView> :style value "4pt -2pt" for "padding" is invalid: expected a value of 0 or more.'],
+    ['an opacity above 1', () => h(PdfView, { style: [{ opacity: 0.5 }, { opacity: 1.5 }] }), {}, '<PdfView> :style value 1.5 for "opacity" is invalid: expected a number from 0 to 1.'],
+    ['an empty id', () => h(PdfText, { id: ' ' }, () => 'x'), {}, '<PdfText> "id" must be a non-empty string. Got " ".'],
+    ['an id that is not a string', () => h(PdfView, { id: 42 }), {}, '<PdfView> "id" must be a non-empty string. Got 42.'],
+    ['a reserved id', () => h(PdfText, { id: '__proto__' }, () => 'x'), {}, '<PdfText id="__proto__"> uses a reserved identifier as its id; use another id.'],
+    ['a duplicate id', () => [h(PdfView, { id: 'intro' }), h(PdfText, { id: 'intro' }, () => 'x')], {}, '<PdfView id="intro"> and <PdfText id="intro"> have the same id; ids must be unique within a document.'],
+    ['a Vue event prop', () => h(PdfText, { onClick: () => undefined }, () => 'x'), {}, 'Vue event prop "onClick" is not supported on <PdfText>: a PDF has no events.'],
+    ['a long wrong value, cut at 40 characters', () => h(PdfText, { tag: 'h'.repeat(60) }, () => 'x'), {}, `<PdfText> requires "tag" to be "h1", "h2", "h3", "h4", "h5", "h6" or "p". Got "${'h'.repeat(37)}...".`],
+    ['a bookmark that is a number', () => h(PdfText, { bookmark: 42 }, () => 'x'), {}, '<PdfText> requires "bookmark" to be a title string or { title: string, expanded?: boolean }. Got 42.'],
+    ['a bookmark with an unknown key', () => h(PdfView, { bookmark: { title: 'Part', open: true } }), {}, '<PdfView> requires "bookmark" to be a title string or { title: string, expanded?: boolean }. Got an object.'],
+    ['a title that is not a string', () => h(PdfText, () => 'x'), { title: 42 }, '<PdfDocument> requires a string "title" value. Got 42.'],
+    ['a language that is not a string', () => h(PdfText, () => 'x'), { language: ['en'] }, '<PdfDocument> requires a string "language" value. Got an array.'],
+    ['a PDF version the engine does not write', () => h(PdfText, () => 'x'), { pdfVersion: '9.9' }, '<PdfDocument> requires "pdfVersion" to be "1.3", "1.4", "1.5", "1.6", "1.7" or "1.7ext3". Got "9.9".'],
+    ['an unknown page layout', () => h(PdfText, () => 'x'), { pageLayout: 'twoColumn' }, '<PdfDocument> requires "pageLayout" to be "singlePage", "oneColumn", "twoColumnLeft", "twoColumnRight", "twoPageLeft" or "twoPageRight". Got "twoColumn".'],
+    ['widows of 0', () => h(PdfText, { widows: 0 }, () => 'x'), {}, '<PdfText> widows must be a positive whole number. Got 0.'],
+  ])('rejects %s', async (_label, children, documentProps, message) => {
+    await expect(mountPdfComponent(documentWith(children, documentProps))).rejects.toMatchObject({ code: 'PDF_TREE_INVALID', message })
+  })
+
+  it('rejects an unknown page orientation', async () => {
+    const Fixture = defineComponent(() => () => h(PdfDocument, null, {
+      default: () => h(PdfPage, { orientation: 'sideways' }, { default: () => h(PdfText, () => 'x') }),
+    }))
+    await expect(mountPdfComponent(Fixture)).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message: '<PdfPage> requires "orientation" to be "portrait" or "landscape". Got "sideways".',
+    })
+  })
+
+  // The sign rule must not reject what may be negative.
+  it('mounts negative margins, insets, letter spacing and transforms, and an opacity of 0 or 1', async () => {
+    const mounted = await mountPdfComponent(documentWith(() => [
+      h(PdfView, { style: { marginTop: -4, margin: '-2pt 0', top: -3, left: '-10%', position: 'relative', opacity: 0 } }),
+      h(PdfText, { style: { letterSpacing: -0.5, transform: 'translate(-4, -2)', opacity: 1 } }, () => 'x'),
+    ]))
+    mounted.unmount()
   })
 })
 
@@ -975,7 +1238,7 @@ describe('Vue PDF SVG nesting', () => {
       ],
     }))).rejects.toMatchObject({
       code: 'PDF_TREE_INVALID',
-      message: 'SVG definition ids must be unique within one <PdfSvg>.',
+      message: '<PdfRadialGradient id="duplicate"> has the id of another definition; definition ids must be unique within one <PdfSvg>.',
     })
   })
 
@@ -1087,6 +1350,17 @@ describe('Vue PDF SVG nesting', () => {
     })
   })
 
+  // Catches a page token that reaches SVG text, where the engine adapter never
+  // replaces it and the number would be silently missing.
+  it('rejects a page token inside SVG text', async () => {
+    await expect(mountSvgSubtree(() =>
+      h(PdfText, { x: 0, y: 10 }, () => [h(PdfPageNumber)]),
+    )).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message: '<PdfPageNumber> is not supported inside <PdfSvg>.',
+    })
+  })
+
   it.each([
     { label: 'missing coordinates', props: { fill: '#f00' } },
     { label: 'page-flow prop', props: { fixed: true, x: 0, y: 0 } },
@@ -1186,18 +1460,103 @@ describe('Vue PDF SVG nesting', () => {
     expect(elementChild(svgOf(mounted), 0).props.fillOpacity).toBe(0)
     mounted.unmount()
   })
+})
 
-  it('keeps leaf shapes childless even when given slotted content', async () => {
-    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const mounted = await mountSvgSubtree(() => h(PdfPath, { d: 'M0 0 L1 1' }, {
-      default: () => h(PdfRect, { width: 1, height: 1 }),
-    }))
+describe('fallthrough class on a local component', () => {
+  const TwoLines = defineComponent({
+    name: 'TwoLines',
+    setup: () => () => [h(PdfText, null, () => 'One'), h(PdfText, null, () => 'Two')],
+  })
+  const template = (attrs: Record<string, unknown>) => defineComponent(() => () =>
+    h(PdfDocument, null, () => h(PdfPage, null, () => h(TwoLines, attrs))))
 
-    const path = elementChild(svgOf(mounted), 0)
-    expect(path.type).toBe(PDF_PRIMITIVES.Path)
-    expect(path.children).toEqual([])
-    expect(warning).not.toHaveBeenCalled()
+  // Catches the class being dropped silently, or Vue's own warning text
+  // reaching the author instead of what to change.
+  it('names the component when a class meets several root elements', async () => {
+    // A compiled class reaches the component as a `style` attribute.
+    await expect(mountPdfComponent(template({ style: { fontSize: 20 } }))).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message: 'A class on <TwoLines> needs a single root element in that component, or v-bind="$attrs" on one element.',
+    })
+  })
 
+  it('renders the same component without a class', async () => {
+    const mounted = await mountPdfComponent(template({}))
+    expect((mounted.document.children[0] as PdfElementNode).children).toHaveLength(2)
+    mounted.unmount()
+  })
+})
+
+describe('leaf primitives', () => {
+  type Slot = () => VNodeChild
+  const { PdfAttachment, PdfCheckbox, PdfFacturX, PdfPageCount, PdfPageRef, PdfSelect, PdfTextField } = PDF_COMPONENTS
+  const LEAF_SOURCE = { [PDF_SOURCE_PROP]: 'leaf.vue:3:5' }
+  const CHILD_SOURCE = { [PDF_SOURCE_PROP]: 'leaf.vue:4:7' }
+  const page = (content: Slot) => h(PdfDocument, null, () => h(PdfPage, null, () => [h(PdfView, { id: 'target' }), content()]))
+  const svg = (content: Slot) => page(() => h(PdfSvg, { viewBox: '0 0 10 10' }, content))
+  const text = (content: Slot) => page(() => h(PdfText, null, content))
+
+  const FACTUR_X_XML = '<rsm:CrossIndustryInvoice><ram:GuidelineSpecifiedDocumentContextParameter>'
+    + '<ram:ID>urn:factur-x.eu:1p0:minimum</ram:ID></ram:GuidelineSpecifiedDocumentContextParameter></rsm:CrossIndustryInvoice>'
+
+  // Each leaf in a context where it is valid, with its required props.
+  const LEAVES: Record<string, (slot: Slot) => VNodeChild> = {
+    PdfAttachment: slot => h(PdfDocument, null, () => [
+      h(PdfAttachment, { name: 'a.xml', data: '<a/>', ...LEAF_SOURCE }, slot),
+      h(PdfPage),
+    ]),
+    PdfFacturX: slot => h(PdfDocument, null, () => [
+      h(PdfFacturX, { xml: FACTUR_X_XML, profile: 'MINIMUM', ...LEAF_SOURCE }, slot),
+      h(PdfPage),
+    ]),
+    PdfImage: slot => page(() => h(PdfImage, { src: 'data:image/png;base64,', ...LEAF_SOURCE }, slot)),
+    PdfTextField: slot => page(() => h(PdfTextField, { name: 'a', style: { width: 9, height: 9 }, ...LEAF_SOURCE }, slot)),
+    PdfCheckbox: slot => page(() => h(PdfCheckbox, { name: 'b', style: { width: 9, height: 9 }, ...LEAF_SOURCE }, slot)),
+    PdfSelect: slot => page(() => h(PdfSelect, { name: 'c', options: ['x'], style: { width: 9, height: 9 }, ...LEAF_SOURCE }, slot)),
+    PdfPath: slot => svg(() => h(PdfPath, { d: 'M0 0', ...LEAF_SOURCE }, slot)),
+    PdfRect: slot => svg(() => h(PdfRect, { width: 1, height: 1, ...LEAF_SOURCE }, slot)),
+    PdfCircle: slot => svg(() => h(PdfCircle, { r: 1, ...LEAF_SOURCE }, slot)),
+    PdfEllipse: slot => svg(() => h(PdfEllipse, { rx: 1, ry: 1, ...LEAF_SOURCE }, slot)),
+    PdfLine: slot => svg(() => h(PdfLine, { x1: 0, x2: 1, y1: 0, y2: 1, ...LEAF_SOURCE }, slot)),
+    PdfPolyline: slot => svg(() => h(PdfPolyline, { points: '0,0 1,1', ...LEAF_SOURCE }, slot)),
+    PdfPolygon: slot => svg(() => h(PdfPolygon, { points: '0,0 1,1 1,0', ...LEAF_SOURCE }, slot)),
+    PdfStop: slot => svg(() => h(PdfDefs, null, () => h(PdfLinearGradient, { id: 'g' }, () =>
+      h(PdfStop, { offset: 0, stopColor: 'red', ...LEAF_SOURCE }, slot)))),
+    PdfPageNumber: slot => text(() => h(PdfPageNumber, LEAF_SOURCE, slot)),
+    PdfPageCount: slot => text(() => h(PdfPageCount, LEAF_SOURCE, slot)),
+    PdfPageRef: slot => text(() => h(PdfPageRef, { to: 'target', ...LEAF_SOURCE }, slot)),
+  }
+  const mountLeaf = (name: string, slot: Slot) =>
+    mountPdfComponent(defineComponent(() => () => LEAVES[name]!(slot)))
+  const isLeaf = (name: PdfPrimitiveName) => {
+    const spec = PDF_PRIMITIVE_TABLE[name]
+    return spec.children.length === 0 && !('text' in spec)
+  }
+  const names = Object.keys(LEAVES)
+
+  // Catches: a new leaf primitive in the table that this test does not cover.
+  it('covers every primitive that holds no content', () => {
+    expect(names).toEqual(PDF_PRIMITIVE_COMPONENT_NAMES.filter(isLeaf))
+  })
+
+  // Catches: a leaf that drops its content silently (all of them but
+  // PdfAttachment did), and an error without the component or its position.
+  it.each(names)('rejects text and elements in <%s> with its name and position', async (name) => {
+    await expect(mountLeaf(name, () => 'caption')).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message: `<${name}> cannot contain text.`,
+      source: { file: 'leaf.vue', line: 3, column: 5 },
+    })
+    await expect(mountLeaf(name, () => h(PdfView, CHILD_SOURCE))).rejects.toMatchObject({
+      code: 'PDF_TREE_INVALID',
+      message: `Invalid PDF nesting: <${name}> cannot contain <PdfView>.`,
+      source: { file: 'leaf.vue', line: 4, column: 7 },
+    })
+  })
+
+  // Catches: a check that counts whitespace or a v-if comment as content.
+  it.each(names)('accepts whitespace and comments in <%s>', async (name) => {
+    const mounted = await mountLeaf(name, () => [' \n ', h(Comment, 'v-if')])
     mounted.unmount()
   })
 })

@@ -49,7 +49,7 @@ async function verifyRenderResult() {
     readonly availableHeight: number
     readonly code: 'PDF_UNBREAKABLE_NODE_OVERFLOW'
     readonly nodeHeight: number
-    readonly nodeType: 'PdfImage' | 'PdfLink' | 'PdfNote' | 'PdfSvg' | 'PdfText' | 'PdfView'
+    readonly nodeType: 'PdfCheckbox' | 'PdfImage' | 'PdfLink' | 'PdfNote' | 'PdfSelect' | 'PdfSvg' | 'PdfText' | 'PdfTextField' | 'PdfView'
     readonly pageNumber: number
   }[]
   result.diagnostics.registeredFontFaces satisfies readonly {

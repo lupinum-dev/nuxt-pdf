@@ -60,13 +60,16 @@
     "dev": "pnpm dev:prepare && nuxt dev playground",
     "dev:prepare": "nuxt-module-build build --stub && nuxt-module-build prepare && nuxt prepare playground",
     "build": "nuxt-module-build prepare && nuxt-module-build build && pnpm docs:build && node scripts/agent-docs.mjs && publint",
-    "lint": "eslint . && node scripts/lint-changesets.mjs",
+    "lint": "eslint . && node scripts/lint-changesets.mjs && node scripts/vendor-layout.mjs --check",
     "format": "eslint . --fix",
     "typecheck": "pnpm test:prepare && nuxt prepare && vue-tsc --noEmit && nuxt prepare test/fixtures/basic && vue-tsc --noEmit -p test/fixtures/basic/tsconfig.json && pnpm --dir playground exec vue-tsc --noEmit",
     "test": "pnpm test:prepare && vitest run",
     "test:prepare": "pnpm dev:prepare && nuxt prepare test/fixtures/layers",
     "test:production": "nuxt-module-build prepare && nuxt-module-build build && vitest run --config vitest.production.config.ts && vitest run --config vitest.serverless.config.ts && nuxt build playground",
+    "test:invariants": "NUXT_PDF_INVARIANT_SIZE=ci vitest run test/invariants/invariants.test.ts",
     "test:raster": "vitest run --config vitest.raster.config.ts",
+    "test:pdfa": "node scripts/test-pdfa.mjs",
+    "test:einvoice": "node scripts/test-einvoice.mjs",
     "test:performance": "node --expose-gc ./node_modules/vitest/vitest.mjs run --config vitest.performance.config.ts",
     "test:docs": "node scripts/check-docs-snippets.mjs && node scripts/check-docs-contracts.mjs && pnpm --dir docs check",
     "test:api": "node scripts/check-api-report.mjs",
@@ -74,36 +77,50 @@
     "api:write": "node scripts/check-api-report.mjs --write",
     "docs:dev": "pnpm --dir docs dev",
     "docs:build": "nuxt-module-build prepare && pnpm --dir docs build",
-    "verify": "pnpm lint && pnpm typecheck && pnpm test:docs && pnpm test && pnpm test:production && pnpm build && pnpm test:api && pnpm test:packed && node scripts/audit-deps.mjs",
-    "changeset": "changeset"
+    "verify": "pnpm lint && pnpm typecheck && pnpm test:docs && pnpm test && pnpm test:invariants && pnpm test:production && pnpm build && pnpm test:api && pnpm test:packed && node scripts/audit-deps.mjs",
+    "changeset": "changeset",
+    "vendor:layout": "node scripts/vendor-layout.mjs"
   },
   "dependencies": {
     "@jridgewell/remapping": "2.3.5",
     "@nuxt/kit": "^4.5.2",
+    "@react-pdf/fns": "3.1.3",
     "@react-pdf/font": "4.0.8",
-    "@react-pdf/layout": "4.6.1",
+    "@react-pdf/image": "3.1.0",
     "@react-pdf/pdfkit": "5.1.1",
     "@react-pdf/primitives": "4.3.0",
     "@react-pdf/render": "4.5.1",
+    "@react-pdf/stylesheet": "6.2.1",
+    "@react-pdf/textkit": "6.3.0",
+    "@react-pdf/types": "2.11.1",
     "@vue/compiler-sfc": "3.5.42",
+    "emoji-regex-xs": "1.0.0",
     "esbuild": "0.28.1",
-    "h3": "1.15.11",
+    "h3": "^1.15.0",
+    "postcss": "8.5.23",
     "ufo": "1.6.4",
     "unimport": "6.3.0",
-    "typescript": "~5.9.3",
-    "vue-tsc": "^3.3.3"
+    "yoga-layout": "3.2.1"
   },
   "peerDependencies": {
     "@napi-rs/canvas": "^0.1.97",
     "nuxt": "^4.4.8",
     "pdfjs-dist": "^5.6.205 || ^6.2.108",
-    "vue": "^3.5.0"
+    "typescript": "~5.9.3",
+    "vue": "^3.5.0",
+    "vue-tsc": "^3.3.3"
   },
   "peerDependenciesMeta": {
     "@napi-rs/canvas": {
       "optional": true
     },
     "pdfjs-dist": {
+      "optional": true
+    },
+    "typescript": {
+      "optional": true
+    },
+    "vue-tsc": {
       "optional": true
     }
   },
@@ -118,18 +135,22 @@
     "@nuxt/module-builder": "^1.0.2",
     "@nuxt/schema": "^4.5.2",
     "@nuxt/test-utils": "^4.0.3",
+    "@react-pdf/layout": "4.6.1",
     "@react-pdf/renderer": "4.5.1",
     "@types/node": "26.1.1",
     "@types/react": "19.2.14",
     "eslint": "^10.4.1",
+    "fast-check": "^4.10.2",
     "nuxt": "^4.5.2",
     "pdfjs-dist": "6.2.108",
     "pkg-pr-new": "0.0.87",
     "publint": "^0.3.21",
     "react": "19.2.0",
     "source-code-pro": "2.42.0",
+    "typescript": "~5.9.3",
     "vitest": "^4.1.8",
     "vue": "3.5.42",
+    "vue-tsc": "^3.3.3",
     "yaml": "2.9.0"
   }
 }

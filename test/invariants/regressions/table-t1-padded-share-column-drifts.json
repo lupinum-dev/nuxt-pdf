@@ -1,0 +1,64 @@
+{
+  "profile": "table",
+  "invariants": [
+    "I9"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 2,
+    "rule": "documents"
+  },
+  "note": "T1, fixed in TB1: a padded cell over a share column sat off its column (centred cell 2.5 pt right here). Cause: the share cell was {flexGrow, flexBasis: 0} with the author's padding on the same box, and the engine keeps the padding as the smallest basis (src/runtime/components/table.ts, columnStyles). A share-only cell now sits in an unpadded wrapper that takes the share; the visible cell grows inside it. Reduced in 29 steps from table document 2 with the fix switched off (the H3 case stopped showing the drift once rows were no longer filled).",
+  "raw": {
+    "pages": [
+      {
+        "size": 0,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "table",
+            "font": 0,
+            "columns": [
+              {
+                "kind": 0,
+                "value": 0
+              },
+              {
+                "kind": 0,
+                "value": 0
+              }
+            ],
+            "header": false,
+            "headerCells": [],
+            "rows": [
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 1,
+                    "span": 0,
+                    "align": 1,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              }
+            ],
+            "marginTop": 0,
+            "marginBottom": 0
+          }
+        ],
+        "bookmark": false
+      }
+    ]
+  }
+}

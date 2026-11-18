@@ -1,0 +1,4 @@
+@import './tokens.css';
+/* The house style: the importing file wins at equal specificity. */
+.title { font-size: 20pt; color: var(--ink) }
+.muted { color: var(--muted) }

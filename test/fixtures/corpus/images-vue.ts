@@ -1,11 +1,5 @@
 import { defineComponent, h } from 'vue'
-import {
-  PdfDocument,
-  PdfImage,
-  PdfPage,
-  PdfText,
-  PdfView,
-} from '../../../src/runtime/components'
+import { PDF_COMPONENTS } from '../../../src/runtime/components'
 import {
   documentMeta,
   fixedHeaderBody,
@@ -14,6 +8,8 @@ import {
   pngBufferSource,
   pngDataUri,
 } from './images-data'
+
+const { PdfDocument, PdfImage, PdfPage, PdfText, PdfView } = PDF_COMPONENTS
 
 const jpegPathProp = { jpegPath: { type: String, required: true } } as const
 

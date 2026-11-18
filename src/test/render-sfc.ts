@@ -1,8 +1,8 @@
-import { Buffer } from 'node:buffer'
+import { randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { basename, dirname, join, relative, resolve } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { pathToFileURL } from 'node:url'
 import { build, type Plugin } from 'esbuild'
 import { loadNuxtConfig } from '@nuxt/kit'
 import type { Component } from 'vue'
@@ -11,7 +11,8 @@ import {
   templateKeyFromRelativePath,
 } from '../build/discover-templates'
 import { bundlePdfFonts } from '../build/fonts'
-import { compilePdfSfc } from '../build/pdf-sfc-plugin'
+import { createPdfSfcEsbuildPlugin, type PdfSfcCompileOptions } from '../build/pdf-sfc-plugin'
+import { isBareSpecifier } from '../build/paths'
 import type { ModuleOptions } from '../module'
 import { normalizeRemoteAssetPolicy } from '../runtime/server/assets/remote'
 import {
@@ -29,7 +30,7 @@ import {
 export type RenderPdfSfcOptions = RenderPdfTemplateOptions
   & Pick<ModuleOptions, 'fonts'>
 
-const RENDER_PDF_SFC_OPTION_KEYS = ['fonts', 'limits', 'remote'] as const
+const RENDER_PDF_SFC_OPTION_KEYS = ['fonts', 'limits', 'password', 'remote'] as const
 
 const findPdfRoot = (filename: string): string => {
   let directory = dirname(filename)
@@ -42,52 +43,29 @@ const findPdfRoot = (filename: string): string => {
   throw new Error(`PDF SFC ${JSON.stringify(filename)} must be inside a pdfs directory.`)
 }
 
-const resolveComposablesImport = (): string => {
-  const directory = dirname(fileURLToPath(import.meta.url))
-  const built = join(directory, 'runtime', 'composables', 'index.js')
-  if (existsSync(built)) return built
-
-  const source = resolve(directory, '..', 'runtime', 'composables', 'index.ts')
-  if (existsSync(source)) return source
-
-  throw new Error('Unable to locate the Nuxt PDF composables runtime.')
-}
-
-const sfcCompilerPlugin = (
-  entry: string,
-  composablesImport: string,
-): Plugin => ({
-  name: 'nuxt-pdf:test-sfc',
+// Keep every bare import external, including aliases such as `#imports` that esbuild would
+// otherwise try to resolve.
+const externalBareImports: Plugin = {
+  name: 'nuxt-pdf:test-external',
   setup(build) {
-    build.onResolve({ filter: /^(?:@[^/]+\/)?[^./][^:]*/ }, ({ path }) => ({
-      external: true,
-      path,
-    }))
-    build.onLoad({ filter: /\.vue$/ }, async ({ path }) => {
-      const result = await compilePdfSfc(
-        await readFile(path, 'utf8'),
-        path,
-        path === entry ? 'template' : 'component',
-        true,
-        composablesImport,
-      )
-      const sourceMap = result.map
-        ? `\n//# sourceMappingURL=data:application/json;base64,${Buffer.from(JSON.stringify(result.map)).toString('base64')}`
-        : ''
-
-      return {
-        contents: result.code + sourceMap,
-        loader: 'js',
-        resolveDir: dirname(path),
-      }
-    })
+    // Not a filter regex: a Windows path (`C:\app\pdfs\x.vue`, the entry
+    // point too) does not start with `.` or `/` either, so it looked bare.
+    build.onResolve({ filter: /.*/ }, ({ path, kind }) =>
+      kind !== 'entry-point' && isBareSpecifier(path) ? { external: true, path } : undefined)
   },
-})
+}
 
 /** Compile a real PDF SFC graph with the same compiler used by the Nuxt module. */
 export async function loadPdfSfc(filename: string): Promise<Component> {
+  return loadCompiledPdfSfc(filename, {})
+}
+
+/** Package-internal: `loadPdfSfc` with explicit compiler options (development source positions). */
+export async function loadCompiledPdfSfc(
+  filename: string,
+  compileOptions: PdfSfcCompileOptions,
+): Promise<Component> {
   const entry = resolve(filename)
-  const composablesImport = resolveComposablesImport()
   const result = await build({
     absWorkingDir: dirname(entry),
     bundle: true,
@@ -95,7 +73,15 @@ export async function loadPdfSfc(filename: string): Promise<Component> {
     format: 'esm',
     packages: 'external',
     platform: 'node',
-    plugins: [sfcCompilerPlugin(entry, composablesImport)],
+    plugins: [
+      externalBareImports,
+      createPdfSfcEsbuildPlugin({
+        kind: path => path === entry ? 'template' : 'component',
+        // `computeEInvoice` is auto-imported from the installed package, as in the standalone build.
+        compileOptions: { einvoiceImport: '@lupinum/nuxt-pdf/server', ...compileOptions },
+        sourceMap: true,
+      }),
+    ],
     sourcemap: 'inline',
     target: 'node22',
     write: false,
@@ -105,12 +91,12 @@ export async function loadPdfSfc(filename: string): Promise<Component> {
 
   const appRoot = dirname(findPdfRoot(entry))
   const cacheDirectory = join(appRoot, 'node_modules', '.cache')
-  const compiledFile = join(cacheDirectory, `nuxt-pdf-sfc-${process.pid}-${Date.now()}.mjs`)
+  const compiledFile = join(cacheDirectory, `nuxt-pdf-sfc-${randomUUID()}.mjs`)
   await mkdir(cacheDirectory, { recursive: true })
   await writeFile(compiledFile, output.contents)
 
   try {
-    const loaded = await import(`${pathToFileURL(compiledFile).href}?v=${Date.now()}`) as { default?: unknown }
+    const loaded = await import(pathToFileURL(compiledFile).href) as { default?: unknown }
     if (!loaded.default || (typeof loaded.default !== 'object' && typeof loaded.default !== 'function')) {
       throw new Error(`PDF SFC ${JSON.stringify(entry)} has no component default export.`)
     }
@@ -173,5 +159,6 @@ export async function renderPdfSfc<Props extends object>(
     key,
     limits: normalizedLimits,
     remote: normalizeRemoteAssetPolicy(options.remote),
+    ...(options.password === undefined ? {} : { password: options.password }),
   })
 }

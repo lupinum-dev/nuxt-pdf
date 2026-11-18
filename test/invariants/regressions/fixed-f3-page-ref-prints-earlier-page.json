@@ -1,0 +1,286 @@
+{
+  "profile": "fixed",
+  "invariants": [
+    "I8"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 3,
+    "rule": "documents"
+  },
+  "note": "Finding F3, fixed in the adapter (L3b, internals/harness-r1/l3b-f3-f6-g3.md): the destination map and the anchor pass in render-document.ts skip empty fragments. It was: PdfPageRef printed 2 for a target text that the PDF shows on page 3 (\"r2p (pageRef → w78) on p3 prints 2, expected 3\"), because an empty 0-line first fragment of the target at a page top kept its id. Reduced from fixed document 3 of seed 20261116 in 143 steps.",
+  "raw": {
+    "pages": [
+      {
+        "size": 5,
+        "landscape": false,
+        "padding": [
+          23,
+          0,
+          59,
+          0
+        ],
+        "fixed": [
+          {
+            "kind": 0,
+            "pages": 0,
+            "absolute": false,
+            "n": 1,
+            "font": 5,
+            "numbers": 0,
+            "offset": 0,
+            "fromBottom": false,
+            "inset": 0,
+            "marginBottom": 4
+          },
+          {
+            "kind": 0,
+            "pages": 0,
+            "absolute": false,
+            "n": 1,
+            "font": 2,
+            "numbers": 0,
+            "offset": 0,
+            "fromBottom": false,
+            "inset": 0,
+            "marginBottom": 4
+          }
+        ],
+        "children": [
+          {
+            "t": "text",
+            "n": 24,
+            "font": 0,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 2,
+            "ref": 0
+          },
+          {
+            "t": "text",
+            "n": 28,
+            "font": 0,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0
+          },
+          {
+            "t": "view",
+            "margin": [
+              0,
+              11,
+              0,
+              2
+            ],
+            "padding": [
+              0,
+              17,
+              0,
+              14
+            ],
+            "border": 1,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "text",
+                "n": 23,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0
+              },
+              {
+                "t": "view",
+                "margin": [
+                  0,
+                  17,
+                  0,
+                  1
+                ],
+                "padding": [
+                  14,
+                  8,
+                  0,
+                  14
+                ],
+                "border": 0,
+                "minHeight": 0,
+                "wrap": true,
+                "brk": false,
+                "children": [
+                  {
+                    "t": "view",
+                    "margin": [
+                      13,
+                      1,
+                      0,
+                      5
+                    ],
+                    "padding": [
+                      12,
+                      8,
+                      0,
+                      7
+                    ],
+                    "border": 0,
+                    "minHeight": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "children": [
+                      {
+                        "t": "text",
+                        "n": 26,
+                        "font": 5,
+                        "lineHeight": 4,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 21,
+                        "marginBottom": 0,
+                        "extra": 0,
+                        "ref": 0
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "t": "text",
+                "n": 1,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0
+              },
+              {
+                "t": "text",
+                "n": 1,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0
+              },
+              {
+                "t": "text",
+                "n": 1,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0
+              },
+              {
+                "t": "text",
+                "n": 1,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0
+              },
+              {
+                "t": "text",
+                "n": 1,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0
+              },
+              {
+                "t": "text",
+                "n": 1,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 2,
+                "ref": 563
+              },
+              {
+                "t": "text",
+                "n": 1,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0
+              },
+              {
+                "t": "text",
+                "n": 1,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0
+              }
+            ]
+          },
+          {
+            "t": "text",
+            "n": 1,
+            "font": 0,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0
+          }
+        ]
+      }
+    ]
+  }
+}

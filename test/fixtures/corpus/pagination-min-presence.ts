@@ -6,12 +6,9 @@ import {
   Text,
   View,
 } from '@react-pdf/renderer'
-import {
-  PdfDocument,
-  PdfPage,
-  PdfText,
-  PdfView,
-} from '../../../src/runtime/components'
+import { PDF_COMPONENTS } from '../../../src/runtime/components'
+
+const { PdfDocument, PdfPage, PdfText, PdfView } = PDF_COMPONENTS
 
 // A tall spacer pushes the heading to the very bottom of page one. Without
 // `minPresenceAhead` the heading fits there and its body flows onto page two

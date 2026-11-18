@@ -1,12 +1,12 @@
 // Original content authored for this showcase. The prose is a calm
 // field-notes/nature-observation novella written for the demo; it is not
 // derived from any existing work. Chapters are intentionally long enough that
-// several span pages, so the resolved page map (usePdfPageNumbers) is the only
-// honest source for the Contents entries and the chapter-aware running footer.
+// several span pages, so the resolved start pages (PdfPageRef) are the only
+// honest source for the Contents entries.
 
 export interface EbookChapter {
-  // Anchor + bookmark id. Doubles as the internal-link target and the key the
-  // resolved page map is looked up under, for the TOC and the running footer.
+  // Anchor + bookmark id. Doubles as the internal-link target and the
+  // PdfPageRef target of the Contents entry.
   id: string
   /** Oversized opener numeral (Lora, light tint) — the roman face of the ramp. */
   numeral: string
