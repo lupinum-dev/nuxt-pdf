@@ -26,7 +26,7 @@ overrides:
   ip-address: 10.7.3
   js-yaml: 4.3.2
   nanoid: 3.3.18
-  postcss: 8.5.23
+  postcss: 8.5.33
   tar: 7.5.22
   # Review by 2026-09-01. Remove when ipx and nuxt-og-image accept sharp 0.35.
   sharp: 0.35.4
