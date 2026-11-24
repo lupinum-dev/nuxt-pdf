@@ -6,8 +6,9 @@
   "git": {
     "deploymentEnabled": {
       "renovate/**": false,
-      "changeset-release/**": false
+      "changeset-release/**": false,
+      "ci/**": false
     }
   },
-  "ignoreCommand": "[ -n \"$VERCEL_GIT_PREVIOUS_SHA\" ] && git diff --quiet \"$VERCEL_GIT_PREVIOUS_SHA\" HEAD -- . ../package.json ../pnpm-lock.yaml ../pnpm-workspace.yaml || exit 1"
+  "ignoreCommand": "node scripts/vercel-ignore.mjs . ../package.json ../pnpm-lock.yaml ../pnpm-workspace.yaml"
 }
