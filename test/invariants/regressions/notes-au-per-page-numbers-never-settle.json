@@ -1,0 +1,98 @@
+{
+  "profile": "notes",
+  "invariants": [
+    "PDF"
+  ],
+  "origin": {
+    "seed": 19,
+    "index": 84,
+    "rule": "documents"
+  },
+  "note": "Found in the notes profile with columns (seed 19, document 84). Reduced form: one text of 116 tokens (11 pt, lineHeight 1.2) with 29 marks in a view with three auto-fill columns, footnotes=\"page\". A per-page number counts the notes that the previous pass placed on the same page (plain-tree.ts, footnote). Fed with note 27 on page 4, its mark reads 1: page 3 ends its flow at 179.85 pt and keeps references 14 to 27, whose notes need 11 x 17.8 + 3 x 34.6 = 299.6 of 302.65 pt, so note 27 is produced on page 3. Fed with page 3, the mark reads 14, one digit wider: page 3 ends its flow at 174.44 pt and keeps references 14 to 26, so note 27 is produced on page 4. The facts swing between the two, and after 5 passes the render fails with PDF_LIMIT_EXCEEDED. Not fixed.",
+  "raw": {
+    "pages": [
+      {
+        "size": 0,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "text",
+            "n": 9,
+            "font": 0,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": []
+          }
+        ],
+        "bookmark": false
+      },
+      {
+        "size": 5,
+        "landscape": true,
+        "padding": [
+          34,
+          14,
+          1,
+          18
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "text",
+            "n": 116,
+            "font": 3,
+            "lineHeight": 2,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 615,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": []
+          }
+        ],
+        "bookmark": false
+      }
+    ],
+    "footnotes": {
+      "page": true,
+      "styles": 2
+    },
+    "columns": [
+      null,
+      {
+        "page": false,
+        "count": 1,
+        "gap": -1,
+        "fill": 0,
+        "at": 0,
+        "size": 0,
+        "span": -1
+      }
+    ]
+  }
+}

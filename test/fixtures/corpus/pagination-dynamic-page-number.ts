@@ -1,21 +1,11 @@
 import { defineComponent, h } from 'vue'
-import type { PdfDynamicTextRender } from '../../../src/runtime/authoring'
-import {
-  PdfDocument,
-  PdfPage,
-  PdfText,
-} from '../../../src/runtime/components'
+import { PDF_COMPONENTS } from '../../../src/runtime/components'
 
-// Vue-only fixture with a COMPUTED oracle.
-//
-// React PDF's dynamic `render` text re-resolves its `lineHeight` on every
-// pagination pass, compounding fontSize * lineHeight until the dynamic line box
-// drifts off-page; nuxt-pdf's engine shields dynamic text with a `''`
-// lineHeight sentinel (see render-document.ts `normalizeDynamicTextLineHeight`).
-// The two renderers therefore diverge by design on dynamic text, so this
-// behavior is proven against a computed oracle rather than the React oracle: on
-// a wrapped (not explicitly broken) N-page flow, page k's footer must read
-// exactly `PN k/N`.
+const { PdfDocument, PdfPage, PdfPageCount, PdfPageNumber, PdfText } = PDF_COMPONENTS
+
+// A fixture with a computed oracle: page tokens become the engine's dynamic
+// text, and on a wrapped (not explicitly broken) N-page flow, page k's footer
+// must read exactly `PN k/N`.
 export const dynamicBodyCount = 140
 export const dynamicBody = Array.from(
   { length: dynamicBodyCount },
@@ -37,12 +27,6 @@ export const dynamicPageStyle = {
   body: { marginBottom: 2 },
 }
 
-// The engine supplies `totalPages` during the final serialization pass; `?? 0`
-// keeps this total-safe rather than masking a missing total behind a plausible
-// number (a `PN k/0` would fail the test loudly).
-const renderFooter: PdfDynamicTextRender = ({ pageNumber, totalPages }) =>
-  dynamicPageMarker(pageNumber, totalPages ?? 0)
-
 export const VueDynamicPageNumberDocument = defineComponent({
   name: 'VueDynamicPageNumberDocument',
   setup() {
@@ -56,8 +40,7 @@ export const VueDynamicPageNumberDocument = defineComponent({
           h(PdfText, {
             fixed: true,
             style: dynamicPageStyle.footer,
-            render: renderFooter,
-          }),
+          }, () => ['PN ', h(PdfPageNumber), '/', h(PdfPageCount)]),
           ...dynamicBody.map((line, index) =>
             h(PdfText, { key: index, style: dynamicPageStyle.body }, () => line),
           ),

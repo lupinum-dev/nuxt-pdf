@@ -27,8 +27,21 @@ const flex = {
   flexShrink: 0,
   flexWrap: 'wrap',
   gap: '4mm',
+  columnCount: 2,
+  columnWidth: '60mm',
+  columnGap: 12,
+  columnFill: 'auto',
+  columnSpan: 'all',
   justifyContent: 'space-between',
 } satisfies PdfStyle
+
+const columnShorthands = [
+  { columns: 2 },
+  { columns: '60mm' },
+  { columns: '2 60mm' },
+  { columns: '60mm 2' },
+  { columnGap: 'normal' },
+] satisfies PdfStyle[]
 
 const boxModel = {
   margin: 'auto',
@@ -96,6 +109,12 @@ const text = {
   textDecorationStyle: 'dashed',
   textOverflow: 'ellipsis',
   textTransform: 'uppercase',
+  verticalAlign: 'super',
+} satisfies PdfStyle
+
+// A share of the inherited font size, as in CSS.
+const relativeText = {
+  fontSize: '70%',
 } satisfies PdfStyle
 
 const image = {
@@ -116,7 +135,25 @@ const retainedTransformSpellings = [
   { transform: 'translate(2,4)' },
   { transform: 'translate(2, 4)' },
   { transform: 'translate(2 4)' },
+  { transform: 'skew(10deg, 5deg) skewX(0.1rad) scaleX(2)' },
+  { transform: 'translateX(4) translateY(2) scaleY(0.5)' },
 ] as const satisfies readonly PdfStyle[]
+
+const engineForms = [
+  { position: 'static' },
+  { gap: '4pt 8pt' },
+  { alignContent: 'space-between' },
+  { objectPosition: 'right top' },
+  { objectPosition: '25% 10pt' },
+] as const satisfies readonly PdfStyle[]
+
+const emLengths = {
+  width: '4em',
+  marginTop: '1em',
+  paddingLeft: '0.5em',
+  gap: '1em 2pt',
+  columnGap: '1em',
+} satisfies PdfStyle
 
 const nestedStyles = [
   dimensions,
@@ -139,13 +176,18 @@ const unknownKey = {
 } satisfies PdfStyle
 
 const invalidDimension = {
-  // @ts-expect-error `em` is not a unit resolved by the engine.
-  width: '2em',
+  // @ts-expect-error `em` is taken only by the spacing keys and width (PDF_EM_STYLE_KEYS).
+  height: '2em',
 } satisfies PdfStyle
 
 const invalidFlex = {
   // @ts-expect-error Flex direction is a closed engine enum.
   flexDirection: 'diagonal',
+} satisfies PdfStyle
+
+const unitlessColumnWidth = {
+  // @ts-expect-error In columns a number is the count; a width needs a unit.
+  columns: '2 60',
 } satisfies PdfStyle
 
 const invalidBoxModel = {
@@ -156,11 +198,6 @@ const invalidBoxModel = {
 const invalidPosition = {
   // @ts-expect-error Browser-only fixed positioning is not supported.
   position: 'fixed',
-} satisfies PdfStyle
-
-const needlessStaticPosition = {
-  // @ts-expect-error Static positioning is not part of the v1 PDF authoring contract.
-  position: 'static',
 } satisfies PdfStyle
 
 const invalidBorder = {
@@ -212,11 +249,15 @@ const invalidArray = [
 void unknownKey
 void invalidDimension
 void invalidFlex
+void columnShorthands
+void engineForms
+void emLengths
+void unitlessColumnWidth
 void invalidBoxModel
 void invalidPosition
-void needlessStaticPosition
 void invalidBorder
 void invalidPaint
+void relativeText
 void invalidText
 void nonstandardTextTransform
 void inertWordSpacing

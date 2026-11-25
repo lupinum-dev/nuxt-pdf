@@ -22,8 +22,8 @@ definePdf({
 </script>
 
 <template>
-  <PdfDocument :title="`Invoice for ${props.customer}`">
-    <PdfPage>
+  <PdfDocument>
+    <PdfPage :style="{ hyphens: 'auto' }">
       <LineItem
         v-for="line in props.lines"
         :key="line.id"

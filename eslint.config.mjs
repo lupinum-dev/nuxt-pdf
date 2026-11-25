@@ -65,6 +65,18 @@ export default createConfigForNuxt({
       },
     },
     {
+      // The declaration build adds the `.js` extension that strict ESM
+      // resolution (node16) needs to named re-exports only; it leaves
+      // `export type * from './x'` without one, which breaks the package types.
+      files: ['src/**/*.ts'],
+      rules: {
+        'no-restricted-syntax': ['error', {
+          selector: 'ExportAllDeclaration[exportKind="type"]',
+          message: 'Re-export the types by name: the built declaration of `export type *` has no file extension and fails node16 resolution.',
+        }],
+      },
+    },
+    {
       files: ['src/runtime/**/*.{ts,vue}'],
       rules: {
         'no-restricted-imports': ['error', {

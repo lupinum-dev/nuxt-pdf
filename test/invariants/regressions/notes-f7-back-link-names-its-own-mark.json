@@ -1,0 +1,102 @@
+{
+  "profile": "notes",
+  "invariants": [
+    "F7"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 1,
+    "rule": "documents"
+  },
+  "note": "Guards F7: found by a temporary engine change that pointed the back-link of every note at the first mark (seed 20261116, document 1, reduced). Two notes: the mark of note 2 links to __nuxtPdfFootnote-2, and its number must link back to __nuxtPdfFootnote-2-ref, not -1-ref. Passes with the engine as it is.",
+  "raw": {
+    "pages": [
+      {
+        "size": 0,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "text",
+            "n": 1,
+            "font": 0,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": [
+              {
+                "at": 0,
+                "n": 1
+              },
+              {
+                "at": 0,
+                "n": 1
+              }
+            ]
+          },
+          {
+            "t": "text",
+            "n": 1,
+            "font": 0,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": [
+              {
+                "at": 0,
+                "n": 1
+              },
+              {
+                "at": 0,
+                "n": 1
+              }
+            ]
+          }
+        ],
+        "bookmark": false
+      }
+    ],
+    "footnotes": {
+      "page": false,
+      "styles": 0
+    },
+    "columns": [
+      null,
+      {
+        "page": false,
+        "count": 0,
+        "gap": 0,
+        "fill": 0,
+        "at": 0,
+        "size": 0,
+        "span": -1
+      }
+    ]
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "profile": "flow",
+  "invariants": [
+    "I5"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 1701,
+    "rule": "documents"
+  },
+  "note": "R3, a wrong rule, corrected in H3: the generator gives a text to any PdfPage whose nodes hold no text (here only an empty view), first on the page, so its first PDF page has a marker token. Before, only a page with no nodes got one, and I5 counted the A5 page as part of the A4 page before it. Reduced from flow document 1701 of seed 20261116 (L3b, 2,000-document run).",
+  "raw": {
+    "pages": [
+      {
+        "size": 0,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixed": [],
+        "children": []
+      },
+      {
+        "size": 1,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "view",
+            "margin": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "padding": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "border": 0,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": []
+          }
+        ]
+      }
+    ]
+  }
+}

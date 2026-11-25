@@ -1,0 +1,129 @@
+{
+  "profile": "notes",
+  "invariants": [
+    "F6"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 54,
+    "rule": "documents"
+  },
+  "note": "Guards the harness, not the engine. A justified 12 pt text in three columns 66.67 pt wide: a line that holds one word and its mark has no space to stretch, so the justification spreads its letters (spaces first, letters when there are none). The gap of 66.67 - 22.0 - 9.34 = 35.33 pt over 9 half-slots gives 3.93 pt each, so the mark starts 6 x 3.93 = 23.5 pt after the word's natural end, 7.85 pt after its last letter. The old F6 looked for the mark within 0.6 em (7.2 pt) of the natural end and found none. Now the first raised number after the word on its line counts, with no other word between.",
+  "raw": {
+    "pages": [
+      {
+        "size": 2,
+        "landscape": false,
+        "padding": [
+          0,
+          46,
+          0,
+          46
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "view",
+            "margin": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "padding": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "border": 0,
+            "minHeight": 0,
+            "wrap": false,
+            "brk": false,
+            "children": [],
+            "bookmark": false
+          },
+          {
+            "t": "view",
+            "margin": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "padding": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "border": 0,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "view",
+                "margin": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "padding": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "border": 0,
+                "minHeight": 0,
+                "wrap": false,
+                "brk": false,
+                "children": [],
+                "bookmark": false
+              },
+              {
+                "t": "text",
+                "n": 186,
+                "font": 4,
+                "lineHeight": 0,
+                "align": 3,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": []
+              }
+            ],
+            "bookmark": false
+          }
+        ],
+        "bookmark": false
+      }
+    ],
+    "footnotes": {
+      "page": false,
+      "styles": 0
+    },
+    "columns": [
+      {
+        "page": false,
+        "count": 1,
+        "gap": 3,
+        "fill": 0,
+        "at": 0,
+        "size": 997,
+        "span": -1
+      },
+      null
+    ]
+  }
+}

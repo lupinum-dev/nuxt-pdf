@@ -1,0 +1,60 @@
+{
+  "profile": "table",
+  "invariants": [
+    "I9"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 0,
+    "rule": "documents"
+  },
+  "note": "T3, fixed in TB1: in a cell rooted in a view, a line that textkit squeezed to fit sat up to a space right (right) or half a space (center); 0.6 pt here. Cause: measureText in the layout copy computed alignOffset from the natural line advance, wider than the box; it now uses min(width, linesWidth), the box width (scripts/vendor-layout.mjs). Found with keep [T3] in H3, reduced in 38 steps.",
+  "raw": {
+    "pages": [
+      {
+        "size": 1,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "table",
+            "font": 0,
+            "columns": [
+              {
+                "kind": 2,
+                "value": 0
+              }
+            ],
+            "header": false,
+            "headerCells": [],
+            "rows": [
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 4,
+                    "span": 0,
+                    "align": 1,
+                    "link": 1,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              }
+            ],
+            "marginTop": 0,
+            "marginBottom": 0
+          }
+        ],
+        "bookmark": false
+      }
+    ]
+  }
+}

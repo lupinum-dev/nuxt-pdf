@@ -1,0 +1,79 @@
+{
+  "profile": "mixed",
+  "invariants": [
+    "I3"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 2,
+    "rule": "documents"
+  },
+  "raw": {
+    "pages": [
+      {
+        "size": 0,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "text",
+            "n": 2,
+            "font": 0,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "face": 6
+          }
+        ],
+        "bookmark": false
+      }
+    ],
+    "tagged": false,
+    "paint": [
+      {
+        "page": 0,
+        "at": 0,
+        "width": 0,
+        "height": 0,
+        "x": 0,
+        "marginTop": 0,
+        "background": 0,
+        "borders": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "colors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "radii": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "opacity": 0
+      }
+    ]
+  }
+}

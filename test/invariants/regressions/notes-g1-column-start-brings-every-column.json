@@ -1,0 +1,219 @@
+{
+  "profile": "notes",
+  "invariants": [
+    "G1"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 32,
+    "rule": "documents"
+  },
+  "note": "Guards the harness, not the engine. A column container after a spanning text starts on the next page. The old G1 counted only the first chunk of column 1 (2 lines, 26.4 pt, and one note, 34.6 pt: 61.0 pt of 80.7 pt free). But the container fills all three columns to one height, so columns 2 and 3 bring their first chunks and those notes too, and the start does not fit.",
+  "raw": {
+    "pages": [
+      {
+        "size": 2,
+        "landscape": true,
+        "padding": [
+          19,
+          27,
+          35,
+          17
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "link",
+            "kind": 2,
+            "linkTo": 451,
+            "children": [
+              {
+                "t": "text",
+                "n": 90,
+                "font": 2,
+                "lineHeight": 0,
+                "align": 1,
+                "wrap": false,
+                "brk": false,
+                "marginTop": 7,
+                "marginBottom": 8,
+                "extra": 0,
+                "ref": 52,
+                "link": 0,
+                "linkAt": 1.4120343351625562e-140,
+                "linkSize": 4.38888660585292e-251,
+                "linkTo": 585,
+                "bookmark": false,
+                "marks": [
+                  {
+                    "at": 0.04373913828738224,
+                    "n": 21
+                  },
+                  {
+                    "at": 4.819575713187496e-203,
+                    "n": 24
+                  }
+                ]
+              },
+              {
+                "t": "text",
+                "n": 117,
+                "font": 3,
+                "lineHeight": 2,
+                "align": 2,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 3,
+                "marginBottom": 11,
+                "extra": 0,
+                "ref": 965,
+                "link": 0,
+                "linkAt": 6.220500533460845e-08,
+                "linkSize": 2.9212048622509535e-43,
+                "linkTo": 41,
+                "bookmark": false,
+                "marks": [
+                  {
+                    "at": 4.568543000334583e-31,
+                    "n": 34
+                  },
+                  {
+                    "at": 3.677465990094505e-38,
+                    "n": 28
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "bookmark": true
+      },
+      {
+        "size": 0,
+        "landscape": true,
+        "padding": [
+          8,
+          59,
+          22,
+          8
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "text",
+            "n": 8,
+            "font": 1,
+            "lineHeight": 1,
+            "align": 2,
+            "wrap": false,
+            "brk": false,
+            "marginTop": 24,
+            "marginBottom": 14,
+            "extra": 0,
+            "ref": 339,
+            "link": 1,
+            "linkAt": 9.946213255673112e-111,
+            "linkSize": 8.337521002075557e-16,
+            "linkTo": 888,
+            "bookmark": false,
+            "marks": [
+              {
+                "at": 6.683907921810882e-172,
+                "n": 9
+              },
+              {
+                "at": 1.6775325511251078e-169,
+                "n": 39
+              }
+            ]
+          },
+          {
+            "t": "view",
+            "margin": [
+              0,
+              15,
+              19,
+              8
+            ],
+            "padding": [
+              16,
+              15,
+              18,
+              13
+            ],
+            "border": 0,
+            "minHeight": 471,
+            "wrap": false,
+            "brk": false,
+            "children": [
+              {
+                "t": "text",
+                "n": 9,
+                "font": 2,
+                "lineHeight": 4,
+                "align": 0,
+                "wrap": false,
+                "brk": true,
+                "marginTop": 22,
+                "marginBottom": 14,
+                "extra": 0,
+                "ref": 888,
+                "link": 0,
+                "linkAt": 1.1068083118352321e-36,
+                "linkSize": 1.6045974460834232e-50,
+                "linkTo": 598,
+                "bookmark": false,
+                "marks": []
+              }
+            ],
+            "bookmark": false
+          },
+          {
+            "t": "text",
+            "n": 108,
+            "font": 5,
+            "lineHeight": 1,
+            "align": 2,
+            "wrap": false,
+            "brk": false,
+            "marginTop": 16,
+            "marginBottom": 11,
+            "extra": 0,
+            "ref": 783,
+            "link": 0,
+            "linkAt": 1.4644505012247213e-228,
+            "linkSize": 3.386995198235228e-206,
+            "linkTo": 623,
+            "bookmark": false,
+            "marks": []
+          }
+        ],
+        "bookmark": false
+      }
+    ],
+    "footnotes": {
+      "page": true,
+      "styles": 1
+    },
+    "columns": [
+      {
+        "page": true,
+        "count": 1,
+        "gap": 18,
+        "fill": 0,
+        "at": 4.547438008319216e-257,
+        "size": 215,
+        "span": 274
+      },
+      {
+        "page": true,
+        "count": 1,
+        "gap": 18,
+        "fill": 3,
+        "at": 2.125090929980592e-77,
+        "size": 0,
+        "span": -1
+      }
+    ]
+  }
+}

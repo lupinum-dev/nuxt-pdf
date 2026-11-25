@@ -1,0 +1,292 @@
+{
+  "profile": "notes",
+  "invariants": [
+    "I27"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 116,
+    "rule": "documents"
+  },
+  "note": "Guards the harness, not the engine. A balanced container of two columns: column 1 holds one text with wrap={false} (139 tokens, 187.2 pt high), column 2 two short texts (46.4 pt). The old I27 allowed the even share (116.8 pt) plus three lines or a block, and missed that a text with wrap={false} is also a unit the balance cannot split.",
+  "raw": {
+    "pages": [
+      {
+        "size": 0,
+        "landscape": true,
+        "padding": [
+          49,
+          56,
+          21,
+          10
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "view",
+            "margin": [
+              2,
+              20,
+              14,
+              0
+            ],
+            "padding": [
+              10,
+              6,
+              19,
+              16
+            ],
+            "border": 0,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": true,
+            "children": [
+              {
+                "t": "text",
+                "n": 1,
+                "font": 5,
+                "lineHeight": 1,
+                "align": 2,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 10,
+                "marginBottom": 11,
+                "extra": 0,
+                "ref": 486,
+                "link": 0,
+                "linkAt": 9.168006636651539e-22,
+                "linkSize": 4.469486526394603e-43,
+                "linkTo": 62,
+                "bookmark": false,
+                "marks": []
+              },
+              {
+                "t": "text",
+                "n": 5,
+                "font": 1,
+                "lineHeight": 4,
+                "align": 3,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 13,
+                "marginBottom": 17,
+                "extra": 0,
+                "ref": 712,
+                "link": 0,
+                "linkAt": 1.7905926543306788e-166,
+                "linkSize": 4.779864914119504e-232,
+                "linkTo": 25,
+                "bookmark": false,
+                "marks": []
+              },
+              {
+                "t": "text",
+                "n": 79,
+                "font": 0,
+                "lineHeight": 2,
+                "align": 3,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 18,
+                "marginBottom": 4,
+                "extra": 0,
+                "ref": 281,
+                "link": 0,
+                "linkAt": 1.6606907656981409e-34,
+                "linkSize": 6.630570080627593e-222,
+                "linkTo": 44,
+                "bookmark": false,
+                "marks": []
+              },
+              {
+                "t": "text",
+                "n": 15,
+                "font": 1,
+                "lineHeight": 4,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 6,
+                "marginBottom": 1,
+                "extra": 0,
+                "ref": 724,
+                "link": 0,
+                "linkAt": 2.1869428033623623e-72,
+                "linkSize": 2.776125911042938e-117,
+                "linkTo": 122,
+                "bookmark": false,
+                "marks": []
+              },
+              {
+                "t": "text",
+                "n": 63,
+                "font": 5,
+                "lineHeight": 0,
+                "align": 3,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 13,
+                "marginBottom": 8,
+                "extra": 0,
+                "ref": 354,
+                "link": 0,
+                "linkAt": 1.609584741135639e-255,
+                "linkSize": 1.2680758393388652e-11,
+                "linkTo": 874,
+                "bookmark": false,
+                "marks": [
+                  {
+                    "at": 5.468026274364321e-240,
+                    "n": 33
+                  },
+                  {
+                    "at": 1.342328250418403e-27,
+                    "n": 19
+                  }
+                ]
+              },
+              {
+                "t": "link",
+                "kind": 1,
+                "linkTo": 75,
+                "children": [
+                  {
+                    "t": "text",
+                    "n": 9,
+                    "font": 3,
+                    "lineHeight": 1,
+                    "align": 1,
+                    "wrap": false,
+                    "brk": false,
+                    "marginTop": 2,
+                    "marginBottom": 10,
+                    "extra": 0,
+                    "ref": 987,
+                    "link": 2,
+                    "linkAt": 7.463830061172564e-123,
+                    "linkSize": 2.3183658332250414e-147,
+                    "linkTo": 774,
+                    "bookmark": true,
+                    "marks": []
+                  },
+                  {
+                    "t": "text",
+                    "n": 3,
+                    "font": 0,
+                    "lineHeight": 2,
+                    "align": 3,
+                    "wrap": false,
+                    "brk": true,
+                    "marginTop": 22,
+                    "marginBottom": 20,
+                    "extra": 0,
+                    "ref": 541,
+                    "link": 2,
+                    "linkAt": 3.186074832934404e-264,
+                    "linkSize": 6.1895887742227365e-248,
+                    "linkTo": 725,
+                    "bookmark": false,
+                    "marks": [
+                      {
+                        "at": 9.921224043533998e-161,
+                        "n": 40
+                      },
+                      {
+                        "at": 2.048718368199809e-22,
+                        "n": 2
+                      }
+                    ]
+                  },
+                  {
+                    "t": "text",
+                    "n": 139,
+                    "font": 4,
+                    "lineHeight": 2,
+                    "align": 1,
+                    "wrap": false,
+                    "brk": false,
+                    "marginTop": 23,
+                    "marginBottom": 23,
+                    "extra": 0,
+                    "ref": 887,
+                    "link": 1,
+                    "linkAt": 3.028255835308756e-05,
+                    "linkSize": 7.949500160054798e-08,
+                    "linkTo": 53,
+                    "bookmark": true,
+                    "marks": [
+                      {
+                        "at": 4.0516667972203137e-224,
+                        "n": 34
+                      },
+                      {
+                        "at": 5.212044237558245e-306,
+                        "n": 25
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "bookmark": false
+          },
+          {
+            "t": "text",
+            "n": 20,
+            "font": 2,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": false,
+            "brk": false,
+            "marginTop": 21,
+            "marginBottom": 2,
+            "extra": 0,
+            "ref": 969,
+            "link": 0,
+            "linkAt": 9.387493408285876e-54,
+            "linkSize": 4.367429587270885e-147,
+            "linkTo": 223,
+            "bookmark": false,
+            "marks": []
+          },
+          {
+            "t": "text",
+            "n": 14,
+            "font": 3,
+            "lineHeight": 1,
+            "align": 0,
+            "wrap": false,
+            "brk": false,
+            "marginTop": 20,
+            "marginBottom": 7,
+            "extra": 0,
+            "ref": 96,
+            "link": 0,
+            "linkAt": 1.8559675402875107e-112,
+            "linkSize": 4.468872666930466e-54,
+            "linkTo": 757,
+            "bookmark": false,
+            "marks": []
+          }
+        ],
+        "bookmark": false
+      }
+    ],
+    "footnotes": {
+      "page": true,
+      "styles": 1
+    },
+    "columns": [
+      {
+        "page": true,
+        "count": 0,
+        "gap": 7,
+        "fill": 3,
+        "at": 8e-323,
+        "size": 298,
+        "span": 46
+      },
+      null
+    ]
+  }
+}

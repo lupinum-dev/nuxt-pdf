@@ -3,14 +3,9 @@ import type {
   PdfStyleValue,
 } from '../../../src/runtime/authoring'
 
-// Shared source of truth for the style/layout conformance corpus.
-//
-// Both the React fixture (`styles-react.ts`) and the Vue fixture
-// (`styles-vue.ts`) import THIS module and build structurally identical
-// document trees from it, so any divergence in the resolved layout is the
-// renderer boundary (Vue custom renderer → PDF node tree) rather than the test
-// data. Every scenario is one page; the page order here is the contract both
-// fixtures and the test walk in lockstep.
+// The data of the style/layout conformance corpus, which `styles-vue.ts`
+// builds into documents. Every scenario is one page; the page order here is
+// the order the test walks (and of `styles-boxes.json`).
 
 export type { PdfStyle, PdfStyleValue }
 
@@ -39,7 +34,7 @@ export interface Scenario {
   kind: ScenarioKind
   /** Page geometry; padding is always zero unless a style sets it. */
   size: PdfSize
-  /** Numeric box oracles (independent of React==Vue parity) for this page. */
+  /** Hand-computed boxes for this page. */
   oracle: BoxOracle[]
 }
 
@@ -97,8 +92,7 @@ const fontWeightCases = [
 
 /**
  * Closed enum and transform grammar. Empty tagged Views are sufficient here:
- * the assertion reads the pinned stylesheet engine's resolved style, while
- * paired React/Vue layout still proves the custom-renderer boundary.
+ * the assertion reads the resolved style.
  */
 export const styleValueCases: readonly StyleValueCase[] = [
   ...(['row', 'row-reverse', 'column', 'column-reverse'] as const).map(value => ({
@@ -646,7 +640,7 @@ export const scenarios: Scenario[] = [
   },
 ]
 
-/** Page order == scenario order; visual pages get React/Vue raster parity. */
+/** Page order == scenario order; visual pages have a reviewed raster baseline. */
 export const scenarioIds = scenarios.map(s => s.id)
 export const visualScenarioIds = scenarios
   .filter(s => s.kind === 'visual')

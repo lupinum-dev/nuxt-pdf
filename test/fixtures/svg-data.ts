@@ -2,15 +2,18 @@
 // Both fixtures build the identical node tree so any difference belongs to the
 // renderer boundary, not the test data.
 
+import type { PdfStyle } from '../../src/runtime/authoring'
+
 export const svgStyles = {
   page: {
+    hyphens: 'auto',
     fontFamily: 'Roboto',
     fontSize: 11,
     paddingTop: 48,
     paddingRight: 42,
     paddingBottom: 48,
     paddingLeft: 42,
-  },
+  } satisfies PdfStyle,
   title: {
     fontSize: 22,
     marginBottom: 12,

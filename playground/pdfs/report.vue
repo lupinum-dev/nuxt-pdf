@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Report } from '../shared/report'
 import { sampleReport } from '../shared/report'
-import DotLeader from './components/common/DotLeader.vue'
+import { theme } from './components/theme'
 
 defineOptions({ name: 'FieldnoteReportPdf' })
 
@@ -10,34 +10,10 @@ type ReportProps = { report: Report }
 const props = defineProps<ReportProps>()
 const report = props.report
 
-// Auto-imported. Reading it turns on the multi-pass layout loop: the table of
-// contents below prints the page each section finally lands on. On the first
-// pass every number is undefined, so each entry falls back to a blank.
-const pageNumbers = usePdfPageNumbers()
-
 const entries = report.sections.flatMap(section => [
   { id: section.id, title: section.title, depth: 0 },
   ...section.subsections.map(sub => ({ id: sub.id, title: sub.title, depth: 1 })),
 ])
-
-const pageStyle = {
-  backgroundColor: '#FFFFFF',
-  color: '#18251D',
-  fontSize: 10,
-  paddingBottom: 56,
-  paddingHorizontal: 52,
-  paddingTop: 52,
-}
-
-const footerStyle = {
-  bottom: 28,
-  color: '#758078',
-  fontSize: 8,
-  left: 52,
-  position: 'absolute',
-  right: 52,
-  textAlign: 'right',
-} as const
 
 definePdf<ReportProps>({
   title: ({ report }) => report.title,
@@ -56,53 +32,46 @@ definePdf<ReportProps>({
     <!-- Contents -->
     <PdfPage
       size="A4"
-      :style="pageStyle"
+      class="page"
     >
-      <PdfView
-        fixed
-        :style="{ backgroundColor: '#315D3B', height: 8, left: 0, position: 'absolute', right: 0, top: 0 }"
-      />
-
-      <PdfText :style="{ color: '#47734F', fontSize: 8, letterSpacing: 1.4, marginBottom: 8 }">
+      <PdfText class="eyebrow">
         {{ report.eyebrow }}
       </PdfText>
-      <PdfText :style="{ fontSize: 26, marginBottom: 4 }">
+      <PdfText class="title">
         {{ report.title }}
       </PdfText>
-      <PdfText :style="{ color: '#6A756D', fontSize: 10, marginBottom: 34 }">
+      <PdfText class="period">
         {{ report.period }}
       </PdfText>
 
-      <PdfText :style="{ color: '#47734F', fontSize: 8, letterSpacing: 1.2, marginBottom: 14 }">
-        CONTENTS
+      <PdfText class="label contents-label">
+        Contents
       </PdfText>
 
       <PdfLink
         v-for="entry in entries"
         :key="entry.id"
         :href="`#${entry.id}`"
-        :style="{ color: '#18251D', marginBottom: 11, textDecoration: 'none' }"
+        class="toc-link"
       >
-        <PdfView :style="{ alignItems: 'flex-end', flexDirection: 'row', marginLeft: entry.depth * 18 }">
-          <PdfText :style="{ color: entry.depth ? '#4A554E' : '#18251D', fontSize: entry.depth ? 10 : 11.5 }">
+        <PdfText :style="{ marginLeft: entry.depth * 18 }">
+          <PdfText :class="['toc-title', { 'toc-subtitle': entry.depth > 0 }]">
             {{ entry.title }}
           </PdfText>
-          <DotLeader
-            :baseline="3"
-            :gap="7"
-            color="#CDD5CF"
-          />
-          <PdfText :style="{ color: '#4A554E', fontSize: 10 }">
-            {{ pageNumbers[entry.id] ?? '' }}
+          <PdfLeader :style="{ borderBottomColor: theme.border, borderBottomWidth: 1, marginLeft: 7, marginRight: 7 }" />
+          <!-- The page each section finally lands on, resolved after layout. -->
+          <PdfText class="toc-page">
+            <PdfPageRef :to="entry.id" />
           </PdfText>
-        </PdfView>
+        </PdfText>
       </PdfLink>
 
       <PdfText
         fixed
-        :render="({ pageNumber, totalPages }) => `${report.author} · ${pageNumber} / ${totalPages}`"
-        :style="footerStyle"
-      />
+        class="footer"
+      >
+        {{ report.author }} · <PdfPageNumber /> / <PdfPageCount />
+      </PdfText>
     </PdfPage>
 
     <!-- One page-flow per section; long sections span pages naturally -->
@@ -110,13 +79,8 @@ definePdf<ReportProps>({
       v-for="section in report.sections"
       :key="section.id"
       size="A4"
-      :style="pageStyle"
+      class="page"
     >
-      <PdfView
-        fixed
-        :style="{ backgroundColor: '#315D3B', height: 8, left: 0, position: 'absolute', right: 0, top: 0 }"
-      />
-
       <!-- The id-bearing wrapper anchors the destination at the section start
            even when the body spans pages; subsection bookmarks nest under it
            in the outline. No `break` needed — each section already begins on
@@ -125,14 +89,14 @@ definePdf<ReportProps>({
         :id="section.id"
         :bookmark="{ title: section.title, expanded: true }"
       >
-        <PdfView :style="{ marginBottom: 18 }">
-          <PdfText :style="{ color: '#47734F', fontSize: 8, letterSpacing: 1.2, marginBottom: 6 }">
-            SECTION
+        <PdfView class="section-head">
+          <PdfText class="label">
+            Section
           </PdfText>
-          <PdfText :style="{ fontSize: 22, marginBottom: 8 }">
+          <PdfText class="section-title">
             {{ section.title }}
           </PdfText>
-          <PdfText :style="{ color: '#6A756D', fontSize: 10.5, lineHeight: 1.5 }">
+          <PdfText class="lede">
             {{ section.lede }}
           </PdfText>
         </PdfView>
@@ -140,20 +104,20 @@ definePdf<ReportProps>({
         <PdfView
           v-for="sub in section.subsections"
           :key="sub.id"
-          :style="{ marginBottom: 16 }"
+          class="subsection"
         >
           <PdfText
             :id="sub.id"
             :bookmark="sub.title"
             :min-presence-ahead="48"
-            :style="{ color: '#315D3B', fontSize: 13, marginBottom: 8 }"
+            class="subsection-title"
           >
             {{ sub.title }}
           </PdfText>
           <PdfText
             v-for="(paragraph, index) in sub.paragraphs"
             :key="index"
-            :style="{ color: '#2A362E', fontSize: 10, lineHeight: 1.55, marginBottom: 7 }"
+            class="paragraph"
           >
             {{ paragraph }}
           </PdfText>
@@ -162,9 +126,131 @@ definePdf<ReportProps>({
 
       <PdfText
         fixed
-        :render="({ pageNumber, totalPages }) => `${report.author} · ${pageNumber} / ${totalPages}`"
-        :style="footerStyle"
-      />
+        class="footer"
+      >
+        {{ report.author }} · <PdfPageNumber /> / <PdfPageCount />
+      </PdfText>
     </PdfPage>
   </PdfDocument>
 </template>
+
+<style>
+/* Built-in Helvetica only, in the shared zinc colours (components/theme.ts).
+   The style-object twin in test/fixtures mirrors every value here. */
+:root {
+  --foreground: v-bind('theme.foreground');
+  --muted-foreground: v-bind('theme.mutedForeground');
+  --border: v-bind('theme.border');
+  --page-margin: 56pt;
+}
+.page {
+  hyphens: auto;
+  background-color: #FFFFFF;
+  color: var(--foreground);
+  font-size: 10pt;
+  padding: var(--page-margin) var(--page-margin) 60pt;
+}
+
+.eyebrow {
+  color: var(--muted-foreground);
+  font-size: 9pt;
+  margin-bottom: 10pt;
+}
+
+.title {
+  font-size: 28pt;
+  font-weight: 700;
+  margin-bottom: 6pt;
+}
+
+.period {
+  color: var(--muted-foreground);
+  font-size: 10.5pt;
+  margin-bottom: 36pt;
+  padding-bottom: 20pt;
+  border-bottom: 1pt solid var(--border);
+}
+
+/* Muted labels above the contents and above each section title. */
+.label {
+  color: var(--muted-foreground);
+  font-size: 8.5pt;
+  margin-bottom: 8pt;
+}
+
+.contents-label {
+  margin-bottom: 14pt;
+}
+
+.toc-link {
+  color: var(--foreground);
+  margin-bottom: 12pt;
+  text-decoration: none;
+}
+
+.toc-title {
+  color: var(--foreground);
+  font-size: 11.5pt;
+  font-weight: 700;
+}
+
+/* Later in the file than .toc-title, so it wins on subsection rows. */
+.toc-subtitle,
+.toc-page {
+  color: var(--muted-foreground);
+  font-size: 10pt;
+  font-weight: 400;
+}
+
+/* Page numbers line up in their column. Helvetica's digits already share one
+   width; the rule keeps them aligned with a registered font too. */
+.toc-page {
+  font-variant-numeric: tabular-nums;
+}
+
+.section-head {
+  margin-bottom: 22pt;
+  padding-bottom: 18pt;
+  border-bottom: 1pt solid var(--border);
+}
+
+.section-title {
+  font-size: 22pt;
+  font-weight: 700;
+  margin-bottom: 8pt;
+}
+
+.lede {
+  color: var(--muted-foreground);
+  font-size: 11pt;
+  line-height: 1.5;
+}
+
+.subsection {
+  margin-bottom: 18pt;
+}
+
+.subsection-title {
+  color: var(--foreground);
+  font-size: 13pt;
+  font-weight: 700;
+  margin-bottom: 8pt;
+}
+
+.paragraph {
+  color: #3F3F46;
+  font-size: 10pt;
+  line-height: 1.6;
+  margin-bottom: 8pt;
+}
+
+.footer {
+  position: absolute;
+  right: var(--page-margin);
+  bottom: 30pt;
+  left: var(--page-margin);
+  color: var(--muted-foreground);
+  font-size: 8pt;
+  text-align: right;
+}
+</style>

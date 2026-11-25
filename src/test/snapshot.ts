@@ -6,6 +6,7 @@ import {
   decodePngPage,
   encodePngPage,
   rasterizePdf,
+  describePageComparison,
   type PageImageComparison,
   type PdfInput,
   type PdfPageImage,
@@ -75,7 +76,11 @@ const differenceImage = (
   return { height, number: actual.number, pixels, png: new Uint8Array(), width }
 }
 
-const writeFailureArtifacts = async (
+/**
+ * Writes `page-N-actual.png`, `page-N-expected.png`, `page-N-diff.png` and
+ * `metrics.json` for the failed pages, replacing the directory.
+ */
+export const writeFailureArtifacts = async (
   artifactDir: string,
   failures: readonly {
     actual: PdfPageImage
@@ -177,7 +182,8 @@ export async function comparePdfSnapshot(
   if (failures.length > 0) {
     await writeFailureArtifacts(artifactDir, failures, thresholds)
     throw new PdfAssertionError(
-      `${failures.length} page(s) do not match their reviewed baselines. `
+      `${failures.length} page(s) do not match their reviewed baselines: `
+      + `${failures.map(({ actual, comparison }) => `page ${actual.number}: ${describePageComparison(comparison, thresholds)}`).join('; ')}. `
       + `Expected, actual, diff, and metrics artifacts were written to ${JSON.stringify(artifactDir)}. `
       + `Re-run with UPDATE_PDF_BASELINES=1 if this change is intended.`,
     )

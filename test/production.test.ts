@@ -51,6 +51,10 @@ describe('Nuxt PDF production boundary', () => {
     expect(viewerBody).not.toContain('class="diagnostics"')
     expect(viewerBody).not.toContain('Layout passes')
     expect(viewerBody).not.toContain('<iframe')
+
+    // Nor the layout-box switch of the raw preview route.
+    const debugResponse = await nuxtFetch('/_pdf/invoice.pdf?debug=1')
+    expect(debugResponse.headers.get('content-type')).not.toContain('application/pdf')
   })
 
   it('rejects component failures instead of returning a partial PDF', async () => {
@@ -82,11 +86,12 @@ describe('Nuxt PDF production boundary', () => {
     const outputDirectory = nuxt.ctx.nuxt?.options.nitro.output?.dir
     expect(outputDirectory).toBeTruthy()
     const serverDirectory = join(outputDirectory!, 'server')
-    const files = await readdir(serverDirectory, { recursive: true })
+    // Files only: a traced package can be a directory with such a name (`punycode.js`).
+    const entries = await readdir(serverDirectory, { recursive: true, withFileTypes: true })
     const text = await Promise.all(
-      files
-        .filter(file => /\.(?:[cm]?js|css|html|json|map|txt)$/.test(file))
-        .map(file => readFile(join(serverDirectory, file), 'utf8')),
+      entries
+        .filter(entry => entry.isFile() && /\.(?:[cm]?js|css|html|json|map|txt)$/.test(entry.name))
+        .map(entry => readFile(join(entry.parentPath, entry.name), 'utf8')),
     )
     const artifact = text.join('\n')
 

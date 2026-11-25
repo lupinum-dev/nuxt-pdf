@@ -4,9 +4,9 @@
 // are plain EUR numbers formatted with a comma, the way an Austrian menu reads.
 
 export interface MenuDish {
-  /** German dish name, set in Inter 600. */
+  /** German dish name, set in the display serif. */
   name: string
-  /** One-line English description, set in Lora italic. */
+  /** One-line English description, set in the reading serif italic. */
   description: string
   /** Price in Euro. */
   price: number
@@ -18,7 +18,7 @@ export type MenuCourseId = 'starters' | 'mains' | 'desserts'
 export interface MenuCourse {
   /** Stable id for the outline/bookmark. */
   id: MenuCourseId
-  /** Small-caps section head, e.g. "Vorspeisen · Starters". */
+  /** Course title, e.g. "Vorspeisen · Starters". */
   label: string
   dishes: MenuDish[]
 }
@@ -43,7 +43,7 @@ export interface MenuWineList {
 
 export interface Menu {
   name: string
-  /** One-line ethos, set in Lora italic under the name. */
+  /** One-line ethos, set in italic under the name. */
   ethos: string
   /** Small establishment line, e.g. "Serviert seit 1912". */
   established: string

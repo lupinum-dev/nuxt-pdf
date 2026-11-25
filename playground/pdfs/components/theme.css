@@ -1,0 +1,62 @@
+/* Rules every playground template shares. The colours and radii are the
+   variables that the importing template binds in its :root from theme.ts. */
+
+/* Caption above a value: small, medium weight, sentence case, muted. */
+.label {
+  margin-bottom: 4pt;
+  font-size: 7.5pt;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+
+/* An outlined pill: "Invoice", "Project context". */
+.badge {
+  align-self: flex-start;
+  padding: 2.5pt 8pt;
+  border: 1pt solid var(--border);
+  border-radius: 999pt;
+}
+
+.badge-text {
+  font-size: 7pt;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+/* The accent pill for a status: "Due 19 August 2026". */
+.badge-accent {
+  border-color: var(--accent-border);
+  background-color: var(--accent-soft);
+}
+
+.badge-accent .badge-text {
+  color: var(--accent);
+}
+
+/* A number in a small muted square: steps, deliverables, chapters. */
+.number-badge {
+  justify-content: center;
+  align-items: center;
+  width: 18pt;
+  height: 18pt;
+  border-radius: var(--radius-small);
+  background-color: var(--muted);
+}
+
+.number-badge-text {
+  font-size: 7.5pt;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+/* Digits of one width, so amounts line up in a column. Inherited: set it on
+   the block that holds the figures (a table, the totals, a chart). */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* A rounded bordered card. */
+.card {
+  border: 1pt solid var(--border);
+  border-radius: var(--radius);
+}

@@ -1,0 +1,450 @@
+{
+  "profile": "fixed",
+  "invariants": [
+    "PDF"
+  ],
+  "origin": {
+    "seed": 11,
+    "index": 40,
+    "rule": "documents"
+  },
+  "note": "Finding (ai), found by steering with seed 11 after the D25 amendment (a node's own bottom margin never moves it); reduced from document 40. A text keeps its lines on a page and loses the bottom margin that crosses the page end, so the view around it ends on that page with its bottom padding and margin below the page end. The rest of the outer view kept the box of the whole view, higher than what it still held by the room the page took plus that part (in the unreduced document 266.8 pt against a content area of 223 pt), so the cut of the next page held back the link after it, which starts above the page end, and the graft threw 'Pagination held back content that starts above the page end' (production laid the whole part out instead). Fixed: the split reports how far a node that ends on the page reaches below the page end (restOverhang, paginate/split-parts.ts), and the cut of the rest allows for it (layOutRest, paginate/index.ts). Rows: test/pagination-cut.test.ts, 'a node that ends at the page end with its bottom margin below it' and '... padding below it'.",
+  "raw": {
+    "pages": [
+      {
+        "size": 5,
+        "landscape": false,
+        "padding": [
+          1,
+          23,
+          30,
+          7
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "view",
+            "margin": [
+              0,
+              12,
+              0,
+              5
+            ],
+            "padding": [
+              0,
+              15,
+              9,
+              19
+            ],
+            "border": 0,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "text",
+                "n": 1,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false
+              },
+              {
+                "t": "text",
+                "n": 1,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 5,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false
+              },
+              {
+                "t": "view",
+                "margin": [
+                  17,
+                  0,
+                  0,
+                  0
+                ],
+                "padding": [
+                  6,
+                  9,
+                  0,
+                  19
+                ],
+                "border": 0,
+                "minHeight": 0,
+                "wrap": true,
+                "brk": false,
+                "children": [
+                  {
+                    "t": "view",
+                    "margin": [
+                      11,
+                      6,
+                      11,
+                      13
+                    ],
+                    "padding": [
+                      1,
+                      14,
+                      1,
+                      5
+                    ],
+                    "border": 0,
+                    "minHeight": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "children": [
+                      {
+                        "t": "text",
+                        "n": 1,
+                        "font": 3,
+                        "lineHeight": 0,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 20,
+                        "marginBottom": 4,
+                        "extra": 0,
+                        "ref": 0,
+                        "link": 0,
+                        "linkAt": 0,
+                        "linkSize": 0,
+                        "linkTo": 0,
+                        "bookmark": false
+                      },
+                      {
+                        "t": "text",
+                        "n": 11,
+                        "font": 0,
+                        "lineHeight": 0,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 0,
+                        "marginBottom": 0,
+                        "extra": 0,
+                        "ref": 0,
+                        "link": 0,
+                        "linkAt": 0,
+                        "linkSize": 0,
+                        "linkTo": 0,
+                        "bookmark": false
+                      },
+                      {
+                        "t": "text",
+                        "n": 13,
+                        "font": 4,
+                        "lineHeight": 0,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 12,
+                        "marginBottom": 2,
+                        "extra": 2,
+                        "ref": 0,
+                        "link": 0,
+                        "linkAt": 0,
+                        "linkSize": 0,
+                        "linkTo": 0,
+                        "bookmark": false
+                      },
+                      {
+                        "t": "text",
+                        "n": 13,
+                        "font": 4,
+                        "lineHeight": 0,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 17,
+                        "marginBottom": 13,
+                        "extra": 2,
+                        "ref": 0,
+                        "link": 0,
+                        "linkAt": 0,
+                        "linkSize": 0,
+                        "linkTo": 0,
+                        "bookmark": false
+                      }
+                    ],
+                    "bookmark": false
+                  },
+                  {
+                    "t": "text",
+                    "n": 1,
+                    "font": 0,
+                    "lineHeight": 0,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 9,
+                    "marginBottom": 0,
+                    "extra": 0,
+                    "ref": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0,
+                    "bookmark": false
+                  },
+                  {
+                    "t": "text",
+                    "n": 17,
+                    "font": 3,
+                    "lineHeight": 4,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 10,
+                    "marginBottom": 5,
+                    "extra": 0,
+                    "ref": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0,
+                    "bookmark": false
+                  }
+                ],
+                "bookmark": false
+              },
+              {
+                "t": "view",
+                "margin": [
+                  16,
+                  2,
+                  15,
+                  18
+                ],
+                "padding": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "border": 0,
+                "minHeight": 0,
+                "wrap": true,
+                "brk": false,
+                "children": [
+                  {
+                    "t": "view",
+                    "margin": [
+                      19,
+                      17,
+                      0,
+                      1
+                    ],
+                    "padding": [
+                      0,
+                      19,
+                      0,
+                      13
+                    ],
+                    "border": 0,
+                    "minHeight": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "children": [
+                      {
+                        "t": "text",
+                        "n": 23,
+                        "font": 5,
+                        "lineHeight": 0,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 0,
+                        "marginBottom": 20,
+                        "extra": 0,
+                        "ref": 0,
+                        "link": 0,
+                        "linkAt": 0,
+                        "linkSize": 0,
+                        "linkTo": 0,
+                        "bookmark": false
+                      },
+                      {
+                        "t": "view",
+                        "margin": [
+                          8,
+                          3,
+                          15,
+                          0
+                        ],
+                        "padding": [
+                          19,
+                          9,
+                          11,
+                          10
+                        ],
+                        "border": 3,
+                        "minHeight": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "children": [
+                          {
+                            "t": "text",
+                            "n": 19,
+                            "font": 0,
+                            "lineHeight": 0,
+                            "align": 0,
+                            "wrap": true,
+                            "brk": false,
+                            "marginTop": 3,
+                            "marginBottom": 23,
+                            "extra": 0,
+                            "ref": 0,
+                            "link": 0,
+                            "linkAt": 0,
+                            "linkSize": 0,
+                            "linkTo": 0,
+                            "bookmark": false
+                          },
+                          {
+                            "t": "text",
+                            "n": 291,
+                            "font": 3,
+                            "lineHeight": 3,
+                            "align": 0,
+                            "wrap": true,
+                            "brk": false,
+                            "marginTop": 7,
+                            "marginBottom": 17,
+                            "extra": 0,
+                            "ref": 0,
+                            "link": 0,
+                            "linkAt": 0,
+                            "linkSize": 0,
+                            "linkTo": 0,
+                            "bookmark": false
+                          },
+                          {
+                            "t": "text",
+                            "n": 21,
+                            "font": 3,
+                            "lineHeight": 0,
+                            "align": 0,
+                            "wrap": true,
+                            "brk": false,
+                            "marginTop": 15,
+                            "marginBottom": 21,
+                            "extra": 0,
+                            "ref": 0,
+                            "link": 0,
+                            "linkAt": 0,
+                            "linkSize": 0,
+                            "linkTo": 0,
+                            "bookmark": false
+                          }
+                        ],
+                        "bookmark": false
+                      },
+                      {
+                        "t": "text",
+                        "n": 21,
+                        "font": 4,
+                        "lineHeight": 2,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 12,
+                        "marginBottom": 0,
+                        "extra": 0,
+                        "ref": 0,
+                        "link": 0,
+                        "linkAt": 0,
+                        "linkSize": 0,
+                        "linkTo": 0,
+                        "bookmark": false
+                      },
+                      {
+                        "t": "text",
+                        "n": 14,
+                        "font": 2,
+                        "lineHeight": 4,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 10,
+                        "marginBottom": 9,
+                        "extra": 0,
+                        "ref": 0,
+                        "link": 0,
+                        "linkAt": 0,
+                        "linkSize": 0,
+                        "linkTo": 0,
+                        "bookmark": false
+                      },
+                      {
+                        "t": "text",
+                        "n": 33,
+                        "font": 0,
+                        "lineHeight": 2,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 22,
+                        "marginBottom": 3,
+                        "extra": 0,
+                        "ref": 0,
+                        "link": 0,
+                        "linkAt": 0,
+                        "linkSize": 0,
+                        "linkTo": 0,
+                        "bookmark": false
+                      }
+                    ],
+                    "bookmark": false
+                  }
+                ],
+                "bookmark": false
+              }
+            ],
+            "bookmark": false
+          },
+          {
+            "t": "text",
+            "n": 1,
+            "font": 0,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false
+          }
+        ],
+        "bookmark": false
+      }
+    ]
+  }
+}

@@ -1,10 +1,12 @@
 import ginko from "./ginko.config.ts";
+import { playgroundResolver } from "./playground/vite-plugin.ts";
 
 const isDev = process.env.NODE_ENV === "development";
 
 // Website standard P-10: the browser may load code and send data only to this site and Plausible.
 // `frame-ancestors` comes from Ginko, which sets it on every page (server/plugins/csp.ts adds the rest).
-const contentSecurityPolicy = (frameAncestors: string) =>
+// The playground page may also frame the PDF it renders (a blob: URL of its own).
+const contentSecurityPolicy = (frameAncestors: string, frameSrc = "'none'") =>
   [
     "default-src 'self'",
     "base-uri 'self'",
@@ -17,11 +19,18 @@ const contentSecurityPolicy = (frameAncestors: string) =>
     "img-src 'self' data: https:",
     "font-src 'self' data:",
     "media-src 'self'",
-    "frame-src 'none'",
+    `frame-src ${frameSrc}`,
     isDev ? "" : "upgrade-insecure-requests",
   ]
     .filter(Boolean)
     .join("; ");
+
+// The playground's render worker (docs/playground/render.worker.ts) runs the reader's template:
+// it evaluates the compiled template, instantiates yoga's WebAssembly and fetches the fonts from
+// this site (yoga first fetches its inlined data: WebAssembly). A worker gets the policy of its own
+// script response, so this applies to it alone.
+const playgroundWorkerPolicy =
+  "default-src 'none'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; connect-src 'self' data:";
 
 // The docs frame, search, navigation and Markdown components come from @lupinum/ginko-docs.
 // This app brings the content (content/), the options (app/app.config.ts) and its texts (i18n/).
@@ -35,7 +44,22 @@ export default defineNuxtConfig({
   runtimeConfig: {
     // The policy without frame-ancestors, which server/plugins/csp.ts puts in front of Ginko's header.
     contentSecurityPolicy: contentSecurityPolicy(""),
+    playgroundContentSecurityPolicy: contentSecurityPolicy("", "blob:"),
     public: { plausibleScriptId: "" },
+  },
+  vite: {
+    plugins: [playgroundResolver()],
+    worker: {
+      format: "es",
+      plugins: () => [playgroundResolver()],
+      // A fixed folder, so the worker policy below matches the worker and its chunks only.
+      rolldownOptions: {
+        output: {
+          entryFileNames: "_nuxt/playground/[name]-[hash].js",
+          chunkFileNames: "_nuxt/playground/[name]-[hash].js",
+        },
+      },
+    },
   },
   app: {
     head: {
@@ -59,6 +83,12 @@ export default defineNuxtConfig({
         "X-Content-Type-Options": "nosniff",
         "X-Frame-Options": "SAMEORIGIN",
       },
+    },
+    "/playground": {
+      headers: { "Content-Security-Policy": contentSecurityPolicy("'self'", "blob:") },
+    },
+    "/_nuxt/playground/**": {
+      headers: { "Content-Security-Policy": playgroundWorkerPolicy },
     },
   },
   hooks: {

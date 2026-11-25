@@ -1,0 +1,7 @@
+---
+'@lupinum/nuxt-pdf': minor
+---
+
+Add multi-column layout: `columnCount`, `columnWidth`, `columnGap`, `columnFill`, `columnSpan` and column rules lay a view's children out in columns across pages
+
+As in CSS, the columns are balanced on the page where their content ends (`columnFill: 'balance'`, the default); `columnFill: 'auto'` fills them in order to the page end. `columnGap` takes a length or `'normal'` (1em of the node's font size). `columnRuleWidth`, `columnRuleStyle` and `columnRuleColor` draw a line between the columns (no rule without a width, `solid` and black unless set); in a `<style>` block `column-rule` sets all three. `columns` is a shorthand, and `break="column"` starts the next column, and the next page after the last. A `PdfPage` with `columnCount` or `columnWidth` lays its flow out in columns and keeps its `fixed` header and footer as wide as the page. A container with a `height` or `maxHeight` fills its columns to that height. Content that needs more columns than such a container has, and columns inside columns, fail with `PDF_LAYOUT_ERROR`. Column keys that the layout would ignore or change fail with `PDF_TREE_INVALID`: `columnCount` on a `PdfText`, a column container in a `fixed` node, `break="column"` outside a column, a rule key on a primitive other than `PdfView` and `PdfPage`, and a percentage `height`, `minHeight` or `maxHeight` on a direct child of a column container.

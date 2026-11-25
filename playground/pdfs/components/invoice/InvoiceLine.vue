@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { InvoiceLineItem } from '../../../shared/invoice'
 import { formatInvoiceMoney } from '../../../shared/invoice'
-import { INVOICE_COLUMNS as columns } from './columns'
+import { theme } from '../theme'
 
 const props = defineProps<{
   currency: string
@@ -17,37 +17,77 @@ const rate = formatInvoiceMoney(props.line.unitPrice, props.currency)
 </script>
 
 <template>
-  <PdfView
-    :style="{
-      alignItems: 'flex-start',
-      borderBottomColor: '#DDE3DE',
-      borderBottomWidth: 1,
-      flexDirection: 'row',
-      minHeight: 44,
-      paddingBottom: 10,
-      paddingTop: 10,
-    }"
-    :wrap="false"
-  >
-    <PdfText :style="{ color: '#758078', fontSize: 8, width: columns.sequence.width }">
+  <!-- One row of the PdfTable in invoice.vue; it takes its columns from there. -->
+  <PdfTableRow class="line">
+    <PdfTableCell class="line-number">
       {{ String(index + 1).padStart(2, '0') }}
-    </PdfText>
-    <PdfView :style="{ paddingRight: 16, width: columns.description.width }">
-      <PdfText :style="{ color: '#18251D', fontSize: 9.5, fontWeight: 600, marginBottom: 4 }">
+    </PdfTableCell>
+    <PdfTableCell class="line-description-cell">
+      <PdfText class="line-description">
         {{ line.description }}
       </PdfText>
-      <PdfText :style="{ color: '#6A756D', fontSize: 7.5, lineHeight: 1.45 }">
+      <PdfText class="line-detail">
         {{ line.detail }}
       </PdfText>
-    </PdfView>
-    <PdfText :style="{ color: '#566159', fontSize: 8.5, textAlign: 'right', width: columns.quantity.width }">
+    </PdfTableCell>
+    <PdfTableCell class="line-figure">
       {{ line.quantity }}
-    </PdfText>
-    <PdfText :style="{ color: '#566159', fontSize: 8.5, textAlign: 'right', width: columns.rate.width }">
+    </PdfTableCell>
+    <PdfTableCell class="line-figure">
       {{ rate }}
-    </PdfText>
-    <PdfText :style="{ color: '#18251D', fontSize: 8.5, fontWeight: 600, textAlign: 'right', width: columns.amount.width }">
+    </PdfTableCell>
+    <PdfTableCell class="line-amount">
       {{ amount }}
-    </PdfText>
-  </PdfView>
+    </PdfTableCell>
+  </PdfTableRow>
 </template>
+
+<style>
+:root {
+  --foreground: v-bind('theme.foreground');
+  --muted-foreground: v-bind('theme.mutedForeground');
+  --border: v-bind('theme.border');
+}
+/* A divider above every row: the first one parts the rows from the header,
+   and the card around the table closes the last one. */
+.line {
+  align-items: flex-start;
+  min-height: 44pt;
+  padding-top: 10pt;
+  padding-bottom: 10pt;
+  border-top: 1pt solid var(--border);
+}
+
+.line-number {
+  font-size: 8pt;
+  color: var(--muted-foreground);
+}
+
+.line-description-cell {
+  padding-right: 16pt;
+}
+
+.line-description {
+  margin-bottom: 3pt;
+  font-size: 9pt;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.line-detail {
+  font-size: 7.5pt;
+  line-height: 1.45;
+  color: var(--muted-foreground);
+}
+
+.line-figure {
+  font-size: 8.5pt;
+  color: var(--muted-foreground);
+}
+
+.line-amount {
+  font-size: 8.5pt;
+  font-weight: 500;
+  color: var(--foreground);
+}
+</style>

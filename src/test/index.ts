@@ -6,12 +6,15 @@
 // lazily by `parsePdf`/`rasterizePdf`; install them in the project under test.
 
 export {
+  getPdfAttachments,
   parsePdf,
   rasterizePdf,
   toPdfBytes,
 } from './pdf'
 export type {
+  ParsePdfOptions,
   ParsedPdf,
+  ParsedPdfAttachment,
   ParsedPdfLink,
   ParsedPdfPage,
   ParsedPdfTextRun,

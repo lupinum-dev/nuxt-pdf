@@ -1,10 +1,11 @@
-import type { DocumentNode } from '@react-pdf/layout'
+import type { DocumentNode } from '../../src/runtime/server/engine/layout/index'
 import type { PDFDocumentProxy } from 'pdfjs-dist/legacy/build/pdf.mjs'
-import { renderToBuffer as renderReactDocument } from '@react-pdf/renderer'
 import type { Component } from 'vue'
+import { defineComponent, h } from 'vue'
 import { describe, expect, it } from 'vitest'
+import { PDF_COMPONENTS } from '../../src/runtime/components'
 import { mountPdfComponent } from '../../src/runtime/renderer'
-import { renderDocument } from '../../src/runtime/server/engine/render-document'
+import { renderDocument } from '../engine-render'
 import {
   documentMeta,
   linkHitSlop,
@@ -13,22 +14,15 @@ import {
   pageSetupCases,
 } from '../fixtures/corpus/annotations-data'
 import {
-  createReactAnnotationsDocument,
-  createReactMetadataDocument,
-  createReactPageSetupDocument,
-} from '../fixtures/corpus/annotations-react'
-import {
   VueAnnotationsDocument,
   VueMetadataDocument,
   VuePageSetupDocument,
 } from '../fixtures/corpus/annotations-vue'
 import { hasPdfHeader, installPdfCanvasGlobals, parsePdf } from '../../src/test/pdf'
 
-// --- local render helpers (this wave may only add files; no shared helper edits) ---
+const { PdfDocument, PdfPage, PdfText } = PDF_COMPONENTS
 
-const renderReact = async (
-  element: Parameters<typeof renderReactDocument>[0],
-): Promise<Uint8Array> => new Uint8Array(await renderReactDocument(element))
+// --- local render helper ---
 
 const renderVue = async (component: Component): Promise<Uint8Array> => {
   const mounted = await mountPdfComponent(component)
@@ -97,6 +91,7 @@ const readPageLayout = (bytes: Uint8Array): Promise<string> =>
   withPdf(bytes, document => document.getPageLayout())
 
 /** MediaBox `[width, height]` per page, rounded to 2dp to absorb float noise. */
+// The size a reader shows: the MediaBox times the page's UserUnit.
 const readMediaBoxes = (bytes: Uint8Array): Promise<Array<[number, number]>> =>
   withPdf(bytes, async (document) => {
     const boxes: Array<[number, number]> = []
@@ -104,7 +99,7 @@ const readMediaBoxes = (bytes: Uint8Array): Promise<Array<[number, number]>> =>
       const page = await document.getPage(pageNumber)
       try {
         const [x0, y0, x1, y1] = page.view
-        boxes.push([round2(x1! - x0!), round2(y1! - y0!)])
+        boxes.push([round2((x1! - x0!) * page.userUnit), round2((y1! - y0!) * page.userUnit)])
       }
       finally {
         page.cleanup()
@@ -135,31 +130,20 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
 
 describe('corpus: annotations, metadata, and page setup', () => {
-  it('renders external http/mailto Link annotations identically to React', async () => {
-    const [reactBytes, vueBytes] = await Promise.all([
-      renderReact(createReactAnnotationsDocument()),
-      renderVue(VueAnnotationsDocument),
-    ])
-
-    expect(hasPdfHeader(reactBytes)).toBe(true)
+  it('renders external http/mailto Link annotations at their places', async () => {
+    const vueBytes = await renderVue(VueAnnotationsDocument)
     expect(hasPdfHeader(vueBytes)).toBe(true)
 
-    const [reactPdf, vuePdf] = await Promise.all([
-      parsePdf(reactBytes),
-      parsePdf(vueBytes),
-    ])
-
-    const links = (pdf: typeof reactPdf) => pdf.pages
+    const vueLinks = (await parsePdf(vueBytes)).pages
       .flatMap(page => page.annotations)
       .filter(annotation => annotation.subtype === 'Link')
+    // The rectangles, the hit slop of the first one included.
+    expect(vueLinks).toEqual([
+      { annotationType: 2, rect: [-11, 814.89, 125, 844.89], subtype: 'Link', unsafeUrl: 'https://example.com/docs?tab=annotations', url: 'https://example.com/docs?tab=annotations' },
+      { annotationType: 2, rect: [0, 801.89, 120, 821.89], subtype: 'Link', unsafeUrl: 'mailto:reports@example.com', url: 'mailto:reports@example.com' },
+    ])
 
-    const reactLinks = links(reactPdf)
-    const vueLinks = links(vuePdf)
-
-    // Renderer-boundary equality: whatever URIs React emits, Vue emits the same.
-    expect(vueLinks).toEqual(reactLinks)
-
-    // And the concrete claim: both external targets round-trip as their exact URI.
+    // Both external targets round-trip as their exact URI.
     expect(vueLinks).toContainEqual(expect.objectContaining({
       subtype: 'Link',
       url: linkTargets.external,
@@ -193,37 +177,16 @@ describe('corpus: annotations, metadata, and page setup', () => {
     )
   })
 
-  it('renders PdfNote content as a Text annotation identically to React', async () => {
-    const [reactBytes, vueBytes] = await Promise.all([
-      renderReact(createReactAnnotationsDocument()),
-      renderVue(VueAnnotationsDocument),
-    ])
-
-    const [reactNotes, vueNotes] = await Promise.all([
-      readNoteContents(reactBytes),
-      readNoteContents(vueBytes),
-    ])
-
-    expect(vueNotes).toEqual(reactNotes)
+  it('renders PdfNote content as a Text annotation', async () => {
+    const vueNotes = await readNoteContents(await renderVue(VueAnnotationsDocument))
     expect(vueNotes).toEqual([noteContent])
   })
 
-  it('round-trips document metadata through the info dictionary like React', async () => {
-    const [reactBytes, vueBytes] = await Promise.all([
-      renderReact(createReactMetadataDocument()),
-      renderVue(VueMetadataDocument),
-    ])
+  it('round-trips document metadata through the info dictionary', async () => {
+    const vueInfo = await readInfoSubset(await renderVue(VueMetadataDocument))
 
-    const [reactInfo, vueInfo] = await Promise.all([
-      readInfoSubset(reactBytes),
-      readInfoSubset(vueBytes),
-    ])
-
-    // Full-subset renderer equality first.
-    expect(vueInfo).toEqual(reactInfo)
-
-    // Then the concrete per-field claims (title/author/subject/keywords/
-    // language/creationDate/pdfVersion all survive the round-trip).
+    // Title, author, subject, keywords, language, creation date and pdfVersion
+    // all survive the round trip.
     expect(vueInfo).toMatchObject({
       Title: documentMeta.title,
       Author: documentMeta.author,
@@ -234,49 +197,37 @@ describe('corpus: annotations, metadata, and page setup', () => {
       Language: documentMeta.language,
       PDFFormatVersion: documentMeta.pdfVersion,
     })
-    // React PDF serializes the Date as a PDF date string; assert the round-trip
-    // encodes the pinned instant rather than a hard-coded string spelling.
+    // The Date becomes a PDF date string of the pinned instant.
     expect(vueInfo.CreationDate).toBe('D:20260720000000Z')
   })
 
-  it('flows pdfVersion and pageLayout into the catalog like React', async () => {
-    const [reactBytes, vueBytes] = await Promise.all([
-      renderReact(createReactMetadataDocument()),
-      renderVue(VueMetadataDocument),
-    ])
-
-    const [reactLayout, vueLayout] = await Promise.all([
-      readPageLayout(reactBytes),
-      readPageLayout(vueBytes),
-    ])
-
+  it('flows pdfVersion and pageLayout into the catalog', async () => {
     // pdfVersion is visible in the header; pdfjs also surfaces it as
     // PDFFormatVersion (asserted above). pageLayout lands in the catalog and
     // pdfjs exposes it PascalCased.
-    expect(vueLayout).toBe(reactLayout)
+    const vueLayout = await readPageLayout(await renderVue(VueMetadataDocument))
     expect(vueLayout).toBe('TwoColumnLeft')
   })
 
-  it('resolves page sizes, orientation, and dpi to the same MediaBox as React', async () => {
-    const [reactBytes, vueBytes] = await Promise.all([
-      renderReact(createReactPageSetupDocument()),
-      renderVue(VuePageSetupDocument),
-    ])
-
-    const [reactBoxes, vueBoxes] = await Promise.all([
-      readMediaBoxes(reactBytes),
-      readMediaBoxes(vueBytes),
-    ])
-
+  it('resolves page sizes, orientation, and dpi to their MediaBox', async () => {
+    const vueBoxes = await readMediaBoxes(await renderVue(VuePageSetupDocument))
     expect(vueBoxes).toHaveLength(pageSetupCases.length)
-    expect(reactBoxes).toHaveLength(pageSetupCases.length)
 
-    // Renderer equality across every per-page size.
-    expect(vueBoxes).toEqual(reactBoxes)
-
-    // Independent oracle: each MediaBox matches the hand-computed dimensions,
-    // proving both renderers agree with the spec and not merely with each other.
+    // Each MediaBox matches the hand-computed dimensions.
     const expected = pageSetupCases.map(pageCase => pageCase.expected)
     expect(vueBoxes).toEqual(expected)
+  })
+
+  // Catches dpi scaling more than `px`: a point stays a point at any dpi, and
+  // only a px length is read at the page's dpi.
+  it('reads only px lengths at the page dpi', async () => {
+    const page = (dpi: number) => h(PdfPage, { size: 'A4', dpi }, () => [
+      h(PdfText, { style: { marginLeft: 100 } }, () => 'points'),
+      h(PdfText, { style: { marginLeft: '100px' } }, () => 'pixels'),
+    ])
+    const parsed = await parsePdf(await renderVue(defineComponent(() => () =>
+      h(PdfDocument, { creationDate: documentMeta.creationDate }, () => [page(72), page(144)]))))
+    const left = (pageIndex: number, text: string) => parsed.pages[pageIndex]!.textRuns.find(run => run.text === text)!.x
+    expect([left(0, 'points'), left(1, 'points'), left(0, 'pixels'), left(1, 'pixels')]).toEqual([100, 100, 100, 50])
   })
 })

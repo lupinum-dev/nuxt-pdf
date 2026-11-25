@@ -1,11 +1,9 @@
 import { Buffer } from 'node:buffer'
 
-// Shared image-conformance data. Both the React and the Vue fixture import this
-// single module so any difference in output belongs to the renderer boundary,
-// not to the test inputs. Nothing here touches the filesystem: the JPEG lives as
-// a committed binary (images-sample.jpg) whose absolute path the test injects,
-// and the PNG travels as base64 so the data: URL and the { data, format } buffer
-// source are byte-identical on both sides.
+// Image-conformance data. Nothing here touches the filesystem: the JPEG lives
+// as a committed binary (images-sample.jpg) whose absolute path the test
+// injects, and the PNG travels as base64 so the data: URL and the
+// { data, format } buffer source hold the same bytes.
 
 // Intrinsic pixel dimensions of the committed corpus assets. These are facts of
 // the binary files (JPEG SOF marker / PNG IHDR) that the layout engine reads to
@@ -25,8 +23,7 @@ export const pngDataUri = `data:image/png;base64,${pngBase64}` as const
 
 /**
  * `{ data, format }` buffer source — Buffer is a Uint8Array, so it satisfies
- * the public PdfImageSource type while giving React PDF the Buffer its PNG
- * decoder and its base64 cache key require.
+ * the public PdfImageSource type.
  */
 export const pngBufferSource = {
   data: Buffer.from(pngBase64, 'base64'),
@@ -41,6 +38,7 @@ export const objectFitBoxSize = 220
 
 export const imageStyles = {
   page: {
+    hyphens: 'auto',
     fontFamily: 'Roboto',
     fontSize: 11,
     paddingTop: sourcesPagePadding,

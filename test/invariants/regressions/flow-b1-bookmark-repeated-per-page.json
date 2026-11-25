@@ -1,0 +1,190 @@
+{
+  "profile": "flow",
+  "invariants": [
+    "I14"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 5,
+    "rule": "documents"
+  },
+  "note": "B1, fixed in TB1: a bookmarked node split over pages added one outline entry per page part. Cause: upstream addNodeBookmark adds an entry for every node with props.bookmark, and all parts keep it. Now only the first part with content keeps the bookmark (render-document.ts, anchorDestinationsAtFirstPage with bookmarkRef). Found with keep [B1] in H3, reduced in 93 steps.",
+  "raw": {
+    "pages": [
+      {
+        "size": 0,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          26,
+          36
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "view",
+            "margin": [
+              20,
+              18,
+              0,
+              9
+            ],
+            "padding": [
+              7,
+              8,
+              0,
+              7
+            ],
+            "border": 4,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "view",
+                "margin": [
+                  3,
+                  15,
+                  0,
+                  15
+                ],
+                "padding": [
+                  5,
+                  19,
+                  0,
+                  10
+                ],
+                "border": 0,
+                "minHeight": 0,
+                "wrap": true,
+                "brk": false,
+                "children": [
+                  {
+                    "t": "view",
+                    "margin": [
+                      11,
+                      16,
+                      0,
+                      18
+                    ],
+                    "padding": [
+                      12,
+                      7,
+                      0,
+                      3
+                    ],
+                    "border": 0,
+                    "minHeight": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "children": [
+                      {
+                        "t": "view",
+                        "margin": [
+                          12,
+                          0,
+                          0,
+                          16
+                        ],
+                        "padding": [
+                          14,
+                          17,
+                          0,
+                          16
+                        ],
+                        "border": 0,
+                        "minHeight": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "children": [
+                          {
+                            "t": "text",
+                            "n": 28,
+                            "font": 5,
+                            "lineHeight": 4,
+                            "align": 0,
+                            "wrap": true,
+                            "brk": false,
+                            "marginTop": 10,
+                            "marginBottom": 2,
+                            "extra": 0,
+                            "ref": 0,
+                            "link": 0,
+                            "linkAt": 0,
+                            "linkSize": 0,
+                            "linkTo": 0,
+                            "bookmark": false
+                          },
+                          {
+                            "t": "text",
+                            "n": 13,
+                            "font": 5,
+                            "lineHeight": 4,
+                            "align": 0,
+                            "wrap": true,
+                            "brk": false,
+                            "marginTop": 6,
+                            "marginBottom": 5,
+                            "extra": 0,
+                            "ref": 0,
+                            "link": 0,
+                            "linkAt": 0,
+                            "linkSize": 0,
+                            "linkTo": 0,
+                            "bookmark": false
+                          },
+                          {
+                            "t": "text",
+                            "n": 18,
+                            "font": 3,
+                            "lineHeight": 2,
+                            "align": 0,
+                            "wrap": true,
+                            "brk": false,
+                            "marginTop": 5,
+                            "marginBottom": 10,
+                            "extra": 0,
+                            "ref": 0,
+                            "link": 0,
+                            "linkAt": 0,
+                            "linkSize": 0,
+                            "linkTo": 0,
+                            "bookmark": false
+                          },
+                          {
+                            "t": "text",
+                            "n": 308,
+                            "font": 5,
+                            "lineHeight": 0,
+                            "align": 0,
+                            "wrap": true,
+                            "brk": false,
+                            "marginTop": 0,
+                            "marginBottom": 0,
+                            "extra": 0,
+                            "ref": 0,
+                            "link": 0,
+                            "linkAt": 0,
+                            "linkSize": 0,
+                            "linkTo": 0,
+                            "bookmark": true
+                          }
+                        ],
+                        "bookmark": false
+                      }
+                    ],
+                    "bookmark": false
+                  }
+                ],
+                "bookmark": false
+              }
+            ],
+            "bookmark": false
+          }
+        ],
+        "bookmark": false
+      }
+    ]
+  }
+}

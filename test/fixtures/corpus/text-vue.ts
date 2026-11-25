@@ -1,11 +1,6 @@
 import { defineComponent, h } from 'vue'
-import {
-  PdfDocument,
-  PdfPage,
-  PdfText,
-  PdfView,
-} from '../../../src/runtime/components'
-import type { PdfStyleValue } from '../../../src/runtime/authoring'
+import { PDF_COMPONENTS } from '../../../src/runtime/components'
+import type { PdfStyle, PdfStyleValue } from '../../../src/runtime/authoring'
 import {
   ROBOTO,
   alignParagraph,
@@ -16,8 +11,6 @@ import {
   inheritanceSegments,
   inheritanceStyles,
   longToken,
-  noHyphenation,
-  sixCharHyphenation,
   spacingStyles,
   spacingText,
   switchWord,
@@ -26,14 +19,17 @@ import {
   truncationStyles,
 } from './text-data'
 
+const { PdfDocument, PdfPage, PdfText, PdfView } = PDF_COMPONENTS
+
 const pageStyle = {
   fontFamily: ROBOTO,
+  hyphens: 'auto',
   fontSize: 12,
   paddingTop: 40,
   paddingBottom: 40,
   paddingLeft: 40,
   paddingRight: 40,
-}
+} satisfies PdfStyle
 
 const document = (child: unknown) => h(PdfDocument, { ...textCorpusMeta }, {
   default: () => h(PdfPage, { size: 'A4', style: pageStyle }, { default: () => child }),
@@ -45,14 +41,8 @@ const column = (columnStyle: PdfStyleValue, children: unknown) =>
 export const VueHyphenationDoc = defineComponent({
   name: 'VueTextHyphenationDoc',
   setup: () => () => document(column(hyphenationStyles.column, [
-    h(PdfText, {
-      style: hyphenationStyles.text,
-      hyphenationCallback: noHyphenation,
-    }, () => longToken),
-    h(PdfText, {
-      style: hyphenationStyles.text,
-      hyphenationCallback: sixCharHyphenation,
-    }, () => longToken),
+    h(PdfText, { style: { ...hyphenationStyles.text, hyphens: 'manual' } }, () => longToken),
+    h(PdfText, { style: hyphenationStyles.text }, () => longToken),
   ])),
 })
 

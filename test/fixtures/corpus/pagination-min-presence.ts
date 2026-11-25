@@ -1,17 +1,7 @@
-import React from 'react'
 import { defineComponent, h } from 'vue'
-import {
-  Document,
-  Page,
-  Text,
-  View,
-} from '@react-pdf/renderer'
-import {
-  PdfDocument,
-  PdfPage,
-  PdfText,
-  PdfView,
-} from '../../../src/runtime/components'
+import { PDF_COMPONENTS } from '../../../src/runtime/components'
+
+const { PdfDocument, PdfPage, PdfText, PdfView } = PDF_COMPONENTS
 
 // A tall spacer pushes the heading to the very bottom of page one. Without
 // `minPresenceAhead` the heading fits there and its body flows onto page two
@@ -30,34 +20,9 @@ export const minPresenceStyle = {
   body: { fontSize: 12 },
 }
 
-const reactH = React.createElement
-
 export interface MinPresenceOptions {
   minPresenceAhead?: number
 }
-
-export const createReactMinPresenceDocument = (
-  { minPresenceAhead }: MinPresenceOptions = {},
-) =>
-  reactH(
-    Document,
-    null,
-    reactH(
-      Page,
-      { size: 'A4', wrap: true, style: minPresenceStyle.page },
-      reactH(
-        View,
-        { style: minPresenceStyle.spacer },
-        reactH(Text, null, minPresenceSpacerMarker),
-      ),
-      reactH(
-        Text,
-        { minPresenceAhead, style: minPresenceStyle.heading },
-        `${minPresenceHeading} kept with block`,
-      ),
-      reactH(Text, { style: minPresenceStyle.body }, `${minPresenceBody} under the heading`),
-    ),
-  )
 
 export const VueMinPresenceDocument = defineComponent({
   name: 'VueMinPresenceDocument',

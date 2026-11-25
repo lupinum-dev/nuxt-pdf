@@ -1,5 +1,7 @@
 import { readdir } from 'node:fs/promises'
 import { isAbsolute, join, posix, relative, resolve } from 'node:path'
+import { forwardSlashes, isInside } from '../runtime/shared/paths'
+import { isMissingFile } from './paths'
 
 const EXCLUDED_ROOT_DIRECTORIES = new Set(['assets', 'components', 'fonts'])
 
@@ -31,11 +33,15 @@ export type PdfImageFile = {
   layerIndex: number
 }
 
-export type PdfWatchAction = 'ignore' | 'refresh' | 'restart'
+/**
+ * - `refresh`: a source edit; Nitro rebuilds on its own.
+ * - `rediscover`: a `.vue` file appeared or disappeared; rebuild the registry
+ *   without a restart.
+ * - `restart`: fonts, images or directories changed; restart Nuxt.
+ */
+export type PdfWatchAction = 'ignore' | 'refresh' | 'rediscover' | 'restart'
 
 const PDF_STRUCTURE_EVENTS = new Set(['add', 'addDir', 'unlink', 'unlinkDir'])
-
-const normalizePathForIgnore = (path: string): string => path.replaceAll('\\', '/')
 
 export const classifyPdfWatchEvent = (
   event: string,
@@ -43,39 +49,40 @@ export const classifyPdfWatchEvent = (
   layers: readonly PdfTemplateLayer[],
   isIgnored?: (path: string) => boolean,
 ): PdfWatchAction => {
-  if (isIgnored?.(normalizePathForIgnore(absolutePath))) return 'ignore'
+  if (isIgnored?.(forwardSlashes(absolutePath))) return 'ignore'
 
   for (const layer of layers) {
     const pdfsDir = join(resolve(layer.rootDir), 'pdfs')
+    if (!isInside(pdfsDir, absolutePath)) continue
     const pathWithinPdfs = relative(pdfsDir, absolutePath)
-    if (
-      pathWithinPdfs.startsWith('..')
-      || isAbsolute(pathWithinPdfs)
-    ) {
-      continue
-    }
-
-    if (PDF_STRUCTURE_EVENTS.has(event)) return 'restart'
-    if (event !== 'change') return 'ignore'
 
     // Fonts are bundled into the registry at setup, so a change needs a
     // restart. Images resolve from disk on every dev render, so an edited
-    // image only needs a preview refresh.
+    // image only needs a preview refresh. Templates and components are
+    // rediscovered in place; image and font sets still need a restart.
     const [rootDirectory] = pathWithinPdfs.split(/[\\/]/)
+    if (PDF_STRUCTURE_EVENTS.has(event)) {
+      const vueFile = (event === 'add' || event === 'unlink') && absolutePath.endsWith('.vue')
+      return vueFile && rootDirectory !== 'assets' && rootDirectory !== 'fonts' ? 'rediscover' : 'restart'
+    }
+    if (event !== 'change') return 'ignore'
     return rootDirectory === 'fonts' ? 'restart' : 'refresh'
   }
 
   return 'ignore'
 }
 
-const compareText = (left: string, right: string): number => {
+/** Code-unit order, the same on every platform and locale. */
+export const compareText = (left: string, right: string): number => {
   if (left < right) return -1
   if (left > right) return 1
   return 0
 }
 
+// A relative path that stays inside pdfs/ on either platform. The filePath
+// check in the loop below is the opposite rule: absolute on either platform.
 const normalizeRelativePath = (value: string): string => {
-  const slashPath = value.replaceAll('\\', '/')
+  const slashPath = forwardSlashes(value)
 
   if (
     isAbsolute(value)
@@ -193,7 +200,7 @@ const findFiles = async (
     entries = await readdir(directory, { withFileTypes: true })
   }
   catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return []
+    if (isMissingFile(error)) return []
     throw error
   }
 
@@ -215,7 +222,7 @@ const findFiles = async (
       continue
     }
 
-    if (options.isIgnored?.(normalizePathForIgnore(absolutePath))) continue
+    if (options.isIgnored?.(forwardSlashes(absolutePath))) continue
 
     if (entry.isDirectory()) {
       files.push(...await findFiles(
@@ -241,8 +248,11 @@ const PDF_COMPONENT_FILES: FindFilesOptions = {
   include: filename => filename.endsWith('.vue'),
 }
 
+/** A PNG or JPEG file: what `pdfs/assets/` admits. */
+export const isPdfImageFile = (filename: string): boolean => /\.(?:jpe?g|png)$/i.test(filename)
+
 const PDF_IMAGE_FILES: FindFilesOptions = {
-  include: filename => /\.(?:jpe?g|png)$/i.test(filename),
+  include: isPdfImageFile,
 }
 
 export const discoverPdfTemplates = async (

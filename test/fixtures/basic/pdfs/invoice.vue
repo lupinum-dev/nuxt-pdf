@@ -38,10 +38,11 @@ definePdf<InvoiceProps>({
         fontFamily: 'Invoice Sans',
         fontSize: 11,
         gap: 16,
+        hyphens: 'auto',
         padding: 48,
       }"
     >
-      <PdfText :style="{ fontSize: 24, fontWeight: 700 }">
+      <PdfText :style="{ fontSize: 24 }">
         Invoice {{ props.number }}
       </PdfText>
       <PdfText>{{ props.customer }}</PdfText>
@@ -58,8 +59,9 @@ definePdf<InvoiceProps>({
       <PdfText
         fixed
         :style="{ bottom: 24, position: 'absolute', right: 48 }"
-        :render="({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`"
-      />
+      >
+        Page <PdfPageNumber /> of <PdfPageCount />
+      </PdfText>
     </PdfPage>
   </PdfDocument>
 </template>

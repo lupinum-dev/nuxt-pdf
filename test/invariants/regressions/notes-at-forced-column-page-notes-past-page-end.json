@@ -1,0 +1,110 @@
+{
+  "profile": "notes",
+  "invariants": [
+    "I5",
+    "F1",
+    "F3"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 57,
+    "rule": "documents"
+  },
+  "note": "Guards (at), fixed: a forced page with columns keeps no note line below the page end. Found by I5 and F1 in the notes profile with columns (seed 20261116, document 57; on its page 35 the area ran off the page and 11 notes were lost). Reduced form: a page with three auto-fill columns; column 1 is a wrap={false} text 155.58 pt high with 7 marks, column 2 a wrapping text 137.28 pt high with 6 marks. Every split that keeps a line keeps all 13 references; 13 one-line notes need 13 x 17.8 + 12.5 = 243.89 pt, and 155.58 + 243.89 = 399.47 is more than the page end of 395, so the page is forced (rule 11). Before the fix the forced cut kept one line of every note, and the area ended 4.47 pt below the page end. Now a note starts on a forced page only while its first line fits the room; the first that does not, and every note after it, start on the next page before its own notes, with a PDF_FOOTNOTES_MOVED warning that names them (F3).",
+  "raw": {
+    "pages": [
+      {
+        "size": 4,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          5,
+          22
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "text",
+            "n": 89,
+            "font": 0,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": []
+          },
+          {
+            "t": "text",
+            "n": 26,
+            "font": 3,
+            "lineHeight": 1,
+            "align": 0,
+            "wrap": false,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": [
+              {
+                "at": 0,
+                "n": 1
+              }
+            ]
+          },
+          {
+            "t": "text",
+            "n": 22,
+            "font": 3,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": []
+          }
+        ],
+        "bookmark": false
+      }
+    ],
+    "footnotes": {
+      "page": false,
+      "styles": 0
+    },
+    "columns": [
+      {
+        "page": true,
+        "count": 1,
+        "gap": 16,
+        "fill": 0,
+        "at": 0,
+        "size": 0,
+        "span": 0
+      },
+      null
+    ]
+  }
+}

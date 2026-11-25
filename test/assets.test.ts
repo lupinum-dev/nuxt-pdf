@@ -5,6 +5,7 @@ import {
   mkdtemp,
   rm,
   symlink,
+  truncate,
   utimes,
   writeFile,
 } from 'node:fs/promises'
@@ -12,12 +13,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
-import {
-  PDF_ASSET_ERROR_CODES,
-  loadPdfImageAsset,
-  resolvePdfImageAssets,
-  type PdfImageAssetMap,
-} from '../src/runtime/server/assets/resolve-asset'
+import { PDF_ASSET_ERROR_CODES } from '../src/runtime/server/assets/errors'
+import { loadPdfImageAsset, type PdfImageAssetMap } from '../src/runtime/server/assets/local-image'
+import { resolvePdfImageAssets } from '../src/runtime/server/assets/resolve-images'
 import {
   createRenderLimits,
   DEFAULT_PDF_RENDER_LIMITS,
@@ -26,7 +24,7 @@ import type {
   PdfDocumentNode,
   PdfElementNode,
 } from '../src/runtime/renderer/types'
-import { PDF_PRIMITIVES } from '../src/runtime/authoring'
+import { PDF_PRIMITIVES } from '../src/runtime/primitives'
 
 const PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Zl9sAAAAASUVORK5CYII=',
@@ -149,6 +147,22 @@ describe('local PDF image loading', () => {
     )
   })
 
+  // Catches the size check moved after the read: a huge file would be read
+  // into memory first. Node refuses to read a file over 2 GiB, so the read
+  // gives a different error. A sparse file takes no disk space; Windows
+  // writes the zeros out, so the row runs elsewhere only.
+  it.skipIf(process.platform === 'win32')('refuses a file over the limit without reading it', async () => {
+    const root = await createTemporaryDirectory()
+    const file = join(root, 'huge.png')
+    await writeFile(file, PNG)
+    await truncate(file, 3 * 1024 ** 3)
+
+    await expectAssetError(
+      loadPdfImageAsset('huge.png', { roots: [root] }),
+      PDF_ASSET_ERROR_CODES.LimitExceeded,
+    )
+  })
+
   it('rejects misleading extensions and signatures', async () => {
     const root = await createTemporaryDirectory()
     await writeFile(join(root, 'not-a-jpeg.jpg'), PNG)
@@ -170,11 +184,32 @@ describe('local PDF image loading', () => {
       PNG.subarray(0, 33),
       PNG.subarray(PNG.byteLength - 12),
     ])
-    await writeFile(join(root, 'truncated.png'), PNG.subarray(0, -1))
-    await writeFile(join(root, 'empty.png'), pngWithoutImageData)
-    await writeFile(join(root, 'truncated.jpg'), JPEG.subarray(0, -2))
+    // The offset of the first segment with this marker, walking the segments before the scan.
+    const segment = (marker: number): number => {
+      let offset = 2
+      while (JPEG[offset + 1] !== marker) offset += 2 + JPEG.readUInt16BE(offset + 2)
+      return offset
+    }
+    const frame = segment(0xC0)
+    const frameEnd = frame + 2 + JPEG.readUInt16BE(frame + 2)
+    const twoComponents = Buffer.from(JPEG)
+    twoComponents[frame + 9] = 2
+    // Colour type 3 (palette) at 8 bits, with no PLTE chunk.
+    const palette = Buffer.from(PNG)
+    palette[25] = 3
+    const files: Record<string, Buffer> = {
+      'truncated.png': PNG.subarray(0, -1),
+      'empty.png': pngWithoutImageData,
+      'trailing.png': Buffer.concat([PNG, Buffer.from([0])]),
+      'no-palette.png': palette,
+      'truncated.jpg': JPEG.subarray(0, -2),
+      'two-frames.jpg': Buffer.concat([JPEG.subarray(0, frameEnd), JPEG.subarray(frame, frameEnd), JPEG.subarray(frameEnd)]),
+      'two-components.jpg': twoComponents,
+      'no-scan.jpg': Buffer.concat([JPEG.subarray(0, segment(0xDA)), Buffer.from([0xFF, 0xD9])]),
+    }
+    for (const [file, bytes] of Object.entries(files)) await writeFile(join(root, file), bytes)
 
-    for (const file of ['truncated.png', 'empty.png', 'truncated.jpg']) {
+    for (const file of Object.keys(files)) {
       await expectAssetError(
         loadPdfImageAsset(file, { roots: [root] }),
         PDF_ASSET_ERROR_CODES.Invalid,
@@ -205,9 +240,7 @@ describe('PDF image tree resolution', () => {
       'images/photo.jpeg': Object.freeze({ dataB64: JPEG.toString('base64'), format: 'jpg' }),
     })
 
-    const resolved = await resolvePdfImageAssets(document, { assets })
-
-    expect(resolved).toBe(document)
+    expect(await resolvePdfImageAssets(document, { assets })).toEqual({ warnings: [] })
     expect(images.map(node =>
       Buffer.isBuffer(node.props.src),
     )).toEqual([true, true, true, true])
@@ -280,7 +313,7 @@ describe('PDF image tree resolution', () => {
     await expectAssetError(
       resolvePdfImageAssets(documentWith(image({ src: 'images/logo.png' })), {
         assets,
-        limits: imageLimits({ maxImageBytes: PNG.byteLength - 1 }),
+        limits: imageLimits({ maxTotalImageBytes: PNG.byteLength - 1 }),
       }),
       PDF_ASSET_ERROR_CODES.LimitExceeded,
     )
@@ -315,6 +348,16 @@ describe('PDF image tree resolution', () => {
     expect(second).not.toBe(first)
     expect(first).not.toBe(PNG)
     expect(second).not.toBe(PNG)
+
+    // Catches the cached entry handed to a render: bytes one render writes
+    // into must not reach a later render.
+    for (const bytes of [first, second]) {
+      if (!Buffer.isBuffer(bytes)) throw new TypeError('expected a Buffer')
+      bytes.fill(0)
+    }
+    const later = image({ src: 'images/logo.png' })
+    await resolvePdfImageAssets(documentWith(later), { assets })
+    expect(later.props.src).toEqual(PNG)
   })
 
   it('charges a repeated named source once against aggregate budgets', async () => {
@@ -384,7 +427,7 @@ describe('PDF image tree resolution', () => {
         {
           assets: {},
           limits: imageLimits({
-            maxImageBytes: PNG.byteLength - 1,
+            maxTotalImageBytes: PNG.byteLength - 1,
           }),
         },
       ),
@@ -408,19 +451,13 @@ describe('PDF image tree resolution', () => {
     expect(first.props.src).toBe('images/logo.png')
   })
 
-  it('enforces image count, aggregate bytes, and decoded pixel budgets', async () => {
+  // Catches a per-image check that lets many small images pass the budget.
+  it('sums bytes and decoded pixels of all images of a render', async () => {
     const twoImages = () => documentWith(
       image({ src: Buffer.from(PNG) }),
       image({ src: Buffer.from(PNG) }),
     )
 
-    await expectAssetError(
-      resolvePdfImageAssets(twoImages(), {
-        assets: {},
-        limits: imageLimits({ maxImages: 1 }),
-      }),
-      PDF_ASSET_ERROR_CODES.LimitExceeded,
-    )
     await expectAssetError(
       resolvePdfImageAssets(twoImages(), {
         assets: {},
@@ -447,7 +484,7 @@ describe('PDF image tree resolution', () => {
     await expectAssetError(
       resolvePdfImageAssets(documentWith(image({ src: oversized })), {
         assets: {},
-        limits: imageLimits({ maxImagePixels: 25_000_000 }),
+        limits: imageLimits({ maxTotalImagePixels: 25_000_000 }),
       }),
       PDF_ASSET_ERROR_CODES.LimitExceeded,
     )

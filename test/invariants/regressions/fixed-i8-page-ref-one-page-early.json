@@ -1,0 +1,191 @@
+{
+  "profile": "fixed",
+  "invariants": [
+    "I8"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 24,
+    "rule": "documents"
+  },
+  "note": "Finding F3, fixed by the layout copy (D19). It was: PdfPageRef prints 1 for a target text whose lines are all on page 2. Page 1 shows about 109 pt free below the last line, yet the target starts on page 2. Guess: the destination map takes the page of an empty first fragment of the target (or of its margin) on page 1.",
+  "raw": {
+    "pages": [
+      {
+        "size": 1,
+        "landscape": false,
+        "padding": [
+          0,
+          3,
+          0,
+          18
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "text",
+            "n": 106,
+            "font": 1,
+            "lineHeight": 4,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 23,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0
+          },
+          {
+            "t": "view",
+            "margin": [
+              19,
+              0,
+              3,
+              3
+            ],
+            "padding": [
+              8,
+              11,
+              8,
+              8
+            ],
+            "border": 4,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "text",
+                "n": 23,
+                "font": 4,
+                "lineHeight": 3,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 19,
+                "marginBottom": 13,
+                "extra": 0,
+                "ref": 0
+              },
+              {
+                "t": "view",
+                "margin": [
+                  17,
+                  0,
+                  1,
+                  0
+                ],
+                "padding": [
+                  18,
+                  0,
+                  0,
+                  0
+                ],
+                "border": 0,
+                "minHeight": 0,
+                "wrap": true,
+                "brk": false,
+                "children": [
+                  {
+                    "t": "text",
+                    "n": 16,
+                    "font": 1,
+                    "lineHeight": 3,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 15,
+                    "marginBottom": 0,
+                    "extra": 0,
+                    "ref": 0
+                  }
+                ]
+              },
+              {
+                "t": "view",
+                "margin": [
+                  0,
+                  0,
+                  5,
+                  0
+                ],
+                "padding": [
+                  18,
+                  0,
+                  14,
+                  0
+                ],
+                "border": 0,
+                "minHeight": 0,
+                "wrap": true,
+                "brk": false,
+                "children": [
+                  {
+                    "t": "text",
+                    "n": 1,
+                    "font": 0,
+                    "lineHeight": 3,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 22,
+                    "marginBottom": 16,
+                    "extra": 2,
+                    "ref": 94
+                  }
+                ]
+              },
+              {
+                "t": "view",
+                "margin": [
+                  1,
+                  0,
+                  11,
+                  3
+                ],
+                "padding": [
+                  2,
+                  15,
+                  15,
+                  13
+                ],
+                "border": 0,
+                "minHeight": 0,
+                "wrap": true,
+                "brk": false,
+                "children": [
+                  {
+                    "t": "text",
+                    "n": 21,
+                    "font": 4,
+                    "lineHeight": 3,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 23,
+                    "marginBottom": 23,
+                    "extra": 0,
+                    "ref": 0
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "t": "text",
+            "n": 31,
+            "font": 2,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 6,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0
+          }
+        ]
+      }
+    ]
+  }
+}

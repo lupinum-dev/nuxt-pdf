@@ -1,0 +1,160 @@
+{
+  "profile": "notes",
+  "invariants": [
+    "G3"
+  ],
+  "origin": {
+    "seed": 19,
+    "index": 21,
+    "rule": "neutral"
+  },
+  "note": "Found by G3 (seed 19, document 21, the flow of each page in one plain view). An A6 page (page end 419.53) whose flow ends with a one-column view container; its last text has marginBottom 24 and a mark with a 28-token note. Plain: the page part ends at 190.54 pt; the 8 notes need 171.72 pt with the last one's start, and all of them fit whole on one page. In one plain view: the view is not split, and extentOf (layout/paginate/notes.ts) reads it as its box, 214.54 = 190.54 + 24, the inner text's margin. The fit still holds (214.54 + 171.72 = 386.26), but the area has 24 pt less, so the last note is cut and 46.16 pt of it goes on to page 2: 2 pages, expected 1. CONFORMANCE: a node loses a bottom margin that does not fit, at every depth.",
+  "raw": {
+    "pages": [
+      {
+        "size": 2,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "text",
+            "n": 1,
+            "font": 0,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": []
+          },
+          {
+            "t": "view",
+            "margin": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "padding": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "border": 0,
+            "minHeight": 0,
+            "wrap": false,
+            "brk": false,
+            "children": [],
+            "bookmark": false
+          },
+          {
+            "t": "text",
+            "n": 20,
+            "font": 0,
+            "lineHeight": 3,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": []
+          },
+          {
+            "t": "text",
+            "n": 19,
+            "font": 5,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": [
+              {
+                "at": 0,
+                "n": 1
+              }
+            ]
+          },
+          {
+            "t": "text",
+            "n": 1,
+            "font": 0,
+            "lineHeight": 3,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 21,
+            "marginBottom": 24,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": [
+              {
+                "at": 0,
+                "n": 28
+              }
+            ]
+          }
+        ],
+        "bookmark": false
+      }
+    ],
+    "footnotes": {
+      "page": false,
+      "styles": 0
+    },
+    "columns": [
+      {
+        "page": false,
+        "count": 1,
+        "gap": 0,
+        "fill": 0,
+        "at": 0,
+        "size": 8,
+        "span": 217,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "breaks": 0
+      },
+      null
+    ]
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "profile": "mixed",
+  "invariants": [
+    "I5",
+    "I14"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 989,
+    "rule": "documents"
+  },
+  "note": "W1-A, fixed by D30. Document 989 of the 1,000-document mixed run of 2026-11-22: an A6 page with no padding, a 12 pt left-aligned text of 62 tokens in Source Code Pro inside a block link. A squeezed line ended at x 301.3 on a 297.6 pt page (I5) and 3.7 pt past the link rectangle (I14). Now each line ends inside the page and the link rectangle.",
+  "raw": {
+    "pages": [
+      {
+        "size": 2,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "text",
+            "n": 43,
+            "font": 0,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "face": 0
+          },
+          {
+            "t": "link",
+            "kind": 0,
+            "linkTo": 0,
+            "children": [
+              {
+                "t": "text",
+                "n": 62,
+                "font": 5,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "face": 8
+              }
+            ]
+          }
+        ],
+        "bookmark": false
+      }
+    ],
+    "tagged": false
+  }
+}

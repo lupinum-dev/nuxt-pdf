@@ -74,44 +74,60 @@
     "test": "pnpm test:prepare && vitest run",
     "test:prepare": "pnpm dev:prepare && nuxt prepare test/fixtures/layers",
     "test:production": "nuxt-module-build prepare && nuxt-module-build build && vitest run --config vitest.production.config.ts && vitest run --config vitest.serverless.config.ts && nuxt build playground",
+    "test:invariants": "NUXT_PDF_INVARIANT_SIZE=ci vitest run test/invariants/invariants.test.ts test/invariants/forms.test.ts test/invariants/auto-columns.test.ts test/invariants/keep-with-next.test.ts test/invariants/row-spans.test.ts test/invariants/columns.test.ts test/invariants/floats.test.ts",
     "test:raster": "vitest run --config vitest.raster.config.ts",
+    "test:pdfa": "node scripts/test-pdfa.mjs",
+    "test:einvoice": "node scripts/test-einvoice.mjs",
     "test:performance": "node --expose-gc ./node_modules/vitest/vitest.mjs run --config vitest.performance.config.ts",
-    "test:docs": "node scripts/check-docs-snippets.mjs && node scripts/check-docs-contracts.mjs && pnpm --dir docs check",
+    "test:docs": "node scripts/check-docs-snippets.mjs && node scripts/check-docs-contracts.mjs && node scripts/docs-gallery.mjs --check && pnpm --dir docs check",
+    "docs:gallery": "node scripts/docs-gallery.mjs",
     "test:api": "node scripts/check-api-report.mjs",
     "test:packed": "node scripts/check-package.mjs && node scripts/test-package-quickstart.mjs",
     "api:write": "node scripts/check-api-report.mjs --write",
     "docs:dev": "pnpm --dir docs dev",
     "docs:build": "nuxt-module-build prepare && pnpm --dir docs build",
-    "verify": "pnpm lint && pnpm typecheck && pnpm test:docs && pnpm test && pnpm test:production && pnpm build && pnpm test:api && pnpm test:packed && node scripts/audit-deps.mjs",
+    "verify": "pnpm lint && pnpm typecheck && pnpm test:docs && pnpm test && pnpm test:invariants && pnpm test:production && pnpm build && pnpm test:api && pnpm test:packed && node scripts/audit-deps.mjs",
     "changeset": "changeset"
   },
   "dependencies": {
     "@jridgewell/remapping": "2.3.5",
     "@nuxt/kit": "^4.5.2",
-    "@react-pdf/font": "4.0.8",
-    "@react-pdf/layout": "4.6.1",
-    "@react-pdf/pdfkit": "5.1.1",
-    "@react-pdf/primitives": "4.3.0",
-    "@react-pdf/render": "4.5.1",
     "@vue/compiler-sfc": "3.5.42",
+    "bidi-js": "1.0.3",
     "esbuild": "0.28.1",
-    "h3": "1.15.11",
+    "fontkit": "2.0.4",
+    "h3": "^1.15.0",
+    "hyphen": "1.14.1",
+    "linebreak": "1.1.0",
+    "postcss": "8.5.23",
     "ufo": "1.6.4",
+    "unicode-properties": "1.4.1",
     "unimport": "6.3.0",
-    "typescript": "~5.9.3",
-    "vue-tsc": "^3.3.3"
+    "yoga-layout": "3.2.1"
   },
   "peerDependencies": {
     "@napi-rs/canvas": "^0.1.97",
+    "comark": "^0.8.1 || ^0.9.2",
     "nuxt": "^4.4.8",
     "pdfjs-dist": "^5.6.205 || ^6.2.108",
-    "vue": "^3.5.0"
+    "typescript": "~5.9.3",
+    "vue": "^3.5.0",
+    "vue-tsc": "^3.3.3"
   },
   "peerDependenciesMeta": {
     "@napi-rs/canvas": {
       "optional": true
     },
+    "comark": {
+      "optional": true
+    },
     "pdfjs-dist": {
+      "optional": true
+    },
+    "typescript": {
+      "optional": true
+    },
+    "vue-tsc": {
       "optional": true
     }
   },
@@ -126,18 +142,19 @@
     "@nuxt/module-builder": "^1.0.2",
     "@nuxt/schema": "^4.5.2",
     "@nuxt/test-utils": "^4.0.3",
-    "@react-pdf/renderer": "4.5.1",
     "@types/node": "26.1.1",
-    "@types/react": "19.2.14",
+    "comark": "0.9.2",
     "eslint": "^10.4.1",
+    "fast-check": "^4.10.2",
     "nuxt": "^4.5.2",
     "pdfjs-dist": "6.2.108",
     "pkg-pr-new": "0.0.87",
     "publint": "^0.3.21",
-    "react": "19.2.0",
     "source-code-pro": "2.42.0",
+    "typescript": "~5.9.3",
     "vitest": "^4.1.8",
     "vue": "3.5.42",
+    "vue-tsc": "^3.3.3",
     "yaml": "2.9.0"
   }
 }

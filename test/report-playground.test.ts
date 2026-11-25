@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { renderPdfSfc } from '../src/test'
@@ -9,6 +10,14 @@ import { getPdfOutline } from '../src/test/pdf'
 // composable auto-import, multi-pass activation, TOC page numbers, internal
 // links, bookmarks/outline, and dynamic footers.
 const reportSource = resolve('playground/pdfs/report.vue')
+// The same report written with style objects instead of a <style> block.
+const styleObjectSource = resolve('test/fixtures/report-style-objects/pdfs/report.vue')
+
+// Creation date and the file ID derived from it differ between two renders.
+const withoutVolatileFields = (bytes: Uint8Array): string =>
+  Buffer.from(bytes).toString('latin1')
+    .replace(/\(D:\d{14}Z\)/g, '(D:date)')
+    .replace(/\/ID \[<[\da-f]+> <[\da-f]+>\]/, '/ID []')
 
 describe('playground report.vue (shipped TOC + bookmarks)', () => {
   it('auto-injects the composable import and renders a correct report', async () => {
@@ -49,5 +58,19 @@ describe('playground report.vue (shipped TOC + bookmarks)', () => {
     for (const page of parsed.pages) {
       expect(page.text).toContain(`${page.number} / ${parsed.pageCount}`)
     }
+  }, 30_000)
+
+  // Catches a class compiled to a different style than the object it replaces:
+  // a shorthand expanded to the wrong sides, a lost unit, or classes applied
+  // in the wrong order. Equal bytes mean equal pages, text and layout boxes.
+  it('renders the <style> classes exactly like the style-object version', async () => {
+    const [classes, objects] = await Promise.all([
+      renderPdfSfc(reportSource, { report: sampleReport }),
+      renderPdfSfc(styleObjectSource, { report: sampleReport }),
+    ])
+
+    expect(classes.parsed.pageCount).toBe(objects.parsed.pageCount)
+    expect(classes.parsed.pages.map(page => page.text)).toEqual(objects.parsed.pages.map(page => page.text))
+    expect(withoutVolatileFields(classes.bytes)).toBe(withoutVolatileFields(objects.bytes))
   }, 30_000)
 })

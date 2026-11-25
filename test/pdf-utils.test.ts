@@ -1,5 +1,7 @@
 import { Buffer } from 'node:buffer'
+import { defineComponent, h } from 'vue'
 import { describe, expect, it } from 'vitest'
+import { PDF_COMPONENTS } from '../src/runtime/components'
 import {
   comparePageImages,
   decodePngPage,
@@ -9,6 +11,10 @@ import {
   rasterizePdf,
   type PdfPageImage,
 } from '../src/test/pdf'
+import { renderPdfTemplate } from '../src/test/render-template'
+import { COMPARES_REVIEWED_BASELINES, RASTER_THRESHOLDS } from './raster'
+
+const { PdfDocument, PdfPage, PdfText } = PDF_COMPONENTS
 
 describe('PDF verification utilities', () => {
   it('parses page text and link annotations from PDF bytes', async () => {
@@ -93,6 +99,45 @@ describe('PDF verification utilities', () => {
     expect(comparison.changedPixelRatio).toBe(1 / 40_000)
     expect(comparison.matches).toBe(false)
     expect(comparison.maxChannelDifference).toBe(255)
+  })
+
+  // Catches a gate that turns the reviewed baselines off everywhere: every
+  // runtime with Float16Array (Node 24 and later) must compare them.
+  it('compares reviewed baselines on Node 24 and later', () => {
+    expect(COMPARES_REVIEWED_BASELINES).toBe(Number(process.versions.node.split('.')[0]) >= 24)
+  })
+
+  // An A4 page whose last line moves down 1 pt. The reviewed baselines
+  // allowed 0.5 % of a page to change, and this move changes 0.07 %. Catches
+  // a raster tolerance that lets a moved line pass.
+  it('fails the reviewed raster tolerance when one line moves 1 pt', async () => {
+    const page = (shift: number) => defineComponent(() => () => h(PdfDocument, { creationDate: new Date(0) }, () =>
+      h(PdfPage, { size: 'A4', style: { padding: 56, fontSize: 11 } }, () => [
+        h(PdfText, () => 'Peat moss holds water and carbon for centuries when the bog stays wet.'),
+        h(PdfText, { style: { marginTop: shift } }, () => 'The last line moves.'),
+      ])))
+    const [before] = await rasterizePdf((await renderPdfTemplate(page(0), {})).bytes)
+    const [after] = await rasterizePdf((await renderPdfTemplate(page(1), {})).bytes)
+
+    expect(comparePageImages(after!, before!, { channelThreshold: 25, maxChangedPixelRatio: 0.005 }).matches).toBe(true)
+    expect(comparePageImages(after!, before!, RASTER_THRESHOLDS).matches).toBe(false)
+  })
+
+  // Catches pdf.js drawing the standard fonts without their font files: it
+  // then draws another face, a serif on Linux and the system Helvetica on
+  // macOS. The Helvetica of pdf.js (Foxit Sans) inks 6807 pixels for a 200 pt
+  // "G"; the macOS Helvetica inks 7849.
+  it('rasterizes Helvetica with the glyphs of pdf.js on every platform', async () => {
+    const page = defineComponent(() => () => h(PdfDocument, { creationDate: new Date(0) }, () =>
+      h(PdfPage, { size: [240, 300], style: { padding: 20 } }, () =>
+        h(PdfText, { style: { fontFamily: 'Helvetica', fontSize: 200 } }, () => 'G'))))
+    const [image] = await rasterizePdf((await renderPdfTemplate(page, {})).bytes)
+    let inked = 0
+    for (let index = 0; index < image!.pixels.length; index += 4) {
+      if (image!.pixels[index]! < 128) inked++
+    }
+    expect(inked).toBeGreaterThan(6807 * 0.95)
+    expect(inked).toBeLessThan(6807 * 1.05)
   })
 
   it('normalizes semantic whitespace and validates comparison inputs', async () => {

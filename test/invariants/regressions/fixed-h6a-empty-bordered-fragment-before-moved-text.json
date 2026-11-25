@@ -1,0 +1,158 @@
+{
+  "profile": "fixed",
+  "invariants": [
+    "I14"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 1909,
+    "rule": "documents"
+  },
+  "note": "Found by I14 in the 2,000-document fixed run of H6 (1 document). Reduced form: five nested views with top margins and paddings; the fourth has a 3 pt border and the bookmark; the innermost holds a text of 26 tokens at lineHeight 2. On a 500 x 260 pt page with padding 50/39, page 1 paints the bordered box (y 163 to 221) with nothing in it, and the text starts on page 2 at y 51.8 inside the continuation (no top border). D25 says a container moves whole when its first content moves; here the bordered container stays. The bookmark points to the view top on page 1, the harness expects the page of its first token. Fixed: a part with nothing to show on its page passes its bookmark to the next part (paginate/split.ts, splitView), as an id does (F3). The empty bordered fragment stays: with nothing above it, the view moved whole would start the next page the same way, forever.",
+  "raw": {
+    "pages": [
+      {
+        "size": 5,
+        "landscape": false,
+        "padding": [
+          50,
+          0,
+          39,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "view",
+            "margin": [
+              12,
+              0,
+              0,
+              0
+            ],
+            "padding": [
+              18,
+              0,
+              0,
+              0
+            ],
+            "border": 0,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "view",
+                "margin": [
+                  17,
+                  0,
+                  0,
+                  0
+                ],
+                "padding": [
+                  14,
+                  0,
+                  0,
+                  0
+                ],
+                "border": 0,
+                "minHeight": 0,
+                "wrap": true,
+                "brk": false,
+                "children": [
+                  {
+                    "t": "view",
+                    "margin": [
+                      17,
+                      0,
+                      0,
+                      0
+                    ],
+                    "padding": [
+                      15,
+                      0,
+                      0,
+                      0
+                    ],
+                    "border": 0,
+                    "minHeight": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "children": [
+                      {
+                        "t": "view",
+                        "margin": [
+                          20,
+                          0,
+                          0,
+                          0
+                        ],
+                        "padding": [
+                          13,
+                          0,
+                          0,
+                          0
+                        ],
+                        "border": 3,
+                        "minHeight": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "children": [
+                          {
+                            "t": "view",
+                            "margin": [
+                              12,
+                              0,
+                              0,
+                              0
+                            ],
+                            "padding": [
+                              7,
+                              0,
+                              0,
+                              0
+                            ],
+                            "border": 0,
+                            "minHeight": 0,
+                            "wrap": true,
+                            "brk": false,
+                            "children": [
+                              {
+                                "t": "text",
+                                "n": 26,
+                                "font": 2,
+                                "lineHeight": 2,
+                                "align": 0,
+                                "wrap": true,
+                                "brk": false,
+                                "marginTop": 0,
+                                "marginBottom": 0,
+                                "extra": 0,
+                                "ref": 0,
+                                "link": 0,
+                                "linkAt": 0,
+                                "linkSize": 0,
+                                "linkTo": 0,
+                                "bookmark": false
+                              }
+                            ],
+                            "bookmark": false
+                          }
+                        ],
+                        "bookmark": false
+                      }
+                    ],
+                    "bookmark": false
+                  }
+                ],
+                "bookmark": true
+              }
+            ],
+            "bookmark": false
+          }
+        ],
+        "bookmark": false
+      }
+    ]
+  }
+}

@@ -37,11 +37,6 @@
   <a href="https://nuxt-pdf.lupinum.com/showcase/invoice.pdf">Open the invoice PDF</a>.
 </p>
 
-> [!IMPORTANT]
-> Nuxt PDF is in public beta. Its tested behavior is stable within each
-> release, but a minor release can contain documented breaking changes before
-> version 1.0.
-
 ## Why use Nuxt PDF?
 
 Nuxt PDF discovers Vue Single File Components in `pdfs/`. It renders these
@@ -54,7 +49,14 @@ server output, and PDF-specific test helpers in one Nuxt module.
 ## When to use it
 
 Use Nuxt PDF for structured documents such as invoices, reports,
-certificates, tickets, and labels.
+certificates, tickets, and labels. It also writes:
+
+- rich text from CMS editor HTML or Markdown;
+- fillable forms;
+- e-invoices (ZUGFeRD, Factur-X and XRechnung) from invoice data;
+- PDF/A-3b documents;
+- accessible tagged PDF (PDF/UA-1 and PDF/A-3a);
+- password-protected PDF (AES-256).
 
 Do not use Nuxt PDF to print an existing web page, display an existing PDF, or
 edit and sign an existing PDF.
@@ -103,7 +105,6 @@ const props = defineProps<InvoiceProps>()
 definePdf<InvoiceProps>({
   title: ({ invoice }) => `Invoice ${invoice.number}`,
   filename: ({ invoice }) => `invoice-${invoice.number}.pdf`,
-  language: 'en-GB',
   sampleData: {
     invoice: {
       customer: 'Ada Lovelace',
@@ -116,17 +117,31 @@ definePdf<InvoiceProps>({
 
 <template>
   <PdfDocument>
-    <PdfPage size="A4" :style="{ fontSize: 11, padding: 48 }">
-      <PdfText :style="{ fontSize: 24, marginBottom: 24 }">
+    <PdfPage class="page">
+      <PdfText class="title">
         Invoice {{ props.invoice.number }}
       </PdfText>
       <PdfText>{{ props.invoice.customer }}</PdfText>
-      <PdfText :style="{ marginTop: 12 }">
+      <PdfText class="total">
         Total: {{ props.invoice.total }}
       </PdfText>
     </PdfPage>
   </PdfDocument>
 </template>
+
+<style>
+.page {
+  padding: 48pt;
+  font-size: 11pt;
+}
+.title {
+  margin-bottom: 24pt;
+  font-size: 24pt;
+}
+.total {
+  margin-top: 12pt;
+}
+</style>
 ```
 
 Create `server/api/invoice.get.ts`:
@@ -233,7 +248,9 @@ what you build.
 
 PDF templates use typed props, interpolation, `v-if`, keyed `v-for`, slots,
 and local Vue components. Nuxt PDF provides document, page, text, image, link,
-note, and SVG primitives.
+note, table, attachment, form field, and SVG primitives, and `PdfRichText` for
+CMS content. A plain `<style>` block styles them with class selectors,
+variables, and `v-bind()`.
 
 Templates run in an isolated Vue application on the Node server. They do not
 inherit Nuxt plugins, app-level provides, browser globals, or DOM components.
@@ -274,8 +291,9 @@ baselines.
 ## Documentation
 
 Read the [Nuxt PDF documentation](https://nuxt-pdf.lupinum.com) for authoring,
-assets, links, bookmarks, tables of contents, testing, and the complete API
-reference. Read [CONFORMANCE.md](./CONFORMANCE.md) for the exact tested behavior
+assets, links, bookmarks, tables of contents, PDF/A and Factur-X, accessible
+PDF, testing, and
+the complete API reference. Read [CONFORMANCE.md](./CONFORMANCE.md) for the exact tested behavior
 and known limitations.
 
 Coding agents should start with

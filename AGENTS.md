@@ -19,7 +19,9 @@ accepted design decision.
   docs and packed-package checks.
 - `CONFORMANCE.md` states the tested behavior and limitations.
 - `API_REPORT.md` is derived from the built declarations.
-- `internals/` holds decisions and performance notes for maintainers.
+- `internals/decisions.md`, `internals/performance.md` and
+  `internals/migrations.md` hold the decisions, the performance notes and the
+  temporary compatibility code for maintainers.
 
 ## Commands
 
@@ -40,8 +42,13 @@ Focused commands:
 - `pnpm test:docs` checks docs snippets, docs contracts and the docs app types.
 - `pnpm test:production` builds the module and checks the production and
   serverless Nuxt boundaries and the playground build.
+- `pnpm test:invariants` runs the invariant harness (`test/invariants/`) at CI
+  size, about 150 s; `pnpm test` runs only its saved cases and one generated
+  document per rule. Its own job in CI.
 - `pnpm test:raster` compares reviewed PDF images. CI runs it in a pinned Linux
   image; local results can differ.
+- `pnpm test:pdfa` validates PDF/A-3b output with veraPDF in a pinned Docker
+  image (`test/pdfa.test.ts`). It needs a running Docker daemon.
 - `pnpm test:performance` measures render time and memory against
   `test/fixtures/performance/linux-node24.json`. It is not part of CI; run it
   when a change can affect performance (see `internals/performance.md`).
@@ -58,7 +65,8 @@ The "Agent setup" section of the README tells those agents how to add a
 pointer to it. Keep the `./agent-docs` export and that section.
 
 CI also runs the tests on the Node floor and the newest Node major, the raster
-suite in a pinned Linux image, and the path and asset tests on Windows.
+suite in a pinned Linux image, the veraPDF PDF/A suite (`pnpm test:pdfa`), and
+the path and asset tests on Windows.
 
 ## Hard rules
 
@@ -76,8 +84,9 @@ suite in a pinned Linux image, and the path and asset tests on Windows.
   Remove or Change and says what changed for users. A short body may follow
   after a blank line. A major change adds a line that starts with `Migration:`
   and says what users must do.
-- The package is in the `beta` prerelease line (`.changeset/pre.json`). Leave it
-  with `pnpm changeset pre exit` in its own pull request.
+- The package is on the stable line. A breaking change needs a `major`
+  changeset. Start a prerelease line with `pnpm changeset pre enter next` in its
+  own pull request.
 - Do not bypass the 24-hour dependency quarantine (`minimumReleaseAge`). Do not
   add dependencies to `allowBuilds` without a reason.
 - Pin GitHub Actions to full commit SHAs. Give each job only the permissions it
@@ -100,9 +109,11 @@ suite in a pinned Linux image, and the path and asset tests on Windows.
 - Invalid or unsupported document behavior must fail with a typed error.
 
 Keep domain logic out of the Nuxt module and transport layers. Put PDF behavior
-in the existing runtime and engine boundaries. The `@react-pdf/*` engine
-packages are pinned exactly; `src/runtime/server/engine/CONTRACTS.md` says how
-to review an engine update.
+in the existing runtime and engine boundaries. The engine is our own (layout,
+text, painter and PDF writer). Its remaining engine dependencies, `yoga-layout`,
+`fontkit`, `linebreak`, `bidi-js`, `hyphen` and `unicode-properties`, are
+pinned exactly; `src/runtime/server/engine/CONTRACTS.md` says how to review an
+update of them.
 
 ## Tests and evidence
 

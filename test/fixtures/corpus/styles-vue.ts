@@ -1,10 +1,5 @@
 import { defineComponent, h, type VNode } from 'vue'
-import {
-  PdfDocument,
-  PdfPage,
-  PdfText,
-  PdfView,
-} from '../../../src/runtime/components'
+import { PDF_COMPONENTS } from '../../../src/runtime/components'
 import {
   CONTROL_TEXT,
   DECORATED_TEXT,
@@ -23,9 +18,11 @@ import {
   type PdfStyleValue,
 } from './styles-data'
 
+const { PdfDocument, PdfPage, PdfText, PdfView } = PDF_COMPONENTS
+
 type Child = VNode | VNode[]
 
-// A tagged View mirroring the React `box` helper. `id` survives into the
+// A tagged View. `id` survives into the
 // resolved layout node so the test locates its box by id.
 const box = (id: string, style: PdfStyleValue, children?: () => Child) =>
   h(PdfView, { key: id, id, style }, children ? { default: children } : undefined)

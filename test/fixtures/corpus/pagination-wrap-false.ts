@@ -1,21 +1,12 @@
-import React from 'react'
 import { defineComponent, h } from 'vue'
-import {
-  Document,
-  Page,
-  Text,
-} from '@react-pdf/renderer'
-import {
-  PdfDocument,
-  PdfPage,
-  PdfText,
-} from '../../../src/runtime/components'
+import { PDF_COMPONENTS } from '../../../src/runtime/components'
 
-// Shared data both renderers import, so any output difference is the renderer
-// boundary, not the test data. The rows overflow one A4 page: with `wrap: false`
-// the page must NOT paginate — it grows to a single tall page that holds every
-// row (page height exceeds A4); with `wrap: true` the identical content
-// paginates across standard-height pages.
+const { PdfDocument, PdfPage, PdfText } = PDF_COMPONENTS
+
+// The rows overflow one A4 page: with `wrap: false` the page must NOT
+// paginate — it grows to a single tall page that holds every row (page height
+// exceeds A4); with `wrap: true` the identical content paginates across
+// standard-height pages.
 export const wrapFalseStart = 'WF-START'
 export const wrapFalseEnd = 'WF-END'
 export const wrapFalseRows = Array.from(
@@ -28,26 +19,9 @@ export const wrapFalseStyle = {
   row: { marginBottom: 2 },
 }
 
-const reactH = React.createElement
-
 export interface WrapFalseOptions {
   wrap: boolean
 }
-
-export const createReactWrapFalseDocument = ({ wrap }: WrapFalseOptions) =>
-  reactH(
-    Document,
-    null,
-    reactH(
-      Page,
-      { size: 'A4', wrap, style: wrapFalseStyle.page },
-      reactH(Text, { style: wrapFalseStyle.row }, wrapFalseStart),
-      ...wrapFalseRows.map((row, index) =>
-        reactH(Text, { key: index, style: wrapFalseStyle.row }, row),
-      ),
-      reactH(Text, { style: wrapFalseStyle.row }, wrapFalseEnd),
-    ),
-  )
 
 export const VueWrapFalseDocument = defineComponent({
   name: 'VueWrapFalseDocument',

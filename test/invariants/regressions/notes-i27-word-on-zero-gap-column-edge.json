@@ -1,0 +1,304 @@
+{
+  "profile": "notes",
+  "invariants": [
+    "I27",
+    "I4",
+    "G2",
+    "F6"
+  ],
+  "origin": {
+    "seed": 5,
+    "index": 57,
+    "rule": "documents"
+  },
+  "note": "Guards the harness, not the engine. Three columns with a gap of 0 on a landscape A4 page: column 3 starts at x 575.6, and floor((575.6 - 45) / 265.3) is just under 2, so the old rules put the first word of each column-3 line in column 2 (I27, I4, G2). F6 also read the raised mark of the 8 pt line below as a second mark beside a 14 pt word: 8.4 pt below its baseline, at the edge of the 0.6 em window. Marks are raised, so only digits at or above the baseline count now.",
+  "raw": {
+    "pages": [
+      {
+        "size": 0,
+        "landscape": true,
+        "padding": [
+          31,
+          1,
+          19,
+          45
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "text",
+            "n": 18,
+            "font": 4,
+            "lineHeight": 3,
+            "align": 3,
+            "wrap": false,
+            "brk": false,
+            "marginTop": 1,
+            "marginBottom": 23,
+            "extra": 0,
+            "ref": 496,
+            "link": 0,
+            "linkAt": 0.9999999999999978,
+            "linkSize": 1.1884971355913908e-172,
+            "linkTo": 994,
+            "bookmark": false,
+            "marks": []
+          },
+          {
+            "t": "text",
+            "n": 117,
+            "font": 0,
+            "lineHeight": 3,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 2,
+            "extra": 0,
+            "ref": 611,
+            "link": 0,
+            "linkAt": 0.9999999999999988,
+            "linkSize": 1.1065644784629284e-53,
+            "linkTo": 6,
+            "bookmark": false,
+            "marks": []
+          },
+          {
+            "t": "view",
+            "margin": [
+              1,
+              1,
+              1,
+              16
+            ],
+            "padding": [
+              3,
+              13,
+              0,
+              1
+            ],
+            "border": 0,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": true,
+            "children": [
+              {
+                "t": "view",
+                "margin": [
+                  1,
+                  1,
+                  5,
+                  1
+                ],
+                "padding": [
+                  13,
+                  7,
+                  1,
+                  18
+                ],
+                "border": 3,
+                "minHeight": 0,
+                "wrap": true,
+                "brk": false,
+                "children": [
+                  {
+                    "t": "text",
+                    "n": 25,
+                    "font": 3,
+                    "lineHeight": 2,
+                    "align": 2,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 24,
+                    "marginBottom": 19,
+                    "extra": 0,
+                    "ref": 875,
+                    "link": 0,
+                    "linkAt": 1.248452388385144e-114,
+                    "linkSize": 1.582928582678434e-283,
+                    "linkTo": 757,
+                    "bookmark": false,
+                    "marks": [
+                      {
+                        "at": 7.432200420300504e-26,
+                        "n": 16
+                      }
+                    ]
+                  }
+                ],
+                "bookmark": false
+              },
+              {
+                "t": "text",
+                "n": 6,
+                "font": 5,
+                "lineHeight": 2,
+                "align": 3,
+                "wrap": false,
+                "brk": false,
+                "marginTop": 4,
+                "marginBottom": 14,
+                "extra": 0,
+                "ref": 952,
+                "link": 0,
+                "linkAt": 3.4689195652690227e-209,
+                "linkSize": 7.840179027749789e-56,
+                "linkTo": 882,
+                "bookmark": false,
+                "marks": [
+                  {
+                    "at": 1.7711467006301862e-216,
+                    "n": 1
+                  }
+                ]
+              },
+              {
+                "t": "text",
+                "n": 13,
+                "font": 0,
+                "lineHeight": 2,
+                "align": 1,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 7,
+                "marginBottom": 8,
+                "extra": 0,
+                "ref": 899,
+                "link": 0,
+                "linkAt": 4.5952382103973863e-125,
+                "linkSize": 3.0387234263432066e-266,
+                "linkTo": 998,
+                "bookmark": false,
+                "marks": []
+              },
+              {
+                "t": "text",
+                "n": 19,
+                "font": 4,
+                "lineHeight": 1,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 19,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 162,
+                "link": 1,
+                "linkAt": 7.723895707000833e-76,
+                "linkSize": 1.2045703061606518e-11,
+                "linkTo": 277,
+                "bookmark": false,
+                "marks": [
+                  {
+                    "at": 1.0133938710614428e-108,
+                    "n": 6
+                  }
+                ]
+              }
+            ],
+            "bookmark": false
+          },
+          {
+            "t": "view",
+            "margin": [
+              1,
+              18,
+              13,
+              0
+            ],
+            "padding": [
+              1,
+              1,
+              1,
+              19
+            ],
+            "border": 0,
+            "minHeight": 0,
+            "wrap": false,
+            "brk": false,
+            "children": [
+              {
+                "t": "view",
+                "margin": [
+                  12,
+                  18,
+                  17,
+                  0
+                ],
+                "padding": [
+                  0,
+                  0,
+                  0,
+                  7
+                ],
+                "border": 0,
+                "minHeight": 0,
+                "wrap": true,
+                "brk": true,
+                "children": [
+                  {
+                    "t": "text",
+                    "n": 116,
+                    "font": 2,
+                    "lineHeight": 2,
+                    "align": 1,
+                    "wrap": true,
+                    "brk": true,
+                    "marginTop": 12,
+                    "marginBottom": 15,
+                    "extra": 0,
+                    "ref": 841,
+                    "link": 0,
+                    "linkAt": 2.9671957901315665e-205,
+                    "linkSize": 9.971304884924756e-217,
+                    "linkTo": 45,
+                    "bookmark": false,
+                    "marks": []
+                  }
+                ],
+                "bookmark": false
+              }
+            ],
+            "bookmark": false
+          },
+          {
+            "t": "text",
+            "n": 24,
+            "font": 1,
+            "lineHeight": 3,
+            "align": 3,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 3,
+            "marginBottom": 3,
+            "extra": 0,
+            "ref": 4,
+            "link": 1,
+            "linkAt": 6e-323,
+            "linkSize": 1.1532330947971336e-123,
+            "linkTo": 4,
+            "bookmark": true,
+            "marks": []
+          }
+        ],
+        "bookmark": false
+      }
+    ],
+    "footnotes": {
+      "page": true,
+      "styles": 2
+    },
+    "columns": [
+      {
+        "page": false,
+        "count": 1,
+        "gap": 0,
+        "fill": 3,
+        "at": 2.0945760315885575e-219,
+        "size": 992,
+        "span": -1
+      },
+      null
+    ]
+  }
+}

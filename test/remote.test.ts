@@ -13,7 +13,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { DocumentNode } from '@react-pdf/layout'
+import type { DocumentNode } from '../src/runtime/server/engine/layout/index'
 import {
   afterAll,
   beforeAll,
@@ -27,18 +27,18 @@ import {
   normalizeRemoteAssetPolicy,
   type RemoteAssetPolicy,
 } from '../src/runtime/server/assets/remote'
-import { resolvePdfImageAssets } from '../src/runtime/server/assets/resolve-asset'
+import { resolvePdfImageAssets } from '../src/runtime/server/assets/resolve-images'
 import {
   createRenderLimits,
   DEFAULT_PDF_RENDER_LIMITS,
 } from '../src/runtime/server/render-limits'
-import { renderDocument } from '../src/runtime/server/engine/render-document'
+import { renderDocument } from './engine-render'
 import { createPdfFontStore } from '../src/runtime/server/engine/fonts'
 import type {
   PdfDocumentNode,
   PdfElementNode,
 } from '../src/runtime/renderer/types'
-import { PDF_PRIMITIVES } from '../src/runtime/authoring'
+import { PDF_PRIMITIVES } from '../src/runtime/primitives'
 
 // The remote policy is https-only, so the fixtures are served over a real TLS
 // loopback with a per-run self-signed cert. Client verification is disabled
@@ -290,7 +290,7 @@ describe('remote allowlist matching', () => {
     expect(() => normalizeRemoteAssetPolicy({
       allow: ['https://cdn.example.com/'],
       timeoutMs: 0,
-    })).toThrow(/positive safe integer/)
+    })).toThrow('pdf.remote.timeoutMs must be a whole number from 1 to 2,147,483,647 ms, found 0.')
     expect(() => normalizeRemoteAssetPolicy({
       allow: ['https://cdn.example.com/'],
       maxImageBytes: 1,
@@ -304,12 +304,11 @@ describe('remote images', () => {
     const node = image({ src: `${origin}/sample-png` })
     const document = documentWith(node)
 
-    const resolved = await resolvePdfImageAssets(document, {
+    await resolvePdfImageAssets(document, {
       assets: {},
       remote: policyFor(),
     })
 
-    expect(resolved).toBe(document)
     const source = resolvedSource(node)
     expect(Buffer.isBuffer(source)).toBe(true)
     expect(source.equals(SAMPLE_PNG)).toBe(true)
@@ -377,7 +376,7 @@ describe('remote images', () => {
     await expectAssetError(
       resolvePdfImageAssets(documentWith(image({ src: `${origin}/declared-oversized` })), {
         assets: {},
-        limits: imageLimits({ maxImageBytes: 1024 }),
+        limits: imageLimits({ maxTotalImageBytes: 1024 }),
         remote: policyFor(),
       }),
       'PDF_LIMIT_EXCEEDED',
@@ -390,7 +389,7 @@ describe('remote images', () => {
     await expectAssetError(
       resolvePdfImageAssets(documentWith(image({ src: `${origin}/streamed-oversized` })), {
         assets: {},
-        limits: imageLimits({ maxImageBytes: 512 }),
+        limits: imageLimits({ maxTotalImageBytes: 512 }),
         remote: policyFor(),
       }),
       'PDF_LIMIT_EXCEEDED',
@@ -430,11 +429,14 @@ describe('remote images', () => {
     expect(requests).toHaveLength(0)
   })
 
+  // Pins the request count of a render: a URL repeated in either source form
+  // is one request and one buffer.
   it('shares a repeated URL buffer within one render but isolates renders', async () => {
     requests = []
     const firstImages = [
       image({ src: `${origin}/sample-png` }),
       image({ src: `${origin}/sample-png` }),
+      image({ src: { uri: `${origin}/sample-png` } }),
     ]
     const firstDocument = documentWith(...firstImages)
     const secondImage = image({ src: `${origin}/sample-png` })
@@ -447,6 +449,7 @@ describe('remote images', () => {
 
     const first = resolvedSource(firstImages[0]!)
     expect(resolvedSource(firstImages[1]!)).toBe(first)
+    expect(resolvedSource(firstImages[2]!)).toBe(first)
     const rendered = await renderDocument(firstDocument as unknown as DocumentNode)
     expect(Buffer.from(rendered.bytes.subarray(0, 5)).toString('ascii')).toBe('%PDF-')
 
@@ -459,6 +462,16 @@ describe('remote images', () => {
     expect(resolvedSource(secondImage)).not.toBe(first)
   })
 
+  it('blocks request options on a URL that another image already resolved', async () => {
+    await expectAssetError(
+      resolvePdfImageAssets(documentWith(
+        image({ src: { uri: `${origin}/sample-png` } }),
+        image({ src: { uri: `${origin}/sample-png`, headers: { authorization: 'secret' } } }),
+      ), { assets: {}, remote: policyFor() }),
+      'PDF_ASSET_BLOCKED',
+    )
+  })
+
   it('aborts a hanging endpoint within the timeout', async () => {
     await expectAssetError(
       resolvePdfImageAssets(documentWith(image({ src: `${origin}/hang` })), {
@@ -469,7 +482,7 @@ describe('remote images', () => {
     )
   }, 5000)
 
-  it('enforces render-wide request and concurrency budgets', async () => {
+  it('enforces the render-wide request budget and a fixed concurrency of 4', async () => {
     await expectAssetError(
       resolvePdfImageAssets(documentWith(
         image({ src: `${origin}/redirect-internal` }),
@@ -488,10 +501,9 @@ describe('remote images', () => {
         image({ src: `${origin}/slow-png?case=${index}` })),
     ), {
       assets: {},
-      limits: imageLimits({ maxRemoteConcurrency: 2 }),
       remote: policyFor(),
     })
-    expect(peakActiveRequests).toBe(2)
+    expect(peakActiveRequests).toBe(4)
   })
 
   it('uses a fixed three-redirect maximum', async () => {

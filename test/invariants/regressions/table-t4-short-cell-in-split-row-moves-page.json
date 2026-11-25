@@ -1,0 +1,86 @@
+{
+  "profile": "table",
+  "invariants": [
+    "I5"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 20,
+    "rule": "documents"
+  },
+  "note": "T4 family, fixed in TB1: in a split row, a cell with two lines that fit sat on the next page, under a header left alone. Cause: the row stretches the cell box to the row height, so the cell crossed the page end although its lines did not. splitRowNodes measures a text cell by its lines (rowChildEnd), and a row part with nothing left to show is not created (splitView, no next part). Found when the H3 T4 avoidance was removed (table document 20), reduced in 70 steps.",
+  "raw": {
+    "pages": [
+      {
+        "size": 0,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixed": [],
+        "children": [],
+        "bookmark": false
+      },
+      {
+        "size": 5,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          42,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "table",
+            "font": 1,
+            "columns": [
+              {
+                "kind": 1,
+                "value": 0
+              },
+              {
+                "kind": 1,
+                "value": 0
+              }
+            ],
+            "header": true,
+            "headerCells": [],
+            "rows": [
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 3,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  },
+                  {
+                    "n": 39,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              }
+            ],
+            "marginTop": 3,
+            "marginBottom": 0
+          }
+        ],
+        "bookmark": false
+      }
+    ]
+  }
+}

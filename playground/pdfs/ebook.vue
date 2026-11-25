@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { Ebook } from '../shared/ebook'
 import { sampleEbook, shortEbook, splitLeadIn } from '../shared/ebook'
-import DotLeader from './components/common/DotLeader.vue'
+import EbookContents from './components/ebook/EbookContents.vue'
+import EbookCover from './components/ebook/EbookCover.vue'
+import EbookTitlePage from './components/ebook/EbookTitlePage.vue'
+import { ebookTheme } from './components/theme'
 
 defineOptions({ name: 'EbookPdf' })
 
@@ -9,25 +12,6 @@ type EbookProps = { ebook: Ebook }
 
 const props = defineProps<EbookProps>()
 const ebook = props.ebook
-
-// Auto-imported. Reading it turns on the multi-pass layout loop: every chapter
-// anchor's resolved page flows back here, feeding BOTH the Contents dot-leaders
-// and the chapter-aware running foot below. On the first pass the map is empty,
-// so the Contents fall back to blanks and the foot to the opening chapter.
-const pageNumbers = usePdfPageNumbers()
-
-// The showcase move: derive the CURRENT chapter for any page from the resolved
-// start-page map. The running foot's :render closes over this, so the same one
-// callback prints the right chapter on every page it repeats onto — the chapter
-// is read from measured pagination, never hard-coded per page.
-const chapterAt = (pageNumber: number): Ebook['chapters'][number] => {
-  let current = ebook.chapters[0]!
-  for (const chapter of ebook.chapters) {
-    const start = pageNumbers[chapter.id]
-    if (typeof start === 'number' && start <= pageNumber) current = chapter
-  }
-  return current
-}
 
 // Precompute the small-caps lead-in split (first four words, uppercased) and the
 // remaining body once per chapter, so the template stays declarative.
@@ -37,57 +21,6 @@ const chapters = ebook.chapters.map((chapter, index) => ({
   lead: splitLeadIn(chapter.paragraphs[0] ?? ''),
   body: chapter.paragraphs.slice(1),
 }))
-
-const ink = '#1A2026'
-const softInk = '#5A636A'
-const accent = '#3E5C5A'
-const numeralTint = '#D6DDD8'
-const coverInk = '#141A1E'
-const coverPaper = '#E8E4DA'
-const coverGold = '#B8A06A'
-
-// A stand of thin reeds for the cover mark — ruled strokes, no clip art.
-const reeds = [
-  { x: 10, top: 30 },
-  { x: 22, top: 12 },
-  { x: 34, top: 24 },
-  { x: 46, top: 6 },
-  { x: 58, top: 20 },
-  { x: 70, top: 34 },
-  { x: 82, top: 16 },
-  { x: 94, top: 28 },
-]
-
-const contentPage = {
-  backgroundColor: '#FFFFFF',
-  color: ink,
-  paddingBottom: 60,
-  paddingHorizontal: 58,
-  paddingTop: 60,
-} as const
-
-const chapterPage = {
-  ...contentPage,
-  paddingBottom: 62,
-  paddingTop: 68,
-} as const
-
-const bodyStyle = {
-  color: ink,
-  fontFamily: 'Lora',
-  fontSize: 10.5,
-  lineHeight: 1.62,
-  marginBottom: 9,
-  textAlign: 'left',
-} as const
-
-const leadStyle = {
-  color: ink,
-  fontFamily: 'Inter',
-  fontSize: 9.5,
-  fontWeight: 600,
-  letterSpacing: 1.4,
-} as const
 
 definePdf<EbookProps>({
   title: ({ ebook }) => ebook.title,
@@ -103,346 +36,202 @@ definePdf<EbookProps>({
 <template>
   <PdfDocument
     :author="ebook.author"
+    :conformance="['PDF/A-3a', 'PDF/UA-1']"
     creator="Nuxt PDF"
     :subject="ebook.subtitle"
-    :title="ebook.title"
   >
-    <!-- 1 · Cover — full-bleed deep ink, no running matter -->
+    <!-- 1 · Cover and 2 · title page without running matter, 3 · contents
+         with the page each chapter starts on (PdfPageRef). -->
+    <EbookCover :ebook="ebook" />
+    <EbookTitlePage :ebook="ebook" />
+    <EbookContents :ebook="ebook" />
+
+    <!-- 4 · The body: one flow in which each chapter starts a new page. The
+         running head and the chapter's foot repeat on every page. -->
     <PdfPage
       :size="[396, 612]"
-      :style="{ backgroundColor: coverInk, color: coverPaper, padding: 0 }"
+      class="page body-page"
     >
-      <PdfView
-        :style="{
-          flex: 1,
-          justifyContent: 'space-between',
-          paddingHorizontal: 54,
-          paddingVertical: 64,
-        }"
-      >
-        <PdfView :style="{ alignItems: 'flex-start' }">
-          <PdfText
-            :style="{
-              color: coverGold,
-              fontFamily: 'Inter',
-              fontSize: 8,
-              fontWeight: 600,
-              letterSpacing: 2.6,
-            }"
-          >
-            {{ ebook.imprint.toUpperCase() }}
-          </PdfText>
-          <PdfView :style="{ backgroundColor: coverGold, height: 0.75, marginTop: 14, width: 54 }" />
-        </PdfView>
-
-        <PdfView>
-          <PdfText
-            :style="{
-              color: coverPaper,
-              fontFamily: 'Lora',
-              fontSize: 52,
-              fontWeight: 700,
-              letterSpacing: -0.5,
-              lineHeight: 1.02,
-            }"
-          >
-            {{ ebook.title }}
-          </PdfText>
-          <PdfText
-            :style="{
-              color: coverPaper,
-              fontFamily: 'Lora',
-              fontSize: 14,
-              fontStyle: 'italic',
-              marginTop: 16,
-              opacity: 0.82,
-            }"
-          >
-            {{ ebook.subtitle }}
-          </PdfText>
-        </PdfView>
-
-        <PdfView
-          :style="{
-            alignItems: 'flex-end',
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-          }"
-        >
-          <PdfView>
-            <PdfText
-              :style="{
-                color: coverGold,
-                fontFamily: 'Inter',
-                fontSize: 7.5,
-                fontWeight: 500,
-                letterSpacing: 1.8,
-                marginBottom: 6,
-              }"
-            >
-              WRITTEN BY
-            </PdfText>
-            <PdfText :style="{ color: coverPaper, fontFamily: 'Lora', fontSize: 15 }">
-              {{ ebook.author }}
-            </PdfText>
-          </PdfView>
-
-          <PdfSvg
-            :style="{ height: 88, width: 104 }"
-            viewBox="0 0 104 88"
-          >
-            <PdfLine
-              v-for="reed in reeds"
-              :key="reed.x"
-              :x1="reed.x"
-              :y1="reed.top"
-              :x2="reed.x"
-              y2="62"
-              :stroke="coverPaper"
-              stroke-width="0.75"
-              stroke-linecap="round"
-            />
-            <PdfCircle
-              v-for="reed in reeds"
-              :key="`h-${reed.x}`"
-              :cx="reed.x"
-              :cy="reed.top"
-              r="1.4"
-              :fill="coverGold"
-            />
-            <PdfLine
-              x1="0"
-              y1="62"
-              x2="104"
-              y2="62"
-              :stroke="coverGold"
-              stroke-width="0.75"
-            />
-            <PdfLine
-              v-for="reed in reeds"
-              :key="`r-${reed.x}`"
-              :x1="reed.x"
-              y1="62"
-              :x2="reed.x"
-              :y2="62 + (62 - reed.top) * 0.32"
-              :stroke="coverPaper"
-              stroke-width="0.4"
-              stroke-opacity="0.35"
-              stroke-linecap="round"
-            />
-          </PdfSvg>
-        </PdfView>
-      </PdfView>
-    </PdfPage>
-
-    <!-- 2 · Title page + colophon — quiet, no running matter -->
-    <PdfPage
-      :size="[396, 612]"
-      :style="contentPage"
-    >
-      <PdfView :style="{ flex: 1, justifyContent: 'center' }">
-        <PdfText
-          :style="{ color: ink, fontFamily: 'Lora', fontSize: 30, fontWeight: 700, lineHeight: 1.08 }"
-        >
-          {{ ebook.title }}
-        </PdfText>
-        <PdfText
-          :style="{ color: softInk, fontFamily: 'Lora', fontSize: 12.5, fontStyle: 'italic', marginTop: 10 }"
-        >
-          {{ ebook.subtitle }}
-        </PdfText>
-        <PdfView :style="{ backgroundColor: accent, height: 0.75, marginTop: 20, width: 40 }" />
-        <PdfText
-          :style="{ color: ink, fontFamily: 'Inter', fontSize: 10, fontWeight: 500, letterSpacing: 0.4, marginTop: 20 }"
-        >
-          {{ ebook.author }}
-        </PdfText>
-      </PdfView>
-
-      <PdfView :style="{ borderTopColor: '#E2E5E1', borderTopWidth: 0.75, paddingTop: 16 }">
-        <PdfText
-          v-for="(line, index) in ebook.colophon"
-          :key="index"
-          :style="{ color: softInk, fontFamily: 'Inter', fontSize: 7.5, lineHeight: 1.55, marginBottom: 2 }"
-        >
-          {{ line }}
-        </PdfText>
-        <PdfText
-          :style="{ color: '#93999A', fontFamily: 'Inter', fontSize: 7.5, letterSpacing: 1.4, marginTop: 8 }"
-        >
-          {{ ebook.imprint.toUpperCase() }} · {{ ebook.year }}
-        </PdfText>
-      </PdfView>
-    </PdfPage>
-
-    <!-- 3 · Contents — roman-quiet, dot leaders, resolved page numbers, links -->
-    <PdfPage
-      :size="[396, 612]"
-      :style="contentPage"
-    >
-      <PdfText
-        :style="{ color: accent, fontFamily: 'Inter', fontSize: 8, fontWeight: 600, letterSpacing: 2.4, marginBottom: 6 }"
-      >
-        CONTENTS
-      </PdfText>
-      <PdfView :style="{ backgroundColor: '#E2E5E1', height: 0.75, marginBottom: 26 }" />
-
-      <PdfLink
-        v-for="chapter in ebook.chapters"
-        :key="chapter.id"
-        :href="`#${chapter.id}`"
-        :style="{ color: ink, marginBottom: 20, textDecoration: 'none' }"
-      >
-        <PdfView :style="{ alignItems: 'flex-end', flexDirection: 'row' }">
-          <PdfText
-            :style="{ color: accent, fontFamily: 'Lora', fontSize: 10, fontStyle: 'italic', width: 26 }"
-          >
-            {{ chapter.numeral }}
-          </PdfText>
-          <PdfText :style="{ color: ink, fontFamily: 'Lora', fontSize: 12.5 }">
-            {{ chapter.title }}
-          </PdfText>
-          <DotLeader
-            :baseline="3.5"
-            :gap="8"
-            color="#C9CFCB"
-            :width="0.75"
-          />
-          <PdfText :style="{ color: softInk, fontFamily: 'Inter', fontSize: 10 }">
-            {{ pageNumbers[chapter.id] ?? '' }}
-          </PdfText>
-        </PdfView>
-      </PdfLink>
-    </PdfPage>
-
-    <!-- 4 · The book body — one continuous flow; chapters break to a fresh page.
-         The running header (book identity) and the chapter-aware foot repeat per
-         page of this single PdfPage. -->
-    <PdfPage
-      :size="[396, 612]"
-      :style="chapterPage"
-    >
-      <!-- running header: static book identity -->
       <PdfView
         fixed
-        :style="{
-          alignItems: 'baseline',
-          borderBottomColor: '#EAEDEA',
-          borderBottomWidth: 0.5,
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          left: 58,
-          paddingBottom: 8,
-          position: 'absolute',
-          right: 58,
-          top: 38,
-        }"
+        class="running-head"
       >
-        <PdfText :style="{ color: '#9AA0A0', fontFamily: 'Inter', fontSize: 6.5, fontWeight: 600, letterSpacing: 1.8 }">
-          {{ ebook.title.toUpperCase() }}
+        <PdfText class="running-title">
+          {{ ebook.title }}
         </PdfText>
-        <PdfText :style="{ color: '#9AA0A0', fontFamily: 'Inter', fontSize: 6.5, letterSpacing: 1.2 }">
+        <PdfText class="running-author">
           {{ ebook.author }}
         </PdfText>
       </PdfView>
 
-      <!-- Each chapter's id/bookmark wrapper anchors the destination + outline
-           entry at its true start page, even after the body flows across pages.
-           The resolved page of this id is what the Contents and the foot read. -->
+      <!-- The chapter's id and bookmark point at the page where it starts.
+           flexGrow fills its last page, so the foot sits at the page bottom. -->
       <PdfView
         v-for="chapter in chapters"
         :id="chapter.id"
         :key="chapter.id"
         :break="!chapter.first"
         :bookmark="chapter.title"
-        :min-presence-ahead="150"
+        class="chapter"
+        tag="section"
       >
-        <PdfView :style="{ marginBottom: 22, marginTop: chapter.first ? 0 : 4 }">
-          <PdfText
-            :style="{
-              color: numeralTint,
-              fontFamily: 'Lora',
-              fontSize: 74,
-              fontWeight: 700,
-              lineHeight: 1,
-              marginBottom: 2,
-            }"
-          >
-            {{ chapter.numeral }}
+        <!-- A fixed node repeats on every page its parent spans, so each
+             chapter prints its own title next to the page number. -->
+        <PdfText
+          fixed
+          class="running-foot"
+        >
+          {{ chapter.title }}   ·   <PdfPageNumber />
+        </PdfText>
+
+        <PdfView :class="['chapter-head', { 'chapter-head-following': !chapter.first }]">
+          <PdfText class="chapter-label">
+            Chapter {{ chapter.numeral }}
           </PdfText>
           <PdfText
-            :style="{
-              color: accent,
-              fontFamily: 'Inter',
-              fontSize: 7.5,
-              fontWeight: 600,
-              letterSpacing: 2,
-              marginBottom: 7,
-            }"
-          >
-            CHAPTER {{ chapter.numeral }}
-          </PdfText>
-          <PdfText
-            :style="{
-              color: ink,
-              fontFamily: 'Lora',
-              fontSize: 21,
-              fontWeight: 700,
-              lineHeight: 1.12,
-              marginBottom: 8,
-            }"
+            class="chapter-title"
+            tag="h2"
           >
             {{ chapter.title }}
           </PdfText>
-          <PdfText
-            :style="{
-              color: softInk,
-              fontFamily: 'Lora',
-              fontSize: 11,
-              fontStyle: 'italic',
-              lineHeight: 1.4,
-              maxWidth: 250,
-            }"
-          >
+          <PdfText class="standfirst">
             {{ chapter.standfirst }}
           </PdfText>
-          <PdfView :style="{ backgroundColor: accent, height: 0.75, marginTop: 16, width: 44 }" />
         </PdfView>
 
-        <!-- First paragraph carries the small-caps lead-in (letterSpacing, not a
-             fake drop cap — the engine keeps the baseline). Kept on one line so
-             no stray whitespace splits the lead-in from the body run. -->
+        <!-- The first paragraph opens with a letter-spaced lead-in; one line,
+             so no whitespace splits the lead-in from the text. -->
         <!-- eslint-disable-next-line vue/max-attributes-per-line, vue/singleline-html-element-content-newline -->
-        <PdfText :style="bodyStyle" :orphans="2" :widows="2"><PdfText :style="leadStyle">{{ chapter.lead.lead }}</PdfText>{{ chapter.lead.rest }}</PdfText>
+        <PdfText class="paragraph" :orphans="2" :widows="2"><PdfText class="lead-in">{{ chapter.lead.lead }}</PdfText>{{ chapter.lead.rest }}</PdfText>
 
         <PdfText
           v-for="(paragraph, index) in chapter.body"
           :key="index"
           :orphans="2"
-          :style="bodyStyle"
+          class="paragraph"
           :widows="2"
         >
           {{ paragraph }}
         </PdfText>
       </PdfView>
-
-      <!-- chapter-aware running foot: current chapter title next to the folio,
-           both derived from the resolved page map via chapterAt(). -->
-      <PdfText
-        fixed
-        :render="({ pageNumber }) => `${chapterAt(pageNumber).title}   ·   ${pageNumber}`"
-        :style="{
-          bottom: 38,
-          color: softInk,
-          fontFamily: 'Inter',
-          fontSize: 8,
-          left: 58,
-          letterSpacing: 0.6,
-          position: 'absolute',
-          right: 58,
-          textAlign: 'center',
-        }"
-      />
     </PdfPage>
   </PdfDocument>
 </template>
+
+<style>
+/* The e-book's own look (ebookTheme in components/theme.ts): Cormorant for
+   the display lines, Literata for the reading text. */
+:root {
+  --paper: v-bind('ebookTheme.paper');
+  --ink: v-bind('ebookTheme.ink');
+  --muted: v-bind('ebookTheme.muted');
+  --hairline: v-bind('ebookTheme.hairline');
+  --accent: v-bind('ebookTheme.accent');
+  --display: v-bind('ebookTheme.display');
+  --reading: v-bind('ebookTheme.reading');
+  --page-margin: 54pt;
+}
+
+.page {
+  hyphens: auto;
+  text-wrap: pretty;
+  padding: 60pt var(--page-margin);
+  font-family: var(--reading);
+  color: var(--ink);
+  background-color: var(--paper);
+}
+
+.body-page {
+  padding-top: 68pt;
+  padding-bottom: 62pt;
+}
+
+.running-head {
+  position: absolute;
+  top: 36pt;
+  right: var(--page-margin);
+  left: var(--page-margin);
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 7pt;
+  border-bottom: 0.75pt solid var(--hairline);
+}
+
+.running-title {
+  font-family: var(--display);
+  font-size: 9pt;
+  font-style: italic;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.running-author {
+  font-size: 7pt;
+  color: var(--muted);
+}
+
+.chapter {
+  flex-grow: 1;
+}
+
+.running-foot {
+  position: absolute;
+  right: 0;
+  bottom: -24pt;
+  left: 0;
+  font-size: 7.5pt;
+  text-align: center;
+  color: var(--muted);
+}
+
+.chapter-head {
+  margin-bottom: 20pt;
+  padding-bottom: 16pt;
+  border-bottom: 0.75pt solid var(--hairline);
+}
+
+.chapter-head-following {
+  margin-top: 4pt;
+}
+
+.chapter-label {
+  margin-bottom: 6pt;
+  font-family: var(--display);
+  font-size: 13pt;
+  font-style: italic;
+  font-weight: 500;
+  color: var(--accent);
+}
+
+.chapter-title {
+  margin-bottom: 8pt;
+  font-family: var(--display);
+  font-size: 30pt;
+  font-weight: 500;
+  line-height: 1.05;
+}
+
+.standfirst {
+  max-width: 260pt;
+  font-size: 10pt;
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.paragraph {
+  margin-bottom: 8pt;
+  font-size: 10pt;
+  line-height: 1.6;
+  text-align: justify;
+  color: var(--ink);
+}
+
+.lead-in {
+  font-size: 8.5pt;
+  font-weight: 600;
+  letter-spacing: 0.6pt;
+  color: var(--ink);
+}
+</style>

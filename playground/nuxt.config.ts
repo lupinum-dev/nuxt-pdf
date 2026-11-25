@@ -19,6 +19,16 @@ export default defineNuxtConfig({
       { family: 'Lora', src: 'Lora-400-italic.ttf', fontWeight: 400, fontStyle: 'italic' },
       { family: 'Lora', src: 'Lora-600.ttf', fontWeight: 600 },
       { family: 'Lora', src: 'Lora-700.ttf', fontWeight: 700 },
+
+      // Cormorant — the display serif of the menu, certificate and e-book.
+      { family: 'Cormorant', src: 'Cormorant-500.ttf', fontWeight: 500 },
+      { family: 'Cormorant', src: 'Cormorant-500-italic.ttf', fontWeight: 500, fontStyle: 'italic' },
+      { family: 'Cormorant', src: 'Cormorant-600.ttf', fontWeight: 600 },
+
+      // Literata — the reading serif of the e-book, article and menu.
+      { family: 'Literata', src: 'Literata-400.otf', fontWeight: 400 },
+      { family: 'Literata', src: 'Literata-400-italic.otf', fontWeight: 400, fontStyle: 'italic' },
+      { family: 'Literata', src: 'Literata-600.otf', fontWeight: 600 },
     ],
   },
 })

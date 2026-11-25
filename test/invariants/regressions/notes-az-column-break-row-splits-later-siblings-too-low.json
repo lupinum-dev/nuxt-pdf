@@ -1,0 +1,309 @@
+{
+  "profile": "notes",
+  "invariants": [
+    "G1"
+  ],
+  "origin": {
+    "seed": 19,
+    "index": 128,
+    "rule": "documents"
+  },
+  "note": "Found in the notes profile with column breaks (seed 19, document 128). Reduced form: page 2 (A4 landscape) holds a view with three auto-fill columns and 4 pt of bottom padding, with a text of 15 tokens (10 pt, lineHeight 2: two lines, 40 pt) and a text of 118 tokens with break=\"column\"; after the view comes a view of nested views with one-word texts. The break sends the second text to column 2, so the filled row is as high as that column, 40 pt lower than the galley that stacks both texts. Pagination keeps the filled row (split-stack.ts:288-293, `withFilledRows`) but splits the siblings after it at their tops from the stacked layout (split-stack.ts:137, `topOf(child)`), 40 pt too low. w163 (one 24 pt line with 51 pt of edges above it) needs 75 pt; 115.0 pt are left under w162, the split sees 115.0 - 40.0 = 75.0 and moves the line to page 3. Without the break, or without the 4 pt padding, it stays. Not fixed.",
+  "raw": {
+    "pages": [
+      {
+        "size": 0,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixed": [],
+        "children": [],
+        "bookmark": false
+      },
+      {
+        "size": 0,
+        "landscape": true,
+        "padding": [
+          0,
+          49,
+          35,
+          4
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "text",
+            "n": 15,
+            "font": 2,
+            "lineHeight": 4,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": [
+              {
+                "at": 0,
+                "n": 12
+              }
+            ]
+          },
+          {
+            "t": "text",
+            "n": 118,
+            "font": 0,
+            "lineHeight": 2,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": []
+          },
+          {
+            "t": "view",
+            "margin": [
+              16,
+              0,
+              0,
+              0
+            ],
+            "padding": [
+              8,
+              0,
+              0,
+              0
+            ],
+            "border": 4,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "view",
+                "margin": [
+                  2,
+                  0,
+                  0,
+                  0
+                ],
+                "padding": [
+                  9,
+                  0,
+                  0,
+                  0
+                ],
+                "border": 0,
+                "minHeight": 0,
+                "wrap": true,
+                "brk": false,
+                "children": [
+                  {
+                    "t": "text",
+                    "n": 1,
+                    "font": 0,
+                    "lineHeight": 0,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 6,
+                    "marginBottom": 11,
+                    "extra": 0,
+                    "ref": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0,
+                    "bookmark": false,
+                    "marks": []
+                  },
+                  {
+                    "t": "text",
+                    "n": 1,
+                    "font": 1,
+                    "lineHeight": 4,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 4,
+                    "marginBottom": 14,
+                    "extra": 0,
+                    "ref": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0,
+                    "bookmark": false,
+                    "marks": [
+                      {
+                        "at": 0,
+                        "n": 1
+                      }
+                    ]
+                  },
+                  {
+                    "t": "view",
+                    "margin": [
+                      8,
+                      0,
+                      10,
+                      0
+                    ],
+                    "padding": [
+                      4,
+                      0,
+                      9,
+                      0
+                    ],
+                    "border": 0,
+                    "minHeight": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "children": [
+                      {
+                        "t": "text",
+                        "n": 1,
+                        "font": 4,
+                        "lineHeight": 4,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 5,
+                        "marginBottom": 19,
+                        "extra": 0,
+                        "ref": 0,
+                        "link": 0,
+                        "linkAt": 0,
+                        "linkSize": 0,
+                        "linkTo": 0,
+                        "bookmark": false,
+                        "marks": []
+                      },
+                      {
+                        "t": "text",
+                        "n": 1,
+                        "font": 4,
+                        "lineHeight": 0,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 5,
+                        "marginBottom": 21,
+                        "extra": 0,
+                        "ref": 0,
+                        "link": 0,
+                        "linkAt": 0,
+                        "linkSize": 0,
+                        "linkTo": 0,
+                        "bookmark": false,
+                        "marks": []
+                      },
+                      {
+                        "t": "text",
+                        "n": 1,
+                        "font": 4,
+                        "lineHeight": 4,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 2,
+                        "marginBottom": 15,
+                        "extra": 0,
+                        "ref": 0,
+                        "link": 0,
+                        "linkAt": 0,
+                        "linkSize": 0,
+                        "linkTo": 0,
+                        "bookmark": false,
+                        "marks": []
+                      }
+                    ],
+                    "bookmark": false
+                  },
+                  {
+                    "t": "text",
+                    "n": 1,
+                    "font": 4,
+                    "lineHeight": 4,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 17,
+                    "marginBottom": 0,
+                    "extra": 0,
+                    "ref": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0,
+                    "bookmark": false,
+                    "marks": []
+                  }
+                ],
+                "bookmark": false
+              }
+            ],
+            "bookmark": false
+          }
+        ],
+        "bookmark": false
+      }
+    ],
+    "footnotes": {
+      "page": false,
+      "styles": 0
+    },
+    "columns": [
+      {
+        "page": false,
+        "count": 0,
+        "gap": 0,
+        "fill": 0,
+        "at": 0,
+        "size": 0,
+        "span": 0,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "breaks": 0
+      },
+      {
+        "page": false,
+        "count": 1,
+        "gap": 4,
+        "fill": 0,
+        "at": 0,
+        "size": 79,
+        "span": -1,
+        "padding": [
+          0,
+          3,
+          4,
+          15
+        ],
+        "breaks": 18
+      }
+    ]
+  }
+}

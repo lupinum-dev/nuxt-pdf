@@ -1,49 +1,18 @@
+import { Buffer } from 'node:buffer'
 import { defineComponent, h } from 'vue'
 import { describe, expect, it } from 'vitest'
-import React from 'react'
-import {
-  Document as ReactDocument,
-  Link as ReactLink,
-  Page as ReactPage,
-  Text as ReactText,
-  View as ReactView,
-  renderToBuffer as renderReactDocument,
-} from '@react-pdf/renderer'
-import type { DocumentNode } from '@react-pdf/layout'
-import {
-  PdfDocument,
-  PdfLink,
-  PdfPage,
-  PdfText,
-  PdfView,
-} from '../src/runtime/components'
+import type { DocumentNode } from '../src/runtime/server/engine/layout/index'
+import { PDF_COMPONENTS } from '../src/runtime/components'
 import { mountPdfComponent } from '../src/runtime/renderer'
-import { renderDocument } from '../src/runtime/server/engine/render-document'
+import { renderDocument } from './engine-render'
 import { installPdfCanvasGlobals, parsePdf } from '../src/test/pdf'
+import { renderPreparedPdfTemplate } from '../src/test/render-template'
 
-// Paired React/Vue internal-link fixture. The link targets sit on small,
-// non-splitting heading nodes so React PDF (whose named-destination table is
-// last-writer-wins) and Vue (first-writer-wins) agree, letting React serve as
-// the oracle for the LINK mechanics. Rendered single-pass on both sides — the
-// targets' pages are fixed, so no page-number feedback is involved.
+const { PdfDocument, PdfLink, PdfPage, PdfText, PdfView } = PDF_COMPONENTS
+
+// Internal links: the targets sit on small, non-splitting heading nodes on
+// pages of their own, so each destination page is fixed.
 const TARGETS = ['alpha', 'beta'] as const
-
-const rh = React.createElement
-
-const createReactDoc = (): React.ReactElement => rh(
-  ReactDocument,
-  {},
-  rh(
-    ReactPage,
-    { size: 'A4', style: { padding: 40 } },
-    ...TARGETS.map(id => rh(ReactLink, { key: id, href: `#${id}`, style: { fontSize: 14, marginBottom: 8 } }, `Jump to ${id}`)),
-  ),
-  ...TARGETS.map(id => rh(
-    ReactPage,
-    { key: id, size: 'A4', style: { padding: 40 } },
-    rh(ReactView, { id }, rh(ReactText, { style: { fontSize: 20 } }, `HEADING ${id}`)),
-  )),
-)
 
 const VueDoc = defineComponent({
   name: 'InternalLinkDoc',
@@ -90,12 +59,8 @@ const destinationPageNumbers = async (
   }
 }
 
-describe('internal links (paired React/Vue)', () => {
-  it('emits matching link annotations and named destinations', async () => {
-    const reactBytes = new Uint8Array(await renderReactDocument(
-      createReactDoc() as Parameters<typeof renderReactDocument>[0],
-    ))
-
+describe('internal links', () => {
+  it('emits link annotations to named destinations on their pages', async () => {
     const mounted = await mountPdfComponent(VueDoc, {})
     let vueBytes: Uint8Array
     try {
@@ -105,29 +70,18 @@ describe('internal links (paired React/Vue)', () => {
       mounted.unmount()
     }
 
-    const [reactPdf, vuePdf] = await Promise.all([parsePdf(reactBytes), parsePdf(vueBytes)])
-
-    const reactLinks = reactPdf.pages.flatMap(p => p.annotations).filter(a => a.subtype === 'Link')
+    const vuePdf = await parsePdf(vueBytes)
     const vueLinks = vuePdf.pages.flatMap(p => p.annotations).filter(a => a.subtype === 'Link')
 
-    // Both target the same named destinations by id.
     expect(vueLinks.map(a => a.destination).sort()).toEqual([...TARGETS])
-    expect(vueLinks.map(a => a.destination).sort()).toEqual(reactLinks.map(a => a.destination).sort())
-
-    // Both resolve those destinations to the same pages.
-    const [reactDest, vueDest] = await Promise.all([
-      destinationPageNumbers(reactBytes),
-      destinationPageNumbers(vueBytes),
-    ])
-    expect(vueDest).toEqual(reactDest)
-    expect(vueDest).toEqual({ alpha: 2, beta: 3 })
+    expect(await destinationPageNumbers(vueBytes)).toEqual({ alpha: 2, beta: 3 })
   }, 20_000)
 })
 
-// Vue-only destination anchoring on the SINGLE-pass path (the shipped path for
-// link-only documents). React PDF cannot be the oracle here: its destination
-// table is last-writer-wins, the exact behavior these tests reject.
-describe('single-pass destination anchoring', () => {
+// Destination anchoring. The page-spanning case is in
+// test/page-primitives.test.ts, the unresolved destination in
+// test/renderer.test.ts.
+describe('destination anchoring', () => {
   const renderVue = async (component: Parameters<typeof mountPdfComponent>[0]) => {
     const mounted = await mountPdfComponent(component, {})
     try {
@@ -137,37 +91,6 @@ describe('single-pass destination anchoring', () => {
       mounted.unmount()
     }
   }
-
-  it('anchors a page-spanning id at its first page without multi-pass', async () => {
-    const SpanningDoc = defineComponent({
-      name: 'SpanningDoc',
-      setup() {
-        return () =>
-          h(PdfDocument, {}, {
-            default: () => [
-              h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
-                default: () => h(PdfLink, { href: '#long', style: { fontSize: 14 } }, { default: () => 'Jump to long' }),
-              }),
-              h(PdfPage, { size: 'A4', style: { padding: 40 } }, {
-                default: () => h(PdfView, { id: 'long' }, {
-                  default: () => Array.from({ length: 80 }, (_, i) =>
-                    h(PdfText, { style: { fontSize: 12, marginBottom: 4 } }, { default: () => `long line ${i + 1}` }),
-                  ),
-                }),
-              }),
-            ],
-          })
-      },
-    })
-
-    const bytes = await renderVue(SpanningDoc)
-    const parsed = await parsePdf(bytes)
-    const startPage = parsed.pages.find(p => p.text.includes('long line 1'))!.number
-    const endPage = parsed.pages.find(p => p.text.includes('long line 80'))!.number
-    expect(endPage).toBeGreaterThan(startPage)
-
-    expect(await destinationPageNumbers(bytes, ['long'])).toEqual({ long: startPage })
-  }, 20_000)
 
   it('keeps the destination of a fixed node repeated on every page', async () => {
     // Pagination reuses ONE node object (and props object) for a fixed node on
@@ -202,23 +125,47 @@ describe('single-pass destination anchoring', () => {
     // The destination still exists and resolves to the first page.
     expect(await destinationPageNumbers(bytes, ['brand'])).toEqual({ brand: 1 })
   }, 20_000)
+  // Catches a link to a nested text that leads nowhere (no destination), or
+  // to the last line of a nested text that wraps instead of its first.
+  it('places the destination of a nested text at the top of its first line', async () => {
+    const bytes = await renderVue(defineComponent(() => () => h(PdfDocument, {}, () => [
+      h(PdfPage, { size: [300, 200], style: { padding: 20, fontSize: 10, fontFamily: 'Helvetica' } }, () => [
+        h(PdfLink, { href: '#claim' }, () => 'To the claim'),
+        h(PdfText, () => ['Peat covers three percent of the land. ', h(PdfText, { id: 'claim' }, () => 'It stores more carbon than all the forests of the world together, year after year.')]),
+      ]),
+    ])))
+    installPdfCanvasGlobals()
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
+    const task = pdfjs.getDocument({ data: Uint8Array.from(bytes), useWorkerFetch: false, verbosity: 0 })
+    const doc = await task.promise
+    try {
+      const destination = await doc.getDestination('claim') as [{ num: number, gen: number }, unknown, unknown, number] | null
+      // From the page top: the paragraph's first line, under the 11 pt line of the link.
+      expect(destination === null ? 'missing' : 200 - destination[3]).toBe(31)
+    }
+    finally {
+      await task.destroy()
+    }
+  }, 20_000)
+})
 
-  it('rejects an unresolved internal destination before layout', async () => {
-    const MissingDoc = defineComponent({
-      name: 'MissingDoc',
-      setup() {
-        return () =>
-          h(PdfDocument, {}, {
-            default: () => h(PdfPage, { size: 'A4' }, {
-              default: () => h(PdfLink, { href: '#missing' }, { default: () => 'Broken' }),
-            }),
-          })
-      },
-    })
+// Readers find a named destination by a binary search over the sorted keys
+// (ISO 32000-1, 7.9.6). pdfkit sorted them with `localeCompare`, which puts
+// "alpha" before "Bravo" where the bytes put it after, and gave the root
+// `Limits`, which only an intermediate node has.
+describe('the destination name tree', () => {
+  it('sorts the names by their bytes, without Limits on the root', async () => {
+    const ids = ['zulu', 'Bravo', 'alpha', 'a1', 'Alpha', '_under', 'a-b', 'Zulu']
+    const { bytes } = await renderPreparedPdfTemplate(defineComponent(() => () => h(PdfDocument, null, () =>
+      h(PdfPage, { size: 'A6' }, () => [
+        ...ids.map(id => h(PdfLink, { href: `#${id}` }, () => `to ${id}`)),
+        ...ids.map(id => h(PdfText, { id }, () => id)),
+      ]))), {})
 
-    await expect(mountPdfComponent(MissingDoc, {})).rejects.toMatchObject({
-      code: 'PDF_TREE_INVALID',
-      message: '<PdfLink> internal destination does not match any id in the document.',
-    })
+    const tree = /\/Dests <<\n\/Names \[(.*?)\]\n>>/s.exec(Buffer.from(bytes).toString('latin1'))
+    expect(tree).not.toBeNull()
+    expect([...tree![1]!.matchAll(/\(([^)]*)\)/g)].map(match => match[1])).toEqual([...ids].sort())
+    expect(Buffer.from(bytes).toString('latin1')).not.toContain('/Limits')
+    expect(await destinationPageNumbers(bytes, ids)).toEqual(Object.fromEntries(ids.map(id => [id, 1])))
   })
 })

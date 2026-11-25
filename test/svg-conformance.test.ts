@@ -9,38 +9,24 @@ import {
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { DocumentNode } from '@react-pdf/layout'
-import {
-  Font as ReactFont,
-  renderToBuffer as renderReactDocument,
-} from '@react-pdf/renderer'
+import type { DocumentNode } from '../src/runtime/server/engine/layout/index'
 import { describe, expect, it } from 'vitest'
 import { defineComponent, h } from 'vue'
-import {
-  PdfDefs,
-  PdfDocument,
-  PdfLine,
-  PdfLinearGradient,
-  PdfPage,
-  PdfRadialGradient,
-  PdfRect,
-  PdfStop,
-  PdfSvg,
-  PdfText,
-} from '../src/runtime/components'
+import { PDF_COMPONENTS } from '../src/runtime/components'
 import { mountPdfComponent } from '../src/runtime/renderer'
 import { bundlePdfFonts } from '../src/build/fonts'
-import { renderDocument } from '../src/runtime/server/engine/render-document'
+import { renderDocument } from './engine-render'
 import { createPdfFontStore } from '../src/runtime/server/engine/fonts'
-import { createReactSvgDocument } from './fixtures/react-svg'
 import { VueSvgDocument } from './fixtures/vue-svg'
 import {
-  comparePageImages,
   decodePngPage,
   hasPdfHeader,
   parsePdf,
   rasterizePdf,
 } from '../src/test/pdf'
+import { expectReviewedPage } from './raster'
+
+const { PdfDefs, PdfDocument, PdfLine, PdfLinearGradient, PdfPage, PdfRadialGradient, PdfRect, PdfStop, PdfSvg, PdfText } = PDF_COMPONENTS
 
 const fontPath = fileURLToPath(new URL(
   './fixtures/assets/Roboto-Regular.ttf',
@@ -51,19 +37,9 @@ const baselineDirectory = fileURLToPath(new URL(
   import.meta.url,
 ))
 const updatePdfBaselines = process.env.UPDATE_PDF_BASELINES === '1'
-const rasterThresholds = {
-  channelThreshold: 25,
-  maxChangedPixelRatio: 0.005,
-} as const
 
-describe('React PDF SVG compatibility', () => {
-  it('produces semantically and visually equivalent SVG output from React and Vue', async () => {
-    ReactFont.register({ family: 'Roboto', src: fontPath })
-
-    const reactBytes = new Uint8Array(await renderReactDocument(
-      createReactSvgDocument(),
-    ))
-
+describe('SVG conformance', () => {
+  it('renders the SVG document with its text and reviewed page', async () => {
     const temporaryRoot = await mkdtemp(join(tmpdir(), 'nuxt-pdf-svg-font-'))
     const fontRoot = join(temporaryRoot, 'pdfs/fonts')
     const bundledFontPath = join(fontRoot, 'Roboto-Regular.ttf')
@@ -91,28 +67,14 @@ describe('React PDF SVG compatibility', () => {
       await rm(temporaryRoot, { force: true, recursive: true })
     }
 
-    expect(hasPdfHeader(reactBytes)).toBe(true)
     expect(hasPdfHeader(vueResult.bytes)).toBe(true)
 
-    const [reactPdf, vuePdf] = await Promise.all([
-      parsePdf(reactBytes),
-      parsePdf(vueResult.bytes),
-    ])
-
-    expect(reactPdf.pageCount).toBe(1)
+    const vuePdf = await parsePdf(vueResult.bytes)
     expect(vuePdf.pageCount).toBe(1)
-    expect(vuePdf.pages.map(page => page.text)).toEqual(
-      reactPdf.pages.map(page => page.text),
-    )
     // The svg <Text>/<Tspan> content survives layout as extracted page text.
-    expect(vuePdf.pages[0]?.text).toContain('Hello world')
+    expect(vuePdf.pages[0]?.text).toBe('SVG drawing primitives This page exercises the SVG primitives through the shared layout and render engine so React and Vue produce equivalent output. Inline logo in normal page flow Hello world')
 
-    const [reactPages, vuePages] = await Promise.all([
-      rasterizePdf(reactBytes),
-      rasterizePdf(vueResult.bytes),
-    ])
-
-    expect(vuePages).toHaveLength(reactPages.length)
+    const vuePages = await rasterizePdf(vueResult.bytes)
     expect(vuePages).toHaveLength(1)
 
     if (updatePdfBaselines) {
@@ -120,14 +82,6 @@ describe('React PDF SVG compatibility', () => {
     }
 
     const vuePage = vuePages[0]!
-    const reactPage = reactPages[0]!
-
-    const parity = comparePageImages(vuePage, reactPage, rasterThresholds)
-    expect(parity, 'SVG React/Vue raster mismatch').toMatchObject({
-      dimensionsMatch: true,
-      matches: true,
-      pageNumbersMatch: true,
-    })
 
     const baselinePath = join(baselineDirectory, 'vue-svg-page-1.png')
     if (updatePdfBaselines) {
@@ -138,12 +92,7 @@ describe('React PDF SVG compatibility', () => {
       await readFile(baselinePath),
       vuePage.number,
     )
-    const regression = comparePageImages(vuePage, baseline, rasterThresholds)
-    expect(regression, 'SVG reviewed baseline mismatch').toMatchObject({
-      dimensionsMatch: true,
-      matches: true,
-      pageNumbersMatch: true,
-    })
+    await expectReviewedPage(vuePage, baseline, 'svg')
   }, 20_000)
 
   it('renders numeric zero fill opacity as fully transparent', async () => {

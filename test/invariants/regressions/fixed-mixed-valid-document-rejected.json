@@ -1,0 +1,55 @@
+{
+  "profile": "mixed",
+  "invariants": [
+    "PDF"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 0,
+    "rule": "documents"
+  },
+  "raw": {
+    "pages": [
+      {
+        "size": 0,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixed": [
+          {
+            "kind": 0,
+            "pages": 0,
+            "absolute": false,
+            "n": 1,
+            "font": 0,
+            "numbers": 1,
+            "offset": 0,
+            "fromBottom": false,
+            "inset": 0,
+            "marginBottom": 0,
+            "link": false
+          }
+        ],
+        "children": [
+          {
+            "t": "table",
+            "font": 0,
+            "columns": [],
+            "header": true,
+            "headerCells": [],
+            "rows": [],
+            "marginTop": 0,
+            "marginBottom": 0
+          }
+        ],
+        "bookmark": false
+      }
+    ],
+    "tagged": false,
+    "paint": []
+  }
+}

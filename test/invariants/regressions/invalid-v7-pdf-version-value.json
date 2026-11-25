@@ -1,0 +1,34 @@
+{
+  "profile": "invalid",
+  "invariants": [
+    "I15"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 51,
+    "rule": "invalid"
+  },
+  "note": "V7 (fixed in slice V1): pdfVersion was checked only with conformance or protection, so \"9.9\" rendered. It is now always checked against the versions the engine writes. Found by the first invalid run of H4 (document 51, fault pdf-version-value, base fixed); reduced by the harness.",
+  "raw": {
+    "fault": "pdf-version-value",
+    "pick": 3,
+    "base": "fixed",
+    "raw": {
+      "pages": [
+        {
+          "size": 0,
+          "landscape": false,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "fixed": [],
+          "children": [],
+          "bookmark": false
+        }
+      ]
+    }
+  }
+}

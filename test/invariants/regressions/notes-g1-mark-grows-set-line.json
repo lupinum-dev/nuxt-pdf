@@ -1,0 +1,628 @@
+{
+  "profile": "notes",
+  "invariants": [
+    "G1"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 272,
+    "rule": "documents"
+  },
+  "note": "Reduced from notes document 272 of seed 20261116. A text with lineHeight 1 at 9 pt ends a page with a footnote mark on its last line; the mark makes that line 10.47 pt high, not 9. G1 read the line as 9 pt high, so the page seemed to end 1.4 pt early.",
+  "raw": {
+    "pages": [
+      {
+        "size": 0,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "text",
+            "n": 1,
+            "font": 0,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": []
+          },
+          {
+            "t": "text",
+            "n": 82,
+            "font": 0,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": []
+          },
+          {
+            "t": "text",
+            "n": 383,
+            "font": 0,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": []
+          }
+        ],
+        "bookmark": false
+      },
+      {
+        "size": 0,
+        "landscape": true,
+        "padding": [
+          42,
+          11,
+          50,
+          33
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "view",
+            "margin": [
+              0,
+              0,
+              11,
+              0
+            ],
+            "padding": [
+              0,
+              0,
+              1,
+              0
+            ],
+            "border": 0,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "text",
+                "n": 21,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": [
+                  {
+                    "at": 0,
+                    "n": 30
+                  }
+                ]
+              },
+              {
+                "t": "text",
+                "n": 28,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": []
+              },
+              {
+                "t": "text",
+                "n": 24,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": []
+              },
+              {
+                "t": "text",
+                "n": 18,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": []
+              },
+              {
+                "t": "text",
+                "n": 29,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": [
+                  {
+                    "at": 0,
+                    "n": 5
+                  },
+                  {
+                    "at": 0,
+                    "n": 1
+                  }
+                ]
+              },
+              {
+                "t": "text",
+                "n": 20,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": []
+              },
+              {
+                "t": "text",
+                "n": 13,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": []
+              },
+              {
+                "t": "text",
+                "n": 9,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": [
+                  {
+                    "at": 0,
+                    "n": 39
+                  }
+                ]
+              },
+              {
+                "t": "text",
+                "n": 14,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": [
+                  {
+                    "at": 0,
+                    "n": 6
+                  },
+                  {
+                    "at": 0,
+                    "n": 1
+                  }
+                ]
+              },
+              {
+                "t": "text",
+                "n": 29,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": []
+              },
+              {
+                "t": "text",
+                "n": 15,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": []
+              },
+              {
+                "t": "view",
+                "margin": [
+                  0,
+                  0,
+                  17,
+                  0
+                ],
+                "padding": [
+                  0,
+                  0,
+                  1,
+                  0
+                ],
+                "border": 0,
+                "minHeight": 0,
+                "wrap": true,
+                "brk": false,
+                "children": [
+                  {
+                    "t": "text",
+                    "n": 28,
+                    "font": 0,
+                    "lineHeight": 0,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 0,
+                    "marginBottom": 0,
+                    "extra": 0,
+                    "ref": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0,
+                    "bookmark": false,
+                    "marks": []
+                  },
+                  {
+                    "t": "text",
+                    "n": 8,
+                    "font": 0,
+                    "lineHeight": 0,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 0,
+                    "marginBottom": 0,
+                    "extra": 0,
+                    "ref": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0,
+                    "bookmark": false,
+                    "marks": []
+                  },
+                  {
+                    "t": "text",
+                    "n": 105,
+                    "font": 2,
+                    "lineHeight": 4,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": true,
+                    "marginTop": 18,
+                    "marginBottom": 22,
+                    "extra": 0,
+                    "ref": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0,
+                    "bookmark": false,
+                    "marks": []
+                  },
+                  {
+                    "t": "text",
+                    "n": 16,
+                    "font": 0,
+                    "lineHeight": 1,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 17,
+                    "marginBottom": 24,
+                    "extra": 0,
+                    "ref": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0,
+                    "bookmark": false,
+                    "marks": []
+                  },
+                  {
+                    "t": "link",
+                    "kind": 0,
+                    "linkTo": 0,
+                    "children": [
+                      {
+                        "t": "text",
+                        "n": 15,
+                        "font": 0,
+                        "lineHeight": 0,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 21,
+                        "marginBottom": 14,
+                        "extra": 0,
+                        "ref": 0,
+                        "link": 0,
+                        "linkAt": 0,
+                        "linkSize": 0,
+                        "linkTo": 0,
+                        "bookmark": false,
+                        "marks": [
+                          {
+                            "at": 0,
+                            "n": 1
+                          },
+                          {
+                            "at": 0,
+                            "n": 1
+                          }
+                        ]
+                      },
+                      {
+                        "t": "text",
+                        "n": 24,
+                        "font": 0,
+                        "lineHeight": 4,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 4,
+                        "marginBottom": 17,
+                        "extra": 0,
+                        "ref": 0,
+                        "link": 0,
+                        "linkAt": 0,
+                        "linkSize": 0,
+                        "linkTo": 0,
+                        "bookmark": false,
+                        "marks": []
+                      }
+                    ]
+                  },
+                  {
+                    "t": "text",
+                    "n": 8,
+                    "font": 1,
+                    "lineHeight": 2,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 17,
+                    "marginBottom": 19,
+                    "extra": 0,
+                    "ref": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0,
+                    "bookmark": false,
+                    "marks": [
+                      {
+                        "at": 0,
+                        "n": 37
+                      },
+                      {
+                        "at": 0,
+                        "n": 1
+                      }
+                    ]
+                  },
+                  {
+                    "t": "text",
+                    "n": 1,
+                    "font": 0,
+                    "lineHeight": 1,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 18,
+                    "marginBottom": 2,
+                    "extra": 0,
+                    "ref": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0,
+                    "bookmark": false,
+                    "marks": []
+                  }
+                ],
+                "bookmark": false
+              },
+              {
+                "t": "text",
+                "n": 1,
+                "font": 1,
+                "lineHeight": 1,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 10,
+                "marginBottom": 20,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": [
+                  {
+                    "at": 0,
+                    "n": 1
+                  }
+                ]
+              }
+            ],
+            "bookmark": false
+          },
+          {
+            "t": "view",
+            "margin": [
+              1,
+              0,
+              0,
+              0
+            ],
+            "padding": [
+              19,
+              0,
+              0,
+              0
+            ],
+            "border": 0,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "text",
+                "n": 1,
+                "font": 0,
+                "lineHeight": 1,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 9,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": []
+              }
+            ],
+            "bookmark": false
+          }
+        ],
+        "bookmark": false
+      }
+    ],
+    "footnotes": {
+      "page": false,
+      "styles": 3
+    }
+  }
+}

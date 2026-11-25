@@ -1,15 +1,7 @@
-import React from 'react'
 import { defineComponent, h } from 'vue'
-import {
-  Document,
-  Page,
-  Text,
-} from '@react-pdf/renderer'
-import {
-  PdfDocument,
-  PdfPage,
-  PdfText,
-} from '../../../src/runtime/components'
+import { PDF_COMPONENTS } from '../../../src/runtime/components'
+
+const { PdfDocument, PdfPage, PdfText } = PDF_COMPONENTS
 
 // Filler pushes a single long paragraph so it starts low on page one and must
 // wrap across the page boundary. `orphans`/`widows` control how many wrapped
@@ -35,28 +27,10 @@ export const widowsOrphansStyle = {
   filler: { marginBottom: 2 },
 }
 
-const reactH = React.createElement
-
 export interface WidowsOrphansOptions {
   orphans?: number
   widows?: number
 }
-
-export const createReactWidowsOrphansDocument = (
-  { orphans = 2, widows = 2 }: WidowsOrphansOptions = {},
-) =>
-  reactH(
-    Document,
-    null,
-    reactH(
-      Page,
-      { size: 'A4', wrap: true, style: widowsOrphansStyle.page },
-      ...widowsOrphansFiller.map((line, index) =>
-        reactH(Text, { key: index, style: widowsOrphansStyle.filler }, line),
-      ),
-      reactH(Text, { orphans, widows }, widowsOrphansParagraph),
-    ),
-  )
 
 export const VueWidowsOrphansDocument = defineComponent({
   name: 'VueWidowsOrphansDocument',

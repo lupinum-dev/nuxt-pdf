@@ -5,11 +5,12 @@ import { describe, expect, it } from 'vitest'
 import { renderPdfSfc } from '../src/test'
 import { formatMenuPrice, formatWinePrice, sampleMenu } from '../playground/shared/menu'
 import {
-  comparePageImages,
   decodePngPage,
   getPdfOutline,
   rasterizePdf,
 } from '../src/test/pdf'
+import { playgroundFonts } from './fixtures/playground-fonts'
+import { expectReviewedPage } from './raster'
 
 // The real playground template, compiled and rendered through the shipped test
 // helper. Proves the showcase menu end-to-end from an authored SFC: two A5
@@ -17,33 +18,18 @@ import {
 // bookmark outline, and a reviewed raster baseline per page.
 const menuSource = resolve('playground/pdfs/menu.vue')
 
-// The Inter/Lora families the menu references, declared exactly as the
-// playground registers them (playground/nuxt.config.ts pdf.fonts) so the render
-// resolves every fontFamily + weight + style the template asks for.
-const fontDeclarations = [
-  { family: 'Inter', src: 'Inter-500.ttf', fontWeight: 500 },
-  { family: 'Inter', src: 'Inter-600.ttf', fontWeight: 600 },
-  { family: 'Inter', src: 'Inter-700.ttf', fontWeight: 700 },
-  { family: 'Lora', src: 'Lora-400.ttf', fontWeight: 400 },
-  { family: 'Lora', src: 'Lora-400-italic.ttf', fontWeight: 400, fontStyle: 'italic' as const },
-  { family: 'Lora', src: 'Lora-700.ttf', fontWeight: 700 },
-]
 const baselineDirectory = fileURLToPath(new URL(
   './fixtures/baselines/menu',
   import.meta.url,
 ))
 const updatePdfBaselines = process.env.UPDATE_PDF_BASELINES === '1'
-const rasterThresholds = {
-  channelThreshold: 25,
-  maxChangedPixelRatio: 0.005,
-} as const
 
 describe('playground menu.vue (showcase A5 menu)', () => {
   it('renders a two-page menu with umlauts, priced dishes, wines, and an outline', async () => {
     const { bytes, parsed } = await renderPdfSfc(
       menuSource,
       { menu: sampleMenu },
-      { fonts: fontDeclarations },
+      { fonts: playgroundFonts },
     )
 
     // Exactly two A5 pages.
@@ -52,8 +38,8 @@ describe('playground menu.vue (showcase A5 menu)', () => {
     const page1 = parsed.pages[0]!.text
     const page2 = parsed.pages[1]!.text
 
-    // The letterspaced small-caps heads extract as spaced uppercase glyphs
-    // ("V O R S P E I S E N"), so compare with whitespace collapsed and cased.
+    // Compare course heads with whitespace collapsed and cased, so a change of
+    // letter spacing or case in the template does not hide them.
     const collapse = (text: string): string => text.replace(/\s+/g, '').toUpperCase()
     const hasHead = (page: string, label: string): boolean =>
       collapse(page).includes(collapse(label))
@@ -110,12 +96,7 @@ describe('playground menu.vue (showcase A5 menu)', () => {
       }
 
       const baseline = await decodePngPage(await readFile(baselinePath), page.number)
-      const regression = comparePageImages(page, baseline, rasterThresholds)
-      expect(regression, `page ${page.number} reviewed baseline mismatch`).toMatchObject({
-        dimensionsMatch: true,
-        matches: true,
-        pageNumbersMatch: true,
-      })
+      await expectReviewedPage(page, baseline, 'menu')
     }
 
     const expectedNames = pages.map(page => `menu-page-${page.number}.png`).sort()

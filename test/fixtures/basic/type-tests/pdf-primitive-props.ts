@@ -11,6 +11,9 @@ import type {
   PdfSvgPresentationProps,
   PdfSvgLength,
   PdfSvgProps,
+  PdfTableColumn,
+  PdfTableColumnOptions,
+  PdfTableColumnWidth,
   PdfTextProps,
 } from '../../../../src/module'
 
@@ -123,10 +126,32 @@ const percentageStrokeWidth: PdfSvgPresentationProps = { strokeWidth: '50%' }
 // @ts-expect-error Only fixture-proven SVG transform operations are exposed.
 const invalidSvgTransform: PdfSvgPresentationProps = { transform: 'skewX(10)' }
 const svgText: PdfTextProps = { fill: '#315d3b', x: 0, y: 12 }
+const columnBreak: PdfTextProps = { break: 'column' }
+// @ts-expect-error A break starts a new page (true) or the next column ('column').
+const pageBreakName: PdfTextProps = { break: 'page' }
 // @ts-expect-error SVG fill requires the explicit SVG text positioning branch.
 const flowTextWithSvgFill: PdfTextProps = { fill: '#315d3b' }
 
+const tableColumns: PdfTableColumn[] = ['auto', 1, '80pt', '30%', { width: 'auto', align: 'right', style: { fontWeight: 700 } }]
+const tableColumnWidth: PdfTableColumnWidth = '30%'
+// @ts-expect-error A column object needs its width.
+const tableColumnWithoutWidth: PdfTableColumn = { align: 'right' }
+// @ts-expect-error A column takes no class: a class resolves in the file that writes it.
+const tableColumnWithClass: PdfTableColumnOptions = { width: 1, class: 'num' }
+// @ts-expect-error A column align is left, center or right.
+const tableColumnAlignEnd: PdfTableColumnOptions = { width: 1, align: 'end' }
+// @ts-expect-error A column object is not a width.
+const tableColumnObjectWidth: PdfTableColumnWidth = { width: 1 }
+
 void [
+  columnBreak,
+  pageBreakName,
+  tableColumnAlignEnd,
+  tableColumnObjectWidth,
+  tableColumns,
+  tableColumnWidth,
+  tableColumnWithClass,
+  tableColumnWithoutWidth,
   alternateAspectRatio,
   alternateGradientUnits,
   anonymousClipPath,

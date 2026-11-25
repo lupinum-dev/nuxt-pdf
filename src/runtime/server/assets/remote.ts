@@ -4,6 +4,7 @@ import {
   PdfAssetError,
 } from './errors'
 import type { RenderLimits } from '../render-limits'
+import { checkLimitValue, MAX_TIME_LIMIT_MS } from '../../shared/limit-range'
 
 /** Opt-in policy for runtime image requests. Remote fonts are not supported. */
 export interface RemoteAssetOptions {
@@ -13,7 +14,7 @@ export interface RemoteAssetOptions {
   timeoutMs?: number
 }
 
-export interface RemoteAssetRule {
+interface RemoteAssetRule {
   readonly host: string
   readonly port: string
   readonly pathPrefix: string
@@ -25,8 +26,8 @@ export interface RemoteAssetPolicy {
   readonly timeoutMs: number
 }
 
-export const DEFAULT_REMOTE_TIMEOUT_MS = 10_000
-export const MAX_REMOTE_REDIRECTS = 3
+const DEFAULT_REMOTE_TIMEOUT_MS = 10_000
+const MAX_REMOTE_REDIRECTS = 3
 
 /** Runtime URL label safe for logs, preview diagnostics, and attributed errors. */
 export const redactUrl = (url: string): string => {
@@ -49,18 +50,6 @@ const blocked = (message: string, cause?: unknown): never => {
 
 const limitExceeded = (message: string): never => {
   throw new PdfAssetError(PDF_ASSET_ERROR_CODES.LimitExceeded, message)
-}
-
-const positiveSafeInteger = (
-  value: number | undefined,
-  fallback: number,
-  name: string,
-): number => {
-  if (value === undefined) return fallback
-  if (!Number.isSafeInteger(value) || value < 1) {
-    return configError(`pdf.remote.${name} must be a positive safe integer.`)
-  }
-  return value
 }
 
 const parseAllowEntry = (entry: unknown): RemoteAssetRule => {
@@ -117,11 +106,9 @@ export const normalizeRemoteAssetPolicy = (
 
   return Object.freeze({
     allow: Object.freeze(options.allow.map(parseAllowEntry)),
-    timeoutMs: positiveSafeInteger(
-      options.timeoutMs,
-      DEFAULT_REMOTE_TIMEOUT_MS,
-      'timeoutMs',
-    ),
+    timeoutMs: options.timeoutMs === undefined
+      ? DEFAULT_REMOTE_TIMEOUT_MS
+      : checkLimitValue(options.timeoutMs, 'pdf.remote.timeoutMs', MAX_TIME_LIMIT_MS, ' ms'),
   })
 }
 
@@ -163,6 +150,9 @@ export interface RemoteRequestState {
   readonly waiters: RemoteWaiter[]
 }
 
+/** Remote requests of one render that run at the same time. */
+const MAX_REMOTE_CONCURRENCY = 4
+
 export const createRemoteRequestState = (
   limits: RenderLimits,
 ): RemoteRequestState => ({ limits, active: 0, requests: 0, waiters: [] })
@@ -178,7 +168,7 @@ const acquireRequestSlot = async (state: RemoteRequestState): Promise<void> => {
       `PDF remote requests exceed pdf.limits.maxRemoteRequests (${state.limits.maxRemoteRequests}).`,
     )
   }
-  if (state.active < state.limits.maxRemoteConcurrency) {
+  if (state.active < MAX_REMOTE_CONCURRENCY) {
     state.active += 1
     return
   }
@@ -216,17 +206,20 @@ const readCapped = async (
   const body = response.body
   if (!body) return Buffer.alloc(0)
 
-  const chunks: Buffer[] = []
+  // Each chunk is fresh memory of this response: kept as it is and copied once,
+  // into the image buffer.
+  const chunks: Uint8Array[] = []
   let total = 0
+  // Node's web stream is async iterable; the DOM ReadableStream type does not say so.
   for await (const chunk of body as unknown as AsyncIterable<Uint8Array>) {
     total += chunk.byteLength
     if (total > maxBytes) {
       controller.abort()
       return limitExceeded(
-        `A remote PDF image exceeds pdf.limits.maxImageBytes (${maxBytes}).`,
+        `A remote PDF image exceeds pdf.limits.maxTotalImageBytes (${maxBytes}).`,
       )
     }
-    chunks.push(Buffer.from(chunk))
+    chunks.push(chunk)
   }
   return Buffer.concat(chunks, total)
 }
@@ -275,7 +268,7 @@ const fetchOnce = async (
     if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
       controller.abort()
       return limitExceeded(
-        `A remote PDF image exceeds pdf.limits.maxImageBytes (${maxBytes}).`,
+        `A remote PDF image exceeds pdf.limits.maxTotalImageBytes (${maxBytes}).`,
       )
     }
     return { buffer: await readCapped(response, maxBytes, controller) }
@@ -320,24 +313,17 @@ const fetchResolved = async (
   )
 }
 
-export interface FetchRemoteResourceOptions {
+interface FetchRemoteResourceOptions {
   readonly policy: RemoteAssetPolicy
   readonly maxBytes: number
   readonly state: RemoteRequestState
-  /** Per-render dedup map so a repeated URL is fetched once. */
-  readonly inflight?: Map<string, Promise<Buffer>>
 }
 
-/** Fetch one allowlisted image under the render-wide deadline and budgets. */
+/**
+ * Fetch one allowlisted image under the render-wide deadline and budgets. The
+ * caller fetches a URL once per render (`resolve-images.ts` caches by URL).
+ */
 export const fetchRemoteResource = (
   url: string,
-  options: FetchRemoteResourceOptions,
-): Promise<Buffer> => {
-  const { policy, maxBytes, state, inflight } = options
-  const existing = inflight?.get(url)
-  if (existing) return existing
-
-  const promise = fetchResolved(url, policy, maxBytes, state)
-  inflight?.set(url, promise)
-  return promise
-}
+  { policy, maxBytes, state }: FetchRemoteResourceOptions,
+): Promise<Buffer> => fetchResolved(url, policy, maxBytes, state)

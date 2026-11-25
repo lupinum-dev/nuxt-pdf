@@ -1,0 +1,137 @@
+{
+  "profile": "notes",
+  "invariants": [
+    "G4"
+  ],
+  "origin": {
+    "seed": 19,
+    "index": 7,
+    "rule": "documents"
+  },
+  "note": "Found in the notes profile with column breaks (seed 19, document 7). Reduced form: a 260 x 500 pt page with a view of three balanced columns: a text of 3 tokens (one 13.2 pt line, a note of 9 words), a text of 81 tokens (8 pt, lineHeight 2, 10 notes) with break=\"column\", and a text of 14 tokens (9 pt, lineHeight 2, 2 notes). G4: 265 page relayouts on 2 pages (132.5 per page, bound 86), 126 balance tries (63 per page, bound 44), 859 nodes laid out (42.95 per page and node, bound 41). The balance search (split-columns.ts:151-173) starts at the even share of the galley, 456.8 / 3 = 152.3 pt (line 158), and does not count the break: column 1 holds only the 13.2 pt line, so columns 2 and 3 must hold 456.8 - 13.2 = 443.6 pt, at least 221.8 pt each. The note fit offers a limit of 220.5 to 229.5 pt in its passes. At 220.5 and 220.8 no height works, and each search spends its 8 steps and the limit try (9 tries) for nothing; at 224.0, 225.1 and 229.5 no break height under the limit works and the search ends at its cap of 16 tries. Each try lays columns 2 and 3 out again (`layOutColumn`, split-columns.ts:51), one page relayout each. Without the break the document has one page and passes. Not fixed.",
+  "raw": {
+    "pages": [
+      {
+        "size": 5,
+        "landscape": true,
+        "padding": [
+          0,
+          15,
+          2,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "link",
+            "kind": 0,
+            "linkTo": 0,
+            "children": [
+              {
+                "t": "text",
+                "n": 3,
+                "font": 3,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": [
+                  {
+                    "at": 0,
+                    "n": 9
+                  }
+                ]
+              },
+              {
+                "t": "text",
+                "n": 81,
+                "font": 0,
+                "lineHeight": 4,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": []
+              },
+              {
+                "t": "text",
+                "n": 14,
+                "font": 1,
+                "lineHeight": 4,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": []
+              }
+            ]
+          }
+        ],
+        "bookmark": false
+      }
+    ],
+    "footnotes": {
+      "page": false,
+      "styles": 0
+    },
+    "columns": [
+      {
+        "page": false,
+        "count": 1,
+        "gap": 8,
+        "fill": 1,
+        "at": 0,
+        "size": 0,
+        "span": -1,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "breaks": 170
+      },
+      {
+        "page": false,
+        "count": 0,
+        "gap": 0,
+        "fill": 0,
+        "at": 0,
+        "size": 0,
+        "span": -1,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "breaks": 0
+      }
+    ]
+  }
+}

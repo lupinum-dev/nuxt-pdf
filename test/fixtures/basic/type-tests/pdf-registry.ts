@@ -45,13 +45,55 @@ async function verifyRenderResult() {
   })
 
   result.diagnostics.byteLength satisfies number
-  result.diagnostics.layoutWarnings satisfies readonly {
+  result.diagnostics.layoutWarnings satisfies readonly ({
     readonly availableHeight: number
     readonly code: 'PDF_UNBREAKABLE_NODE_OVERFLOW'
     readonly nodeHeight: number
-    readonly nodeType: 'PdfImage' | 'PdfLink' | 'PdfNote' | 'PdfSvg' | 'PdfText' | 'PdfView'
+    readonly nodeType: 'PdfCheckbox' | 'PdfImage' | 'PdfLink' | 'PdfNote' | 'PdfRadio' | 'PdfSelect' | 'PdfSvg' | 'PdfText' | 'PdfTextField' | 'PdfView'
     readonly pageNumber: number
-  }[]
+  } | {
+    readonly code: 'PDF_CONTENT_HIDDEN'
+    readonly hiddenLines: number
+    readonly hiddenNodes: number
+    readonly nodeType: 'PdfCheckbox' | 'PdfImage' | 'PdfLink' | 'PdfNote' | 'PdfRadio' | 'PdfSelect' | 'PdfSvg' | 'PdfText' | 'PdfTextField' | 'PdfView'
+    readonly pageNumber: number
+    readonly source?: { readonly file: string, readonly line: number, readonly column: number }
+  } | {
+    readonly code: 'PDF_TABLE_COLUMNS_TOO_NARROW'
+    readonly neededWidth: number
+    readonly pageNumber: number
+    readonly tableWidth: number
+  } | {
+    readonly code: 'PDF_FOOTNOTES_MOVED'
+    readonly footnotes: readonly number[]
+    readonly pageNumber: number
+  } | {
+    readonly code: 'PDF_GLYPH_MISSING'
+    readonly codePoint: number
+    readonly fontFamily: string
+    readonly pageNumber: number
+    readonly source?: { readonly file: string, readonly line: number, readonly column: number }
+  } | {
+    readonly code: 'PDF_HYPHENATION_UNAVAILABLE'
+    readonly language: string
+  } | {
+    readonly code: 'PDF_KEEP_IGNORED'
+    readonly nodeType: 'PdfCheckbox' | 'PdfImage' | 'PdfLink' | 'PdfNote' | 'PdfRadio' | 'PdfSelect' | 'PdfSvg' | 'PdfText' | 'PdfTextField' | 'PdfView'
+    readonly pageNumber: number
+    readonly source?: { readonly file: string, readonly line: number, readonly column: number }
+  })[]
+  for (const warning of result.diagnostics.layoutWarnings) {
+    // The fields of a code are read after checking it.
+    if (warning.code === 'PDF_TABLE_COLUMNS_TOO_NARROW') warning.neededWidth satisfies number
+    else if (warning.code === 'PDF_FOOTNOTES_MOVED') warning.footnotes satisfies readonly number[]
+    else if (warning.code === 'PDF_GLYPH_MISSING') warning.codePoint satisfies number
+    else if (warning.code === 'PDF_HYPHENATION_UNAVAILABLE') warning.language satisfies string
+    else if (warning.code === 'PDF_CONTENT_HIDDEN') warning.hiddenLines satisfies number
+    else if (warning.code === 'PDF_KEEP_IGNORED') warning.pageNumber satisfies number
+    else warning.nodeHeight satisfies number
+    // @ts-expect-error a field of one code is not on the union
+    void warning.nodeHeight
+  }
   result.diagnostics.registeredFontFaces satisfies readonly {
     readonly family: string
     readonly fontStyle?: string

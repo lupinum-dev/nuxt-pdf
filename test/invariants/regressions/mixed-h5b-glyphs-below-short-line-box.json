@@ -1,0 +1,57 @@
+{
+  "profile": "mixed",
+  "invariants": [
+    "I14"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 275,
+    "rule": "documents"
+  },
+  "note": "Found by I14 in the 1,000-document mixed run (9 documents, every one a block link holding a right-to-left or CJK text with lineHeight 1 or 1.2). Reduced form: a CJK text in a PdfLink, lineHeight 1; the baseline is 1.3 pt below the link rectangle. Noto Sans Arabic (ascent about 1.37 em) at 10 pt and lineHeight 1 puts it 3.7 pt below. Likely cause: textkit places the first baseline at the line top plus the font ascent and ignores the half-leading that CSS gives, so a font whose ascent exceeds the line height draws below its box. Helvetica (ascent 0.718 em) never shows it. Fixed: a line puts half of what its line height adds to each run's glyph box above the glyphs (CSS half-leading, metrics.ts baselineOf), so the baseline lies (line height + ascent - |descent|) / 2 below the line top: inside the box whenever the line height is at least ascent - |descent| (about 0.87 em for this CJK face). Rows: test/paint-paths.test.ts, 'paints a line with ... at its half-leading'.",
+  "raw": {
+    "pages": [
+      {
+        "size": 0,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "link",
+            "kind": 0,
+            "linkTo": 0,
+            "children": [
+              {
+                "t": "text",
+                "n": 1,
+                "font": 0,
+                "lineHeight": 1,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "face": 6
+              }
+            ]
+          }
+        ],
+        "bookmark": false
+      }
+    ],
+    "tagged": false
+  }
+}

@@ -1,15 +1,7 @@
-import React from 'react'
 import { defineComponent, h } from 'vue'
-import {
-  Document,
-  Page,
-  Text,
-} from '@react-pdf/renderer'
-import {
-  PdfDocument,
-  PdfPage,
-  PdfText,
-} from '../../../src/runtime/components'
+import { PDF_COMPONENTS } from '../../../src/runtime/components'
+
+const { PdfDocument, PdfPage, PdfText } = PDF_COMPONENTS
 
 // A body long enough to span four+ pages, with a `fixed` header and footer that
 // must repeat on EVERY page of the wrapped flow.
@@ -33,23 +25,6 @@ export const fixedMultipageStyle = {
   footer: { position: 'absolute' as const, bottom: 20, left: 30 },
   body: { marginBottom: 2 },
 }
-
-const reactH = React.createElement
-
-export const createReactFixedMultipageDocument = () =>
-  reactH(
-    Document,
-    null,
-    reactH(
-      Page,
-      { size: 'A4', wrap: true, style: fixedMultipageStyle.page },
-      reactH(Text, { fixed: true, style: fixedMultipageStyle.header }, fixedHeader),
-      reactH(Text, { fixed: true, style: fixedMultipageStyle.footer }, fixedFooter),
-      ...fixedBody.map((line, index) =>
-        reactH(Text, { key: index, style: fixedMultipageStyle.body }, line),
-      ),
-    ),
-  )
 
 export const VueFixedMultipageDocument = defineComponent({
   name: 'VueFixedMultipageDocument',

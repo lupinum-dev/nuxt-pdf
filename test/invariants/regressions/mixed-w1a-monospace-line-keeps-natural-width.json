@@ -1,0 +1,131 @@
+{
+  "profile": "mixed",
+  "invariants": [
+    "I5"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 31,
+    "rule": "documents"
+  },
+  "note": "W1-A, fixed by D30. An A6 page with right padding 8, a table, then a 12 pt left-aligned text in Source Code Pro with 9 tokens: its natural width is 302.4 pt in a 289.6 pt box. The engine kept all 9 tokens on one line and squeezed it with TJ adjustments to 291.6 pt, 1.9 pt into the right padding (I5). Now the line breaks at its natural width and every line ends inside the box.",
+  "raw": {
+    "pages": [
+      {
+        "size": 2,
+        "landscape": false,
+        "padding": [
+          0,
+          8,
+          0,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "table",
+            "font": 0,
+            "columns": [],
+            "header": true,
+            "headerCells": [
+              {
+                "n": 3,
+                "span": 0,
+                "align": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0
+              }
+            ],
+            "rows": [
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 23,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              },
+              {
+                "wrap": true,
+                "cells": []
+              },
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 20,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              },
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 23,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              },
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 27,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              }
+            ],
+            "marginTop": 0,
+            "marginBottom": 0
+          },
+          {
+            "t": "text",
+            "n": 9,
+            "font": 4,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "face": 8
+          }
+        ],
+        "bookmark": false
+      }
+    ],
+    "tagged": false
+  }
+}

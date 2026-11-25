@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { DestinationPageMap } from '../src/runtime/server/engine/layout-passes'
+import type { DestinationPageMap } from '../src/runtime/server/engine/destinations'
 import { renderTocDocument, tocSections } from './fixtures/toc-document'
 import { parsePdf } from '../src/test/pdf'
 

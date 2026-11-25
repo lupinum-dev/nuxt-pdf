@@ -10,25 +10,19 @@ import {
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { DocumentNode } from '@react-pdf/layout'
-import {
-  Font as ReactFont,
-  renderToBuffer as renderReactDocument,
-} from '@react-pdf/renderer'
 import { describe, expect, it } from 'vitest'
 import { mountPdfComponent } from '../src/runtime/renderer'
 import { bundlePdfFonts } from '../src/build/fonts'
-import { renderDocument } from '../src/runtime/server/engine/render-document'
 import { createPdfFontStore } from '../src/runtime/server/engine/fonts'
-import { createReactConformanceDocument } from './fixtures/react-conformance'
+import { renderPlainDocument } from '../src/runtime/server/engine/plain-tree'
 import { VueConformanceDocument } from './fixtures/vue-conformance'
 import {
-  comparePageImages,
   decodePngPage,
   hasPdfHeader,
   parsePdf,
   rasterizePdf,
 } from '../src/test/pdf'
+import { expectReviewedPage } from './raster'
 
 const fontPath = fileURLToPath(new URL(
   './fixtures/assets/Roboto-Regular.ttf',
@@ -43,10 +37,6 @@ const baselineDirectory = fileURLToPath(new URL(
   import.meta.url,
 ))
 const updatePdfBaselines = process.env.UPDATE_PDF_BASELINES === '1'
-const rasterThresholds = {
-  channelThreshold: 25,
-  maxChangedPixelRatio: 0.005,
-} as const
 const pageSemantics = [
   {
     includes: [
@@ -66,33 +56,26 @@ const pageSemantics = [
   },
 ] as const
 
-describe('React PDF compatibility', () => {
-  it('produces semantically and visually equivalent output from React and Vue', async () => {
-    ReactFont.register({ family: 'Roboto', src: fontPath })
-
-    const reactBytes = new Uint8Array(await renderReactDocument(
-      createReactConformanceDocument({ imagePath }),
-    ))
-
+describe('renderer conformance', () => {
+  it('renders the mixed document with its text, links and reviewed pages', async () => {
     const temporaryRoot = await mkdtemp(join(tmpdir(), 'nuxt-pdf-font-'))
     const fontRoot = join(temporaryRoot, 'pdfs/fonts')
     const bundledFontPath = join(fontRoot, 'Roboto-Regular.ttf')
     await mkdir(dirname(bundledFontPath), { recursive: true })
     await copyFile(fontPath, bundledFontPath)
 
-    let vueResult: Awaited<ReturnType<typeof renderDocument>>
+    let vueResult: Awaited<ReturnType<typeof renderPlainDocument>>
     try {
       const fonts = await bundlePdfFonts(
         [{ family: 'Roboto', src: 'Roboto-Regular.ttf' }],
         { fontRoots: [fontRoot] },
       )
       const mounted = await mountPdfComponent(VueConformanceDocument, {
-        imagePath,
+        image: await readFile(imagePath),
         showConditional: true,
       })
       try {
-        vueResult = await renderDocument(
-          mounted.document as unknown as DocumentNode,
+        vueResult = await renderPlainDocument(mounted.document,
           { fontStore: createPdfFontStore(fonts) },
         )
       }
@@ -104,45 +87,27 @@ describe('React PDF compatibility', () => {
       await rm(temporaryRoot, { force: true, recursive: true })
     }
 
-    expect(hasPdfHeader(reactBytes)).toBe(true)
     expect(hasPdfHeader(vueResult.bytes)).toBe(true)
 
-    const [reactPdf, vuePdf] = await Promise.all([
-      parsePdf(reactBytes),
-      parsePdf(vueResult.bytes),
-    ])
-
-    expect(reactPdf.pageCount).toBe(2)
+    const vuePdf = await parsePdf(vueResult.bytes)
     expect(vuePdf.pageCount).toBe(2)
-    expect(vuePdf.pages.map(page => page.text)).toEqual(
-      reactPdf.pages.map(page => page.text),
-    )
-
-    const reactLinks = reactPdf.pages.flatMap(page => page.annotations)
-      .filter(annotation => annotation.subtype === 'Link')
+    // Page 1 keeps "readable" whole: ragged lines stretch at their ends (D42).
+    expect(vuePdf.pages[0]!.text).toContain('while keeping the fixture readable.')
+    expect(vuePdf.pages[1]!.text).toBe('NUXT PDF / COMPATIBILITY KERNEL Explicit second page This marker must begin on page two. It proves explicit breaking and fixed-element repetition. Nuxt documentation Page 2 of 2')
     const vueLinks = vuePdf.pages.flatMap(page => page.annotations)
       .filter(annotation => annotation.subtype === 'Link')
-
-    expect(vueLinks).toEqual(reactLinks)
-    expect(vueLinks).toContainEqual(expect.objectContaining({
-      unsafeUrl: 'https://nuxt.com',
-      url: 'https://nuxt.com/',
-    }))
-
-    const [reactPages, vuePages] = await Promise.all([
-      rasterizePdf(reactBytes),
-      rasterizePdf(vueResult.bytes),
+    expect(vueLinks).toEqual([
+      { annotationType: 2, rect: [42, 692.471, 553.28, 705.362], subtype: 'Link', unsafeUrl: 'https://nuxt.com', url: 'https://nuxt.com/' },
     ])
 
-    expect(vuePages).toHaveLength(reactPages.length)
+    const vuePages = await rasterizePdf(vueResult.bytes)
     expect(vuePages).toHaveLength(pageSemantics.length)
 
     if (updatePdfBaselines) {
       await mkdir(baselineDirectory, { recursive: true })
     }
 
-    for (const [index, reactPage] of reactPages.entries()) {
-      const vuePage = vuePages[index]!
+    for (const [index, vuePage] of vuePages.entries()) {
       const semantics = pageSemantics[index]!
 
       for (const text of semantics.includes) {
@@ -151,13 +116,6 @@ describe('React PDF compatibility', () => {
       for (const text of semantics.excludes) {
         expect(vuePdf.pages[index]?.text).not.toContain(text)
       }
-
-      const parity = comparePageImages(vuePage, reactPage, rasterThresholds)
-      expect(parity, `page ${index + 1} React/Vue raster mismatch`).toMatchObject({
-        dimensionsMatch: true,
-        matches: true,
-        pageNumbersMatch: true,
-      })
 
       const baselineName = `vue-conformance-page-${index + 1}.png`
       const baselinePath = join(baselineDirectory, baselineName)
@@ -169,12 +127,7 @@ describe('React PDF compatibility', () => {
         await readFile(baselinePath),
         vuePage.number,
       )
-      const regression = comparePageImages(vuePage, baseline, rasterThresholds)
-      expect(regression, `page ${index + 1} reviewed baseline mismatch`).toMatchObject({
-        dimensionsMatch: true,
-        matches: true,
-        pageNumbersMatch: true,
-      })
+      await expectReviewedPage(vuePage, baseline, 'conformance')
     }
 
     const expectedBaselineNames = vuePages.map(

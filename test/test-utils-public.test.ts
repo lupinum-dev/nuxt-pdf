@@ -3,19 +3,14 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { defineComponent, h } from 'vue'
 import { describe, expect, it } from 'vitest'
-import {
-  PdfDocument,
-  PdfLink,
-  PdfPage,
-  PdfText,
-  PdfView,
-} from '../src/runtime/components'
+import { PDF_COMPONENTS } from '../src/runtime/components'
 // Import through the shipped public entry so the test exercises exactly what
 // users get from `@lupinum/nuxt-pdf/test`.
 import {
   PdfAssertionError,
   comparePdfSnapshot,
   expectPdf,
+  loadPdfSfc,
   parsePdf,
   renderPdfSfc,
   renderPdfTemplate,
@@ -23,6 +18,8 @@ import {
   type RenderPdfTemplateOptions,
 } from '../src/test/index'
 import { sampleInvoice } from '../playground/shared/invoice'
+
+const { PdfDocument, PdfLink, PdfPage, PdfText, PdfView } = PDF_COMPONENTS
 
 // A realistic, self-contained template: two explicit pages, an internal link to
 // a bookmarked section, and an external link — no Nuxt and no SFC.
@@ -196,7 +193,7 @@ describe('@lupinum/nuxt-pdf/test public surface', () => {
       InvoiceDoc,
       { customer: 'Acme Corp' },
       { limits: { maxPages: 0 } },
-    )).rejects.toThrow(/pdf\.limits\.maxPages must be a positive safe integer/)
+    )).rejects.toThrow(/pdf\.limits\.maxPages must be a whole number from 1 to/)
   }, 30_000)
 
   it('compiles a real nested PDF SFC graph with local resources', async () => {
@@ -245,6 +242,15 @@ describe('@lupinum/nuxt-pdf/test public surface', () => {
         .rejects.toThrow('pdf.fonts must be an array')
     }
     finally { await rm(root, { recursive: true, force: true }) }
+  })
+
+  // A relative path starts at the working directory, so a path written from
+  // the test file misses. Catches the miss reported as a missing fonts root
+  // or a missing pdfs directory instead of the path that was not found.
+  it('names the path of a template file that does not exist', async () => {
+    const missing = resolve('pdfs/missing.vue')
+    await expect(renderPdfSfc('./pdfs/missing.vue', {})).rejects.toThrow(`PDF SFC file not found: ${missing}.`)
+    await expect(loadPdfSfc('./pdfs/missing.vue')).rejects.toThrow(`PDF SFC file not found: ${missing}.`)
   })
 
   it('resolves inherited font declarations inside their Nuxt layer', async () => {
@@ -307,7 +313,7 @@ describe('@lupinum/nuxt-pdf/test public surface', () => {
       )
       const artifactDir = join(baselineDir, 'failure-artifacts')
       await expect(comparePdfSnapshot(other, baselineDir, { artifactDir }))
-        .rejects.toThrow(/Expected, actual, diff, and metrics artifacts/)
+        .rejects.toThrow(/page 1: \d+ of \d+ pixels \([\d.]+ %\) differ by more than 25 in a channel, and at most 0\.5 % may; the largest channel difference is \d+\. Expected, actual, diff, and metrics artifacts/)
       expect(await readdir(artifactDir)).toEqual(expect.arrayContaining([
         'metrics.json',
         'page-1-actual.png',

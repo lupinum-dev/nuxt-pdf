@@ -68,6 +68,28 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
 
+  # The invariant harness at CI size (about 150 s); `pnpm test` checks its saved
+  # cases and one generated document per rule.
+  invariants:
+    name: invariants (CI size)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: corepack enable pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm dev:prepare
+      # Poppler is the second PDF reader of I21, I22 and I23; with CI=true a missing
+      # tool fails the run. The update avoids 404s from a stale package index.
+      - run: sudo apt-get update -q && sudo apt-get install -y --no-install-recommends poppler-utils
+      - run: pnpm test:invariants
+
   # Raster baselines depend on the platform's font rendering, so they run in a pinned image.
   raster:
     name: raster (pinned Linux)
@@ -90,6 +112,7 @@ jobs:
           test/conformance.test.ts
           test/ebook-playground.test.ts
           test/menu-playground.test.ts
+          test/paper-playground.test.ts
           test/pdf-utils.test.ts
           test/svg-conformance.test.ts
           test/test-utils-public.test.ts
@@ -101,6 +124,49 @@ jobs:
           name: pdf-raster-diagnostics
           path: reports/pdf-snapshots
           if-no-files-found: ignore
+
+  # PDF/A-3b fixtures validated by veraPDF (image pinned by digest in test/pdfa.test.ts).
+  pdfa:
+    name: PDF/A (veraPDF)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: corepack enable pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm dev:prepare
+      - run: pnpm test:pdfa
+
+  # Wall time as a loose ceiling (3 times the reviewed values) and the memory
+  # budget (internals/performance.md). The exact budget is the counted work
+  # in the main suite (test/work-budget.test.ts); this job catches what a
+  # count cannot: a leak, a slow path, a slow first render.
+  performance:
+    name: performance (wall-time ceiling)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: corepack enable pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm dev:prepare
+      # coldRenderMs loads the built runtime from dist/, as a user's server does.
+      - run: pnpm exec nuxt-module-build build
+      - run: pnpm test:performance
+        env:
+          NUXT_PDF_PERF_GATE: '1'
 
   windows:
     name: test (Windows paths and assets)
@@ -123,7 +189,7 @@ jobs:
   ci:
     name: ci
     if: always()
-    needs: [check, node, raster, windows]
+    needs: [check, node, invariants, raster, pdfa, performance, windows]
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:

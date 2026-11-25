@@ -1,0 +1,109 @@
+{
+  "profile": "table",
+  "invariants": [
+    "I5"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 20,
+    "rule": "documents"
+  },
+  "note": "T4 family, fixed in TB1: in a split row, a spanning cell whose two lines fit sat on the next page, and its PdfPage seemed to start a page late. Cause: the cell's text grows to its wrapper's height, and getLineBreak's orphans and widows checks returned 0 lines for a text whose lines all fit (scripts/vendor-layout.mjs, getLineBreak). Reduced in 63 steps from table document 20 with the fix switched off.",
+  "raw": {
+    "pages": [
+      {
+        "size": 0,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "text",
+            "n": 8,
+            "font": 0,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false
+          }
+        ],
+        "bookmark": false
+      },
+      {
+        "size": 5,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          42,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "table",
+            "font": 1,
+            "columns": [
+              {
+                "kind": 1,
+                "value": 0
+              },
+              {
+                "kind": 2,
+                "value": 0
+              },
+              {
+                "kind": 1,
+                "value": 0
+              }
+            ],
+            "header": true,
+            "headerCells": [],
+            "rows": [
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 5,
+                    "span": 1,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  },
+                  {
+                    "n": 39,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              }
+            ],
+            "marginTop": 3,
+            "marginBottom": 0
+          }
+        ],
+        "bookmark": false
+      }
+    ]
+  }
+}

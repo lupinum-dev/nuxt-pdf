@@ -3,7 +3,7 @@ useHead({
   title: 'Nuxt PDF · Template gallery',
   meta: [{
     name: 'description',
-    content: 'Six Vue-authored PDF templates rendered by Nitro — invoice, report, annual report, certificate, e-book, and menu.',
+    content: 'Ten Vue-authored PDF templates rendered by Nitro — invoice, report, annual report, certificate, e-book, menu, form, article, letter, and research paper.',
   }],
 })
 
@@ -38,7 +38,7 @@ const documents: GalleryDoc[] = [
     meta: 'Multi-page · A4',
     description:
       'A field survey whose contents page prints the resolved page each section lands on.',
-    technique: 'usePdfPageNumbers · internal links',
+    technique: 'PdfPageRef · internal links',
   },
   {
     key: 'annual-report',
@@ -55,14 +55,14 @@ const documents: GalleryDoc[] = [
     name: 'Certificate of completion',
     meta: '1 page · A4 landscape',
     description:
-      'An engraver’s border and a concentric SVG seal — ornament drawn entirely from primitives.',
-    technique: 'SVG ornament · RadialGradient',
+      'A calm certificate on ivory paper: one thin frame, the name in Cormorant, and a seal drawn in SVG.',
+    technique: 'SVG seal · serif typography',
   },
   {
     key: 'ebook',
     genre: 'E-book',
     name: 'The Reed Line',
-    meta: '21 pages · digest',
+    meta: '18 pages · digest',
     description:
       'A nature novella: page numbers drive a contents page and chapter-aware running matter.',
     technique: 'Chapter-aware running foot',
@@ -73,8 +73,45 @@ const documents: GalleryDoc[] = [
     name: 'Gasthaus Alpenrose',
     meta: '2 pages · A5',
     description:
-      'A bilingual alpine dinner card: pure typography, diacritics, and dotted price leaders.',
+      'A bilingual alpine dinner card on warm paper: two serifs, diacritics, and a tabular price column.',
     technique: 'Typographic detail · tabular prices',
+  },
+  {
+    key: 'registration',
+    genre: 'Form',
+    name: 'Workshop registration',
+    meta: '1 page · A5',
+    description:
+      'A form the participant fills in a PDF reader: text fields, a drop-down list, a radio group and checkboxes.',
+    technique: 'Form fields · scenarios',
+  },
+  {
+    key: 'article',
+    genre: 'Article',
+    name: 'Listening to a meadow at dawn',
+    meta: '2 pages · A5',
+    description:
+      'A journal post from editor HTML or Markdown, with a captioned photo, lists, a quote and a callout component.',
+    technique: 'PdfRichText · bookmarks',
+    api: '/api/article?inline=1',
+  },
+  {
+    key: 'letter',
+    genre: 'Letter',
+    name: 'Kestrel & Moss',
+    meta: '1 page · A4',
+    description:
+      'A business letter whose address sits in the window of a DL envelope, with fold marks and a signature.',
+    technique: 'DIN 5008 form B · absolute boxes',
+  },
+  {
+    key: 'paper',
+    genre: 'Research paper',
+    name: 'Dawn chorus onset in urban and rural meadows',
+    meta: '3 pages · A4',
+    description:
+      'A journal article in two columns, with a masthead, SVG figures, booktabs tables and a numbered reference list.',
+    technique: 'Columns · pages="continuation" · internal links',
   },
 ]
 

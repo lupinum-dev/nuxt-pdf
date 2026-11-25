@@ -1,0 +1,85 @@
+{
+  "profile": "notes",
+  "invariants": [
+    "G3"
+  ],
+  "origin": {
+    "seed": 5,
+    "index": 33,
+    "rule": "neutral"
+  },
+  "note": "Found by G3 (seed 5, document 33, the flow of each page in one plain view). An A6 page (page end 419.53) with a one-line text with a mark (a 30-token note), then a text with break. Plain: the flow ends at 9.31 pt and the note (47.13 pt with the area's rule, counting its start lines) fits whole on page 1. In one plain view: the view splits at the break, and its first part keeps style.height = the room (split-node.ts, splitNode). extentOf (layout/paginate/notes.ts) reads a split container as that height, so the try at 419.53 ends at 419.53 and does not fit, and phase 1 goes to 419.53 - 47.13 = 372.40, which fits exactly. No flow line or box ends between 372.40 and 419.53 (the text ends at 8.80), so phase 2 stays there. The area gets the 47.13 pt that the fit counted, only the start of the note; 46.16 pt of it is carried to page 2. Every split height above the break keeps the same flow, so the higher one gains nothing.",
+  "raw": {
+    "pages": [
+      {
+        "size": 2,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "text",
+            "n": 1,
+            "font": 0,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": [
+              {
+                "at": 0,
+                "n": 30
+              },
+              {
+                "at": 0,
+                "n": 1
+              }
+            ]
+          },
+          {
+            "t": "text",
+            "n": 1,
+            "font": 0,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": true,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": []
+          }
+        ],
+        "bookmark": false
+      }
+    ],
+    "footnotes": {
+      "page": false,
+      "styles": 0
+    },
+    "columns": [
+      null,
+      null
+    ]
+  }
+}

@@ -4,45 +4,52 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { renderPdfSfc } from '../src/test'
 import { sampleEbook } from '../playground/shared/ebook'
+import { playgroundFonts } from './fixtures/playground-fonts'
 import {
-  comparePageImages,
   decodePngPage,
   getPdfOutline,
   rasterizePdf,
 } from '../src/test/pdf'
+import { expectReviewedPage } from './raster'
+
+/** The roles of the structure tree of one page, depth first, as `role` or `  role` per level. */
+const structureOf = async (bytes: Uint8Array, pageNumber: number): Promise<string[]> => {
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
+  const task = pdfjs.getDocument({ data: Uint8Array.from(bytes), useWorkerFetch: false, verbosity: 0 })
+  try {
+    const roles: string[] = []
+    const walk = (node: unknown, depth: number) => {
+      if (typeof node !== 'object' || node === null || !('role' in node)) return
+      roles.push(`${'  '.repeat(depth)}${String(node.role)}`)
+      if ('children' in node && Array.isArray(node.children)) for (const child of node.children) walk(child, depth + 1)
+    }
+    walk(await (await (await task.promise).getPage(pageNumber)).getStructTree(), 0)
+    return roles
+  }
+  finally {
+    await task.destroy()
+  }
+}
 
 // The shipped ebook showcase, compiled and rendered through the shipped test
-// helper (auto-injecting the usePdfPageNumbers import). Proves the flagship
-// usePdfPageNumbers story end-to-end: multi-pass numbering feeds BOTH the
-// Contents dot-leaders and the chapter-aware running foot, plus the per-chapter
-// outline and internal links.
+// helper. Proves the page-reference story end-to-end: `PdfPageRef` numbers
+// feed the Contents dot-leaders, each chapter prints its own running foot,
+// plus the per-chapter outline and internal links.
 const ebookSource = resolve('playground/pdfs/ebook.vue')
 
 const baselineDirectory = fileURLToPath(new URL('./fixtures/baselines/ebook', import.meta.url))
 const updatePdfBaselines = process.env.UPDATE_PDF_BASELINES === '1'
-const rasterThresholds = { channelThreshold: 25, maxChangedPixelRatio: 0.005 } as const
 
-// Bundle the same Inter/Lora files the playground registers in nuxt.config,
-// so the render resolves the exact families the SFC references.
-const playgroundFonts = [
-  { family: 'Inter', src: './Inter-400.ttf', fontWeight: 400 },
-  { family: 'Inter', src: './Inter-500.ttf', fontWeight: 500 },
-  { family: 'Inter', src: './Inter-600.ttf', fontWeight: 600 },
-  { family: 'Inter', src: './Inter-700.ttf', fontWeight: 700 },
-  { family: 'Inter', src: './Inter-800.ttf', fontWeight: 800 },
-  { family: 'Lora', src: './Lora-400.ttf', fontWeight: 400 },
-  { family: 'Lora', src: './Lora-400-italic.ttf', fontWeight: 400, fontStyle: 'italic' as const },
-  { family: 'Lora', src: './Lora-600.ttf', fontWeight: 600 },
-  { family: 'Lora', src: './Lora-700.ttf', fontWeight: 700 },
-]
-
-describe('playground ebook.vue (usePdfPageNumbers showcase)', () => {
+describe('playground ebook.vue (PdfPageRef showcase)', () => {
   it('auto-injects the composable, resolves the TOC + chapter-aware foot, and matches its raster baseline', async () => {
     const { bytes, parsed, result } = await renderPdfSfc(
       ebookSource,
       { ebook: sampleEbook },
       { fonts: playgroundFonts },
     )
+    // The docs gallery renders this sample and stops on any warning, such as a keep the template cannot get (scripts/docs-gallery.mjs).
+    expect([...result.diagnostics.layoutWarnings, ...result.diagnostics.imageWarnings]).toEqual([])
+
     // Multi-pass activation proves the auto-injected composable ran.
     expect(result.diagnostics.passes).toBeGreaterThanOrEqual(2)
 
@@ -62,7 +69,7 @@ describe('playground ebook.vue (usePdfPageNumbers showcase)', () => {
     const reedStart = startPageOf('the reeds keep that no fence could hold to')
     const waterStart = startPageOf('The field to the west drinks and lets go within the day')
     const fogStart = startPageOf('breathing out. It comes on the mornings when the water is warmer')
-    const migrationsStart = startPageOf('sky in October the way water comes down the cut')
+    const migrationsStart = startPageOf('comes down the cut, in pulses, on their own weather')
 
     // Chapters genuinely span pages, so a later chapter starts more than one page
     // after an earlier one — the numbers come from pagination, not chapter order.
@@ -96,6 +103,18 @@ describe('playground ebook.vue (usePdfPageNumbers showcase)', () => {
     // 'The Weight of Fog' appears contiguous only in the foot here (the body of
     // this page never repeats the chapter title), so this proves the foot.
     expect(fogMidPage!.text).toContain(`The Weight of Fog · ${fogMidPage!.number}`)
+
+    // The template claims PDF/UA-1 (veraPDF checks it in test/pdfa.test.ts).
+    // The cover title is the one h1; the contents are a list of links; a
+    // chapter is a section with its label, its h2 and its paragraphs, and the
+    // cover drawing, the running head and the running foot are artifacts.
+    expect((await structureOf(bytes, 1)).slice(0, 4)).toEqual(['Root', '  Document', '    P', '    H1'])
+    expect((await structureOf(bytes, 3)).slice(0, 8)).toEqual([
+      'Root', '  Document', '    H2', '    L', '      LI', '        LBody', '          Link', '      LI',
+    ])
+    expect(await structureOf(bytes, reedStart)).toEqual([
+      'Root', '  Document', '    Sect', '      P', '      H2', '      P', '      P', '      P', '      P',
+    ])
 
     // The outline carries one entry per chapter, in reading order.
     const outline = await getPdfOutline(bytes)
@@ -131,11 +150,7 @@ describe('playground ebook.vue (usePdfPageNumbers showcase)', () => {
         await readFile(`${baselineDirectory}/page-${n}.png`),
         n,
       )
-      const regression = comparePageImages(rasters[n - 1]!, baseline, rasterThresholds)
-      expect(regression, `page ${n} reviewed baseline mismatch`).toMatchObject({
-        dimensionsMatch: true,
-        matches: true,
-      })
+      await expectReviewedPage(rasters[n - 1]!, baseline, 'ebook')
     }
   }, 60_000)
 })

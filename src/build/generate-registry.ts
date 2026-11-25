@@ -1,7 +1,8 @@
 import { joinURL } from 'ufo'
+import { forwardSlashes } from '../runtime/shared/paths'
 import type { RemoteAssetPolicy } from '../runtime/server/assets/remote'
 import type { PdfRenderLimits } from '../runtime/server/render-limits'
-import type { PdfTemplate } from './discover-templates'
+import { compareText, type PdfTemplate } from './discover-templates'
 
 export type PdfRegistryTypeGenerationOptions = {
   runtimeImport: string
@@ -29,25 +30,45 @@ export type PdfRegistryGenerationOptions = PdfRegistryTypeGenerationOptions & {
   development: boolean
 }
 
-const compareText = (left: string, right: string): number => {
-  if (left < right) return -1
-  if (left > right) return 1
-  return 0
-}
-
 const quote = (value: string): string => JSON.stringify(value)
 
-export const generatePdfPreviewConfig = (
-  baseURL: string,
-  buildAssetsDir: string,
-): string => `export const hmrClientPath = ${quote(joinURL(
-  baseURL.replace(/^\.\//, '/') || '/',
-  buildAssetsDir,
-  '@vite/client',
-))}\n`
+/** The project-relative file a template's errors and preview entry name. */
+const templateFile = (template: PdfTemplate): string => `pdfs/${template.relativePath}`
 
-const importPath = (filePath: string): string =>
-  filePath.replaceAll('\\', '/')
+/**
+ * The development-only preview module: the preview entry of every template
+ * and the dev server paths. Production never generates it, so preview code
+ * stays out of the registry.
+ */
+export const generatePdfPreviewConfig = (
+  templates: readonly PdfTemplate[],
+  options: PdfRegistryTypeGenerationOptions & {
+    baseURL: string
+    buildAssetsDir: string
+    rootDir: string
+  },
+): string => {
+  validateOptions(options)
+  const ordered = orderedTemplates(templates)
+  const viteBase = joinURL(options.baseURL.replace(/^\.\//, '/') || '/', options.buildAssetsDir)
+  return [
+    `import { createPdfPreviewEntry } from ${quote(options.runtimeImport)}`,
+    `import { pdf } from '#pdf'`,
+    ...ordered.map((template, index) =>
+      `import __pdfTemplate${index} from ${quote(forwardSlashes(template.filePath))}`),
+    '',
+    'export const pdfPreview = Object.freeze({',
+    ...ordered.map((template, index) =>
+      `  ${quote(template.key)}: createPdfPreviewEntry(pdf[${quote(template.key)}], __pdfTemplate${index}, { file: ${quote(templateFile(template))} }),`),
+    '})',
+    `export const hmrClientPath = ${quote(joinURL(viteBase, '@vite/client'))}`,
+    // Vite's launch-editor middleware. It resolves a relative file against the
+    // process working directory, so the preview sends absolute paths.
+    `export const openInEditorPath = ${quote(joinURL(viteBase, '__open-in-editor'))}`,
+    `export const rootDir = ${quote(options.rootDir)}`,
+    '',
+  ].join('\n')
+}
 
 const runtimeOptionsSource = (
   options: PdfRegistryGenerationOptions,
@@ -132,16 +153,13 @@ export const generatePdfRuntimeRegistry = (
 ): string => {
   validateOptions(options)
   const ordered = orderedTemplates(templates)
-  const runtimeImports = options.development
-    ? 'createPdfPreviewEntry, createPdfRegistry, createPdfTemplate'
-    : 'createPdfRegistry, createPdfTemplate'
   const lines = [
-    `import { ${runtimeImports} } from ${quote(options.runtimeImport)}`,
+    `import { createPdfRegistry, createPdfTemplate } from ${quote(options.runtimeImport)}`,
   ]
 
   ordered.forEach((template, index) => {
     lines.push(
-      `import __pdfTemplate${index} from ${quote(importPath(template.filePath))}`,
+      `import __pdfTemplate${index} from ${quote(forwardSlashes(template.filePath))}`,
     )
   })
 
@@ -149,7 +167,7 @@ export const generatePdfRuntimeRegistry = (
   lines.push(...runtimeOptions, '', 'const registry = createPdfRegistry({')
 
   ordered.forEach((template, index) => {
-    const file = quote(`pdfs/${template.relativePath}`)
+    const file = quote(templateFile(template))
     const runtimeArgument = options.development
       ? runtimeOptions.length > 0
         ? `, { ...__pdfRuntimeOptions, file: ${file} }`
@@ -164,23 +182,22 @@ export const generatePdfRuntimeRegistry = (
 
   lines.push('})')
 
-  if (options.development) {
-    lines.push('', 'export const pdfPreview = Object.freeze({')
-    ordered.forEach((template, index) => {
-      lines.push(
-        `  ${quote(template.key)}: createPdfPreviewEntry(registry.pdf[${quote(template.key)}], __pdfTemplate${index}, { file: ${quote(`pdfs/${template.relativePath}`)} }),`,
-      )
-    })
-    lines.push('})')
-  }
-
+  // `pdf.limits.markdownTimeoutMs` is the default time limit of
+  // `parseRichTextMarkdown` in this app; a call's own `timeoutMs` wins.
+  const markdownTimeout = options.limits?.markdownTimeoutMs
   lines.push(
     '',
     'export const pdf = registry.pdf',
     'export const renderPdf = registry.renderPdf',
     'export const getPdfTemplate = registry.getPdfTemplate',
     'export const pdfTemplateKeys = registry.pdfTemplateKeys',
-    `export { NuxtPdfError, PDF_ERROR_CODES } from ${quote(options.runtimeImport)}`,
+    ...markdownTimeout === undefined
+      ? [`export { NuxtPdfError, PDF_ERROR_CODES, computeEInvoice, renderEInvoiceXml, validateEInvoice, parseRichTextHtml, parseRichTextMarkdown, validateRichText } from ${quote(options.runtimeImport)}`]
+      : [
+          `export { NuxtPdfError, PDF_ERROR_CODES, computeEInvoice, renderEInvoiceXml, validateEInvoice, parseRichTextHtml, validateRichText } from ${quote(options.runtimeImport)}`,
+          `import { parseRichTextMarkdown as __parseRichTextMarkdown } from ${quote(options.runtimeImport)}`,
+          `export const parseRichTextMarkdown = (markdown, options = {}) => __parseRichTextMarkdown(markdown, { timeoutMs: ${markdownTimeout}, ...options })`,
+        ],
     '',
   )
 
@@ -200,7 +217,7 @@ export const generatePdfRegistryTypes = (
   ordered.forEach((template, index) => {
     lines.push(
       '',
-      `type PdfComponent${index} = typeof import(${quote(importPath(template.filePath))})['default']`,
+      `type PdfComponent${index} = typeof import(${quote(forwardSlashes(template.filePath))})['default']`,
       `type PdfProps${index} = PdfComponentProps<PdfComponent${index}>`,
     )
   })
@@ -245,8 +262,10 @@ export const generatePdfRegistryTypes = (
     '',
     `export declare const pdfTemplateKeys: readonly [${ordered.map(template => quote(template.key)).join(', ')}]`,
     'export type PdfTemplateKey = typeof pdfTemplateKeys[number]',
-    `export { NuxtPdfError, PDF_ERROR_CODES } from ${quote(options.runtimeImport)}`,
-    `export type { PdfErrorCode } from ${quote(options.runtimeImport)}`,
+    `export { NuxtPdfError, PDF_ERROR_CODES, computeEInvoice, renderEInvoiceXml, validateEInvoice, parseRichTextHtml, parseRichTextMarkdown, validateRichText } from ${quote(options.runtimeImport)}`,
+    `export type { PdfErrorCode, PdfLayoutWarning, PdfSourcePosition } from ${quote(options.runtimeImport)}`,
+    `export type { EInvoice, EInvoiceIssue, EInvoiceProfile, EInvoiceTotals, PdfInvoiceIssue } from ${quote(options.runtimeImport)}`,
+    `export type { PdfRichBlock, PdfRichInline, PdfRichTextIssue } from ${quote(options.runtimeImport)}`,
     '',
   )
 

@@ -1,0 +1,81 @@
+{
+  "profile": "flow",
+  "invariants": [
+    "I5"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 6,
+    "rule": "documents"
+  },
+  "note": "Finding G2, fixed in the layout copy (D20). It was: a PdfPage whose first flow child has break started with an empty PDF page (only its fixed content), because the page-level splitNodes call did not know that the page had no flow content yet. Built by hand from flow document 6 of seed 20261116: an A4 page with one text, then an A6 page that starts with text(break). The pages differ in size, so I5 sees an empty page.",
+  "raw": {
+    "pages": [
+      {
+        "size": 0,
+        "landscape": false,
+        "padding": [
+          20,
+          20,
+          20,
+          20
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "text",
+            "n": 10,
+            "font": 2,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0
+          }
+        ]
+      },
+      {
+        "size": 2,
+        "landscape": false,
+        "padding": [
+          20,
+          20,
+          20,
+          20
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "text",
+            "n": 4,
+            "font": 2,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": true,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0
+          },
+          {
+            "t": "text",
+            "n": 10,
+            "font": 2,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0
+          }
+        ]
+      }
+    ]
+  }
+}

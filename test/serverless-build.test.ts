@@ -18,8 +18,10 @@ const fixtureRoot = fileURLToPath(new URL('./fixtures/basic', import.meta.url))
 const outputRoot = join(fixtureRoot, '.vercel', 'output')
 
 // Engine packages that MUST be present in the server bundle (the module renders
-// PDFs through React PDF's exact-pinned layout/render engine, server-side only).
-const ENGINE_MARKERS = ['@react-pdf/pdfkit', '@react-pdf/layout', '@react-pdf/render']
+// PDFs server-side only, with our layout, text layout, painter and writer over
+// the exact-pinned fontkit). Our code is bundled; the hyphenation patterns are
+// imported only by our text layout copy, so they mark it.
+const ENGINE_MARKERS = ['fontkit', 'hyphen/patterns/en-us']
 
 // React renderer runtime that MUST NOT leak: the module drives a Vue custom
 // renderer, never React's reconciler or the full react-based @react-pdf/renderer.

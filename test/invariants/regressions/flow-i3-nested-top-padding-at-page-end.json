@@ -1,0 +1,137 @@
+{
+  "profile": "flow",
+  "invariants": [
+    "I3"
+  ],
+  "origin": {
+    "seed": 0,
+    "index": -1,
+    "rule": "documents"
+  },
+  "note": "Finding E1, fixed by the layout copy (D19). It was: a view with paddingTop 20 inside another view, placed where less than 20 pt are left on the page, loses its text. The squeezed view is lower than its own padding; the text inside gets an absurd height (9e9 pt in a generated document) and is laid out far below the page. Hit about a third of the generated flow documents before the exclusion \"nested-top-padding\". Built by hand from the reduced generated cases: A4, padding 20; fillers of 400 + 375 pt leave about 15 pt; then view > view(paddingTop 20) > text of 60 tokens. Fillers of 371 to 390 pt all fail.",
+  "raw": {
+    "pages": [
+      {
+        "size": 0,
+        "landscape": false,
+        "padding": [
+          20,
+          20,
+          20,
+          20
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "text",
+            "n": 1,
+            "font": 2,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0
+          },
+          {
+            "t": "view",
+            "margin": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "padding": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "border": 0,
+            "minHeight": 400,
+            "wrap": true,
+            "brk": false,
+            "children": []
+          },
+          {
+            "t": "view",
+            "margin": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "padding": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "border": 0,
+            "minHeight": 375,
+            "wrap": true,
+            "brk": false,
+            "children": []
+          },
+          {
+            "t": "view",
+            "margin": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "padding": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "border": 0,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "view",
+                "margin": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "padding": [
+                  20,
+                  0,
+                  0,
+                  0
+                ],
+                "border": 0,
+                "minHeight": 0,
+                "wrap": true,
+                "brk": false,
+                "children": [
+                  {
+                    "t": "text",
+                    "n": 60,
+                    "font": 2,
+                    "lineHeight": 0,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 0,
+                    "marginBottom": 0,
+                    "extra": 0,
+                    "ref": 0
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

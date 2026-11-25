@@ -1,0 +1,34 @@
+{
+  "profile": "invalid",
+  "invariants": [
+    "I15"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 2,
+    "rule": "invalid"
+  },
+  "note": "V3 (fixed in slice V1): the Vue event prop error did not name the element. It now says \"Vue event prop \\\"onClick\\\" is not supported on <PdfText>\". Found by the first invalid run of H4 (document 2, fault event-prop, base flow); reduced by the harness.",
+  "raw": {
+    "fault": "event-prop",
+    "pick": 7,
+    "base": "flow",
+    "raw": {
+      "pages": [
+        {
+          "size": 0,
+          "landscape": false,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "fixed": [],
+          "children": [],
+          "bookmark": false
+        }
+      ]
+    }
+  }
+}

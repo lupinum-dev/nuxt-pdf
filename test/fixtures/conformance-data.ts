@@ -1,3 +1,5 @@
+import type { PdfStyle } from '../../src/runtime/authoring'
+
 export const conformanceLines = [
   { id: 'alpha', label: 'Alpha service', amount: 'EUR 120.00' },
   { id: 'beta', label: 'Beta support', amount: 'EUR 80.00' },
@@ -12,13 +14,14 @@ export const conformanceParagraphs = [
 
 export const conformanceStyles = {
   page: {
+    hyphens: 'auto',
     fontFamily: 'Roboto',
     fontSize: 11,
     paddingTop: 54,
     paddingRight: 42,
     paddingBottom: 58,
     paddingLeft: 42,
-  },
+  } satisfies PdfStyle,
   header: {
     position: 'absolute' as const,
     top: 22,

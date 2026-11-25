@@ -1,0 +1,180 @@
+{
+  "profile": "table",
+  "invariants": [
+    "I9"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 3,
+    "rule": "documents"
+  },
+  "note": "T4 family, fixed in TB1: a split row whose cells had no line on the page left a row part of empty cells under the header, so the orphan rule (findOrphanedViews) did not see a header alone and the header ended the page with no row. splitRowNodes moves a row with nothing to show whole. Found when the H3 T4 avoidance was removed (table document 3), reduced in 87 steps.",
+  "raw": {
+    "pages": [
+      {
+        "size": 5,
+        "landscape": false,
+        "padding": [
+          18,
+          0,
+          59,
+          13
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "view",
+            "margin": [
+              0,
+              14,
+              0,
+              1
+            ],
+            "padding": [
+              9,
+              9,
+              0,
+              15
+            ],
+            "border": 3,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "view",
+                "margin": [
+                  12,
+                  19,
+                  0,
+                  1
+                ],
+                "padding": [
+                  15,
+                  18,
+                  0,
+                  16
+                ],
+                "border": 0,
+                "minHeight": 0,
+                "wrap": true,
+                "brk": false,
+                "children": [
+                  {
+                    "t": "view",
+                    "margin": [
+                      11,
+                      20,
+                      0,
+                      7
+                    ],
+                    "padding": [
+                      7,
+                      11,
+                      0,
+                      10
+                    ],
+                    "border": 2,
+                    "minHeight": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "children": [
+                      {
+                        "t": "text",
+                        "n": 17,
+                        "font": 4,
+                        "lineHeight": 3,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 17,
+                        "marginBottom": 18,
+                        "extra": 0,
+                        "ref": 0,
+                        "link": 0,
+                        "linkAt": 0,
+                        "linkSize": 0,
+                        "linkTo": 0,
+                        "bookmark": false
+                      },
+                      {
+                        "t": "text",
+                        "n": 16,
+                        "font": 3,
+                        "lineHeight": 3,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 2,
+                        "marginBottom": 19,
+                        "extra": 0,
+                        "ref": 0,
+                        "link": 0,
+                        "linkAt": 0,
+                        "linkSize": 0,
+                        "linkTo": 0,
+                        "bookmark": false
+                      },
+                      {
+                        "t": "text",
+                        "n": 23,
+                        "font": 5,
+                        "lineHeight": 2,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 17,
+                        "marginBottom": 14,
+                        "extra": 0,
+                        "ref": 0,
+                        "link": 0,
+                        "linkAt": 0,
+                        "linkSize": 0,
+                        "linkTo": 0,
+                        "bookmark": false
+                      },
+                      {
+                        "t": "table",
+                        "font": 3,
+                        "columns": [
+                          {
+                            "kind": 1,
+                            "value": 0
+                          }
+                        ],
+                        "header": true,
+                        "headerCells": [],
+                        "rows": [
+                          {
+                            "wrap": true,
+                            "cells": [
+                              {
+                                "n": 3,
+                                "span": 0,
+                                "align": 0,
+                                "link": 0,
+                                "linkAt": 0,
+                                "linkSize": 0,
+                                "linkTo": 0
+                              }
+                            ]
+                          }
+                        ],
+                        "marginTop": 4,
+                        "marginBottom": 0
+                      }
+                    ],
+                    "bookmark": false
+                  }
+                ],
+                "bookmark": false
+              }
+            ],
+            "bookmark": false
+          }
+        ],
+        "bookmark": false
+      }
+    ]
+  }
+}

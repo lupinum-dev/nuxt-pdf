@@ -1,0 +1,303 @@
+{
+  "profile": "fixed",
+  "invariants": [
+    "I3"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 81,
+    "rule": "documents"
+  },
+  "note": "Finding G1, fixed in the layout copy (D19, edit \"a page end drops the bottom margin of a child kept whole above it\"). It was: a text with a PdfPageNumber, kept whole at the end of a split view while its bottom margin crossed the page end, lost its line (\"w219 missing; n1p… missing\"): resolvePageIndices laid it out again in the room above that margin (10.5 pt for an 11 pt line). Reduced from fixed document 81 of seed 20261116 in 174 steps.",
+  "raw": {
+    "pages": [
+      {
+        "size": 1,
+        "landscape": true,
+        "padding": [
+          27,
+          58,
+          18,
+          36
+        ],
+        "fixed": [
+          {
+            "kind": 0,
+            "pages": 0,
+            "absolute": false,
+            "n": 1,
+            "font": 2,
+            "numbers": 0,
+            "offset": 0,
+            "fromBottom": false,
+            "inset": 0,
+            "marginBottom": 1
+          }
+        ],
+        "children": [
+          {
+            "t": "view",
+            "margin": [
+              0,
+              16,
+              0,
+              20
+            ],
+            "padding": [
+              0,
+              0,
+              0,
+              7
+            ],
+            "border": 0,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "text",
+                "n": 1,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0
+              },
+              {
+                "t": "text",
+                "n": 1,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0
+              },
+              {
+                "t": "view",
+                "margin": [
+                  0,
+                  13,
+                  0,
+                  4
+                ],
+                "padding": [
+                  0,
+                  6,
+                  0,
+                  14
+                ],
+                "border": 0,
+                "minHeight": 0,
+                "wrap": true,
+                "brk": false,
+                "children": [
+                  {
+                    "t": "text",
+                    "n": 1,
+                    "font": 0,
+                    "lineHeight": 0,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 0,
+                    "marginBottom": 0,
+                    "extra": 0,
+                    "ref": 0
+                  },
+                  {
+                    "t": "text",
+                    "n": 79,
+                    "font": 5,
+                    "lineHeight": 0,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 0,
+                    "marginBottom": 0,
+                    "extra": 0,
+                    "ref": 0
+                  },
+                  {
+                    "t": "view",
+                    "margin": [
+                      14,
+                      11,
+                      0,
+                      15
+                    ],
+                    "padding": [
+                      18,
+                      2,
+                      0,
+                      0
+                    ],
+                    "border": 0,
+                    "minHeight": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "children": [
+                      {
+                        "t": "text",
+                        "n": 1,
+                        "font": 0,
+                        "lineHeight": 0,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 0,
+                        "marginBottom": 18,
+                        "extra": 0,
+                        "ref": 0
+                      },
+                      {
+                        "t": "text",
+                        "n": 15,
+                        "font": 3,
+                        "lineHeight": 0,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 19,
+                        "marginBottom": 16,
+                        "extra": 0,
+                        "ref": 0
+                      },
+                      {
+                        "t": "text",
+                        "n": 13,
+                        "font": 4,
+                        "lineHeight": 4,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 10,
+                        "marginBottom": 17,
+                        "extra": 0,
+                        "ref": 0
+                      },
+                      {
+                        "t": "view",
+                        "margin": [
+                          4,
+                          19,
+                          7,
+                          0
+                        ],
+                        "padding": [
+                          19,
+                          11,
+                          0,
+                          10
+                        ],
+                        "border": 3,
+                        "minHeight": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "children": [
+                          {
+                            "t": "text",
+                            "n": 87,
+                            "font": 1,
+                            "lineHeight": 4,
+                            "align": 0,
+                            "wrap": true,
+                            "brk": false,
+                            "marginTop": 5,
+                            "marginBottom": 13,
+                            "extra": 0,
+                            "ref": 0
+                          },
+                          {
+                            "t": "text",
+                            "n": 1,
+                            "font": 0,
+                            "lineHeight": 4,
+                            "align": 0,
+                            "wrap": true,
+                            "brk": false,
+                            "marginTop": 22,
+                            "marginBottom": 23,
+                            "extra": 0,
+                            "ref": 0
+                          },
+                          {
+                            "t": "text",
+                            "n": 17,
+                            "font": 0,
+                            "lineHeight": 3,
+                            "align": 0,
+                            "wrap": true,
+                            "brk": false,
+                            "marginTop": 0,
+                            "marginBottom": 9,
+                            "extra": 0,
+                            "ref": 0
+                          },
+                          {
+                            "t": "text",
+                            "n": 1,
+                            "font": 5,
+                            "lineHeight": 3,
+                            "align": 0,
+                            "wrap": true,
+                            "brk": false,
+                            "marginTop": 7,
+                            "marginBottom": 12,
+                            "extra": 0,
+                            "ref": 0
+                          }
+                        ]
+                      },
+                      {
+                        "t": "view",
+                        "margin": [
+                          3,
+                          0,
+                          0,
+                          0
+                        ],
+                        "padding": [
+                          5,
+                          0,
+                          0,
+                          0
+                        ],
+                        "border": 4,
+                        "minHeight": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "children": [
+                          {
+                            "t": "text",
+                            "n": 1,
+                            "font": 2,
+                            "lineHeight": 0,
+                            "align": 0,
+                            "wrap": true,
+                            "brk": false,
+                            "marginTop": 19,
+                            "marginBottom": 7,
+                            "extra": 1,
+                            "ref": 0
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

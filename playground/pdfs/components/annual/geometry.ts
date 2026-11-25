@@ -94,6 +94,24 @@ export const areaPath = (
   return `${top} L ${n(width)} ${n(height)} L 0 ${n(height)} Z`
 }
 
+/**
+ * A bar with rounded top corners and a square foot on the baseline. The radius
+ * shrinks for a bar lower or narrower than two radii.
+ */
+export const roundedTopBar = (x: number, y: number, width: number, height: number, radius: number): string => {
+  const r = Math.min(radius, width / 2, height)
+  const bottom = y + height
+  return [
+    `M ${n(x)} ${n(bottom)}`,
+    `L ${n(x)} ${n(y + r)}`,
+    `A ${n(r)} ${n(r)} 0 0 1 ${n(x + r)} ${n(y)}`,
+    `L ${n(x + width - r)} ${n(y)}`,
+    `A ${n(r)} ${n(r)} 0 0 1 ${n(x + width)} ${n(y + r)}`,
+    `L ${n(x + width)} ${n(bottom)}`,
+    'Z',
+  ].join(' ')
+}
+
 /** x-pixel of the nth point in an evenly spaced sequence across a width. */
 export const pointX = (index: number, count: number, width: number): number =>
   (index / (count - 1)) * width

@@ -1,0 +1,194 @@
+{
+  "profile": "mixed",
+  "invariants": [
+    "I5"
+  ],
+  "origin": {
+    "seed": 41,
+    "index": 96,
+    "rule": "documents"
+  },
+  "raw": {
+    "pages": [
+      {
+        "size": 0,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixed": [],
+        "children": [],
+        "bookmark": false
+      },
+      {
+        "size": 5,
+        "landscape": false,
+        "padding": [
+          44,
+          0,
+          5,
+          24
+        ],
+        "fixed": [
+          {
+            "kind": 0,
+            "pages": 1,
+            "absolute": false,
+            "n": 1,
+            "font": 2,
+            "numbers": 0,
+            "offset": 0,
+            "fromBottom": false,
+            "inset": 0,
+            "marginBottom": 8,
+            "link": false
+          }
+        ],
+        "children": [
+          {
+            "t": "view",
+            "margin": [
+              0,
+              0,
+              3,
+              0
+            ],
+            "padding": [
+              0,
+              0,
+              2,
+              0
+            ],
+            "border": 0,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "text",
+                "n": 17,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "face": 0
+              },
+              {
+                "t": "text",
+                "n": 52,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "face": 0
+              },
+              {
+                "t": "text",
+                "n": 38,
+                "font": 3,
+                "lineHeight": 3,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "face": 0
+              },
+              {
+                "t": "text",
+                "n": 1,
+                "font": 2,
+                "lineHeight": 2,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 16,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "face": 0
+              },
+              {
+                "t": "text",
+                "n": 1,
+                "font": 1,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 11,
+                "marginBottom": 18,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "face": 6
+              }
+            ],
+            "bookmark": false
+          },
+          {
+            "t": "text",
+            "n": 1,
+            "font": 4,
+            "lineHeight": 0,
+            "align": 2,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 16,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "face": 7
+          }
+        ],
+        "bookmark": false
+      }
+    ],
+    "tagged": false,
+    "paint": []
+  }
+}

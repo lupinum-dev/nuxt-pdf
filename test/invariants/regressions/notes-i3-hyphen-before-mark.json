@@ -1,0 +1,222 @@
+{
+  "profile": "notes",
+  "invariants": [
+    "I3"
+  ],
+  "origin": {
+    "seed": 7,
+    "index": 144,
+    "rule": "documents"
+  },
+  "note": "Reduced from notes document 144 of seed 7 in 98 steps. The last text (12 pt, in nested views on an A6 page) has a mark after its second token. It failed I3 before finding (al) was fixed: the line ended in \"w101-\" and the mark started the next line (a word and the run after it with no space between were a hyphen point).",
+  "raw": {
+    "pages": [
+      {
+        "size": 2,
+        "landscape": false,
+        "padding": [
+          0,
+          6,
+          0,
+          60
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "view",
+            "margin": [
+              0,
+              20,
+              0,
+              12
+            ],
+            "padding": [
+              0,
+              10,
+              0,
+              17
+            ],
+            "border": 0,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "text",
+                "n": 8,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": []
+              },
+              {
+                "t": "text",
+                "n": 12,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": [
+                  {
+                    "at": 0,
+                    "n": 34
+                  },
+                  {
+                    "at": 0,
+                    "n": 1
+                  }
+                ]
+              },
+              {
+                "t": "text",
+                "n": 4,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": [
+                  {
+                    "at": 0,
+                    "n": 34
+                  },
+                  {
+                    "at": 0,
+                    "n": 1
+                  }
+                ]
+              },
+              {
+                "t": "view",
+                "margin": [
+                  0,
+                  11,
+                  0,
+                  3
+                ],
+                "padding": [
+                  0,
+                  16,
+                  0,
+                  12
+                ],
+                "border": 1,
+                "minHeight": 0,
+                "wrap": true,
+                "brk": false,
+                "children": [
+                  {
+                    "t": "view",
+                    "margin": [
+                      0,
+                      0,
+                      0,
+                      19
+                    ],
+                    "padding": [
+                      0,
+                      1,
+                      0,
+                      7
+                    ],
+                    "border": 0,
+                    "minHeight": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "children": [
+                      {
+                        "t": "text",
+                        "n": 7,
+                        "font": 0,
+                        "lineHeight": 0,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 0,
+                        "marginBottom": 0,
+                        "extra": 0,
+                        "ref": 0,
+                        "link": 0,
+                        "linkAt": 0,
+                        "linkSize": 0,
+                        "linkTo": 0,
+                        "bookmark": false,
+                        "marks": []
+                      },
+                      {
+                        "t": "text",
+                        "n": 7,
+                        "font": 4,
+                        "lineHeight": 0,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 0,
+                        "marginBottom": 0,
+                        "extra": 0,
+                        "ref": 0,
+                        "link": 0,
+                        "linkAt": 0,
+                        "linkSize": 0,
+                        "linkTo": 0,
+                        "bookmark": false,
+                        "marks": [
+                          {
+                            "at": 0.15499474372992977,
+                            "n": 1
+                          },
+                          {
+                            "at": 0,
+                            "n": 1
+                          }
+                        ]
+                      }
+                    ],
+                    "bookmark": false
+                  }
+                ],
+                "bookmark": false
+              }
+            ],
+            "bookmark": false
+          }
+        ],
+        "bookmark": false
+      }
+    ],
+    "footnotes": {
+      "page": false,
+      "styles": 0
+    }
+  }
+}

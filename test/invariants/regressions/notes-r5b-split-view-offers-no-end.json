@@ -1,0 +1,305 @@
+{
+  "profile": "notes",
+  "invariants": [
+    "G1"
+  ],
+  "origin": {
+    "seed": 20261124,
+    "index": 68,
+    "rule": "documents"
+  },
+  "note": "Page builder rule R5b (948035f): a container that crosses the end offers its own end (top + height) as a nextEnd candidate. Reduced from notes seed 20261124, document 68, with the rule removed. An A6 page (padding 41/21) whose second top-level view holds a view with minHeight 1 and after it a one-word text (w170). The note fit tries the ends the fill offers; the inner view crosses the end with all its children fitting, so only its own bottom edges move on, and without R5b nothing offers the end where it fits whole: the fit stops below it and w170 starts page 2 with 55.2 pt left on page 1 (G1: 29.8 pt needed). With R5b, as on today's path, w170 stays on page 1.",
+  "raw": {
+    "pages": [
+      {
+        "size": 1,
+        "landscape": false,
+        "padding": [
+          41,
+          0,
+          21,
+          22
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "view",
+            "margin": [
+              0,
+              0,
+              3,
+              0
+            ],
+            "padding": [
+              0,
+              0,
+              16,
+              0
+            ],
+            "border": 3,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "text",
+                "n": 64,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": []
+              },
+              {
+                "t": "text",
+                "n": 5,
+                "font": 1,
+                "lineHeight": 2,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": []
+              }
+            ],
+            "bookmark": false
+          },
+          {
+            "t": "view",
+            "margin": [
+              3,
+              17,
+              0,
+              5
+            ],
+            "padding": [
+              15,
+              11,
+              0,
+              4
+            ],
+            "border": 4,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "text",
+                "n": 14,
+                "font": 3,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 14,
+                "marginBottom": 17,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": [
+                  {
+                    "at": 0,
+                    "n": 8
+                  },
+                  {
+                    "at": 0,
+                    "n": 1
+                  }
+                ]
+              },
+              {
+                "t": "view",
+                "margin": [
+                  20,
+                  13,
+                  0,
+                  20
+                ],
+                "padding": [
+                  2,
+                  13,
+                  8,
+                  15
+                ],
+                "border": 0,
+                "minHeight": 1,
+                "wrap": true,
+                "brk": false,
+                "children": [
+                  {
+                    "t": "view",
+                    "margin": [
+                      17,
+                      18,
+                      16,
+                      13
+                    ],
+                    "padding": [
+                      12,
+                      6,
+                      0,
+                      9
+                    ],
+                    "border": 0,
+                    "minHeight": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "children": [
+                      {
+                        "t": "text",
+                        "n": 18,
+                        "font": 3,
+                        "lineHeight": 3,
+                        "align": 0,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 5,
+                        "marginBottom": 13,
+                        "extra": 0,
+                        "ref": 0,
+                        "link": 0,
+                        "linkAt": 0,
+                        "linkSize": 0,
+                        "linkTo": 0,
+                        "bookmark": false,
+                        "marks": [
+                          {
+                            "at": 0,
+                            "n": 37
+                          },
+                          {
+                            "at": 0,
+                            "n": 1
+                          }
+                        ]
+                      }
+                    ],
+                    "bookmark": false
+                  },
+                  {
+                    "t": "text",
+                    "n": 12,
+                    "font": 2,
+                    "lineHeight": 0,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 21,
+                    "marginBottom": 20,
+                    "extra": 0,
+                    "ref": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0,
+                    "bookmark": false,
+                    "marks": []
+                  },
+                  {
+                    "t": "text",
+                    "n": 11,
+                    "font": 3,
+                    "lineHeight": 0,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 9,
+                    "marginBottom": 13,
+                    "extra": 0,
+                    "ref": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0,
+                    "bookmark": false,
+                    "marks": []
+                  }
+                ],
+                "bookmark": false
+              },
+              {
+                "t": "text",
+                "n": 1,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": []
+              },
+              {
+                "t": "text",
+                "n": 1,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": [
+                  {
+                    "at": 0,
+                    "n": 10
+                  },
+                  {
+                    "at": 0,
+                    "n": 1
+                  }
+                ]
+              }
+            ],
+            "bookmark": false
+          }
+        ],
+        "bookmark": false
+      }
+    ],
+    "footnotes": {
+      "page": false,
+      "styles": 2
+    },
+    "columns": [
+      null,
+      null
+    ]
+  }
+}

@@ -1,0 +1,115 @@
+{
+  "profile": "table",
+  "invariants": [
+    "I3",
+    "I9"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 905,
+    "rule": "documents"
+  },
+  "note": "T5 (fixed): getLineBreak measured the room for lines from the top of the cell box, not from below its top padding, so a split cell kept a 12th line that ended 1.8 pt below the page edge and was lost. Found in the 1,000-document table run after TB1 (document 905). Reduced in 128 steps.",
+  "raw": {
+    "pages": [
+      {
+        "size": 5,
+        "landscape": false,
+        "padding": [
+          16,
+          0,
+          0,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "view",
+            "margin": [
+              19,
+              0,
+              0,
+              0
+            ],
+            "padding": [
+              3,
+              0,
+              0,
+              0
+            ],
+            "border": 0,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "table",
+                "font": 0,
+                "columns": [
+                  {
+                    "kind": 1,
+                    "value": 0
+                  }
+                ],
+                "header": true,
+                "headerCells": [],
+                "rows": [
+                  {
+                    "wrap": true,
+                    "cells": []
+                  },
+                  {
+                    "wrap": true,
+                    "cells": []
+                  },
+                  {
+                    "wrap": true,
+                    "cells": []
+                  },
+                  {
+                    "wrap": true,
+                    "cells": []
+                  },
+                  {
+                    "wrap": true,
+                    "cells": []
+                  },
+                  {
+                    "wrap": true,
+                    "cells": []
+                  },
+                  {
+                    "wrap": true,
+                    "cells": []
+                  },
+                  {
+                    "wrap": true,
+                    "cells": []
+                  },
+                  {
+                    "wrap": true,
+                    "cells": [
+                      {
+                        "n": 27,
+                        "span": 0,
+                        "align": 0,
+                        "link": 0,
+                        "linkAt": 0,
+                        "linkSize": 0,
+                        "linkTo": 0
+                      }
+                    ]
+                  }
+                ],
+                "marginTop": 1,
+                "marginBottom": 0
+              }
+            ],
+            "bookmark": false
+          }
+        ],
+        "bookmark": false
+      }
+    ]
+  }
+}

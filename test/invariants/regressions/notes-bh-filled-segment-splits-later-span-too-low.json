@@ -1,0 +1,138 @@
+{
+  "profile": "notes",
+  "invariants": [
+    "G1"
+  ],
+  "origin": {
+    "seed": 377,
+    "index": 21,
+    "rule": "documents"
+  },
+  "note": "Found in the notes profile (seed 377, document 21; also with footnotes numbered through the document, and without column breaks). Reduced form: a 500 x 260 pt page (bottom padding 5) that is a container of three auto-fill columns: a text of 9 tokens (12 pt, two lines, 28.8 pt), one of 25 tokens (9 pt, lineHeight 2, four lines, 72 pt) and one of 20 tokens (11 pt, four lines of 13.2 pt), then a spanning text of one token (8 pt, 8.8 pt). Its 5 notes need 101.5 pt, so the flow may end at 255 - 101.5 = 153.5. Stacked in one column the texts end at 28.8 + 72 + 52.8 = 153.6, so the spanning text has its stacked top at 153.6. At the fit height 153.5, column 1 holds the first two texts and two lines of the third (widows keep two for column 2) and ends at 127.2; column 2 holds two lines. The segment crosses the page end in its stacked form, ends its columns on the page and has no next part (split-stack.ts:259-268), and the spanning text after it is split at its stacked top (split-stack.ts:137, topOf(child)): 153.6 + 8.8 > 153.5, so it moves to page 2. Below the row it would take 127.2 to 136.0, inside 153.5. The note fit reads the page part as high as the split height (153.5 + 101.5 = 255.0 fits exactly, 153.6 does not), so it stops there with 26.3 pt free. Same cause line as (az), reached without a column break: one fix there closes both. Not fixed.",
+  "raw": {
+    "pages": [
+      {
+        "size": 5,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          5,
+          9
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "text",
+            "n": 9,
+            "font": 4,
+            "lineHeight": 2,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": [
+              {
+                "at": 0,
+                "n": 1
+              },
+              {
+                "at": 0,
+                "n": 1
+              }
+            ]
+          },
+          {
+            "t": "text",
+            "n": 25,
+            "font": 1,
+            "lineHeight": 4,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": []
+          },
+          {
+            "t": "text",
+            "n": 20,
+            "font": 3,
+            "lineHeight": 2,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": []
+          },
+          {
+            "t": "text",
+            "n": 1,
+            "font": 0,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 1,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": []
+          }
+        ],
+        "bookmark": false
+      }
+    ],
+    "footnotes": {
+      "page": false,
+      "styles": 0
+    },
+    "columns": [
+      {
+        "page": true,
+        "count": 1,
+        "gap": 0,
+        "fill": 0,
+        "at": 0,
+        "size": 0,
+        "span": 3,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "breaks": 0
+      },
+      null
+    ]
+  }
+}

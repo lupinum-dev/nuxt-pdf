@@ -1,0 +1,72 @@
+{
+  "profile": "table",
+  "invariants": [
+    "I9"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 0,
+    "rule": "documents"
+  },
+  "note": "T2, fixed in TB1: in a row with fewer cells than columns, the share cells grew into the missing columns (99 pt here). The docs allow short rows, so the missing columns now stay empty at their width: PdfTableRowRest renders after the cells and fills each unclaimed column with an empty view (src/runtime/components/table.ts). Found with keep [T2] in H3, reduced in 51 steps.",
+  "raw": {
+    "pages": [
+      {
+        "size": 0,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "table",
+            "font": 0,
+            "columns": [
+              {
+                "kind": 0,
+                "value": 0
+              },
+              {
+                "kind": 0,
+                "value": 0
+              },
+              {
+                "kind": 0,
+                "value": 0
+              }
+            ],
+            "header": true,
+            "headerCells": [
+              {
+                "n": 1,
+                "span": 0,
+                "align": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0
+              },
+              {
+                "n": 1,
+                "span": 0,
+                "align": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0
+              }
+            ],
+            "rows": [],
+            "marginTop": 0,
+            "marginBottom": 0
+          }
+        ],
+        "bookmark": false
+      }
+    ]
+  }
+}

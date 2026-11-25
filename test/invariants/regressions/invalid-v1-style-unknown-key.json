@@ -1,0 +1,34 @@
+{
+  "profile": "invalid",
+  "invariants": [
+    "I15"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 15,
+    "rule": "invalid"
+  },
+  "note": "V1 (fixed in slice V1): a :style error did not name the element. The message now names it and the style key and value, such as \"Unsupported PDF style \\\"colour\\\" on <PdfText>.\" Found by the first invalid run of H4 (document 15, fault style-unknown-key, base fixed); reduced by the harness.",
+  "raw": {
+    "fault": "style-unknown-key",
+    "pick": 994,
+    "base": "fixed",
+    "raw": {
+      "pages": [
+        {
+          "size": 0,
+          "landscape": false,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "fixed": [],
+          "children": [],
+          "bookmark": false
+        }
+      ]
+    }
+  }
+}

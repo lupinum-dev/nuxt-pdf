@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -12,7 +13,11 @@ import {
   revenueOf,
   sampleAnnualReport,
 } from '../playground/shared/annual'
-import { comparePageImages, decodePngPage, rasterizePdf } from '../src/test/pdf'
+import { barModel, donutModel, ledgerView, lineModel } from '../playground/pdfs/components/annual/models'
+import { decodePngPage, rasterizePdf } from '../src/test/pdf'
+import { actualTexts, pageContents } from './fixtures/tagged-document'
+import { playgroundFonts } from './fixtures/playground-fonts'
+import { expectReviewedPage } from './raster'
 
 // The real playground annual-report template, compiled and rendered through the
 // shipped test helper with the playground's Inter/Lora font library. Proves the
@@ -21,22 +26,63 @@ import { comparePageImages, decodePngPage, rasterizePdf } from '../src/test/pdf'
 const templateSource = resolve('playground/pdfs/annual-report.vue')
 const baselineDirectory = resolve('test/fixtures/baselines/annual')
 const updateBaselines = process.env.UPDATE_PDF_BASELINES === '1'
-const rasterThresholds = {
-  channelThreshold: 25,
-  maxChangedPixelRatio: 0.005,
-} as const
 
-const playgroundFonts = [
-  { family: 'Inter', src: 'Inter-400.ttf', fontWeight: 400 },
-  { family: 'Inter', src: 'Inter-500.ttf', fontWeight: 500 },
-  { family: 'Inter', src: 'Inter-600.ttf', fontWeight: 600 },
-  { family: 'Inter', src: 'Inter-700.ttf', fontWeight: 700 },
-  { family: 'Inter', src: 'Inter-800.ttf', fontWeight: 800 },
-  { family: 'Lora', src: 'Lora-400.ttf', fontWeight: 400 },
-  { family: 'Lora', src: 'Lora-400-italic.ttf', fontWeight: 400, fontStyle: 'italic' as const },
-  { family: 'Lora', src: 'Lora-600.ttf', fontWeight: 600 },
-  { family: 'Lora', src: 'Lora-700.ttf', fontWeight: 700 },
-]
+/**
+ * The tagged structure of each page as a reader meets it: headings with their
+ * text (the `/ActualText` where the page has one, as assistive technology
+ * reads it), figures with their alt text and caption, the size of each list
+ * and table, and last the number of paragraphs outside them.
+ */
+const structureOutline = async (bytes: Uint8Array): Promise<string[][]> => {
+  const contents = pageContents(bytes)
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
+  const task = pdfjs.getDocument({ data: Uint8Array.from(bytes), useWorkerFetch: false, verbosity: 0 })
+  const doc = await task.promise
+  try {
+    const pages: string[][] = []
+    for (let number = 1; number <= doc.numPages; number += 1) {
+      const page = await doc.getPage(number)
+      // Marked-content id → its text, so a heading can be named by what it says.
+      const texts = new Map<string, string>()
+      // pdfjs names a sequence `p<page ref>R_mc<MCID>`; ActualText wins over the glyphs.
+      const sourceTexts = new Map(actualTexts(contents[number - 1]!).map(item => [item.mcid, item.text]))
+      const textOfId = (id: string) => sourceTexts.get(Number(/_mc(\d+)$/.exec(id)?.[1])) ?? texts.get(id) ?? ''
+      const open: (string | undefined)[] = []
+      for (const item of (await page.getTextContent({ includeMarkedContent: true })).items) {
+        if ('type' in item) {
+          if (item.type === 'endMarkedContent') open.pop()
+          else open.push(item.id)
+          continue
+        }
+        const id = open.findLast(entry => entry !== undefined)
+        if (id !== undefined) texts.set(id, `${texts.get(id) ?? ''}${item.str}${item.hasEOL ? ' ' : ''}`)
+      }
+      type Node = { role?: string, alt?: string, type?: string, id?: string, children?: Node[] }
+      const textOf = (node: Node): string => node.type === 'content'
+        ? textOfId(node.id!)
+        : (node.children ?? []).map(textOf).join('')
+      const outline: string[] = []
+      let paragraphs = 0
+      const walk = (node: Node) => {
+        const role = node.role ?? ''
+        if (/^H[1-6]$/.test(role)) outline.push(`${role} ${textOf(node).trim()}`)
+        else if (role === 'Figure') {
+          const caption = node.children?.find(child => child.role === 'Caption')
+          outline.push(`Figure ${node.alt}${caption === undefined ? '' : ` | Caption ${textOf(caption).trim()}`}`)
+        }
+        else if (role === 'L' || role === 'Table') outline.push(`${role} of ${node.children?.length}`)
+        else if (role === 'P') paragraphs += 1
+        else node.children?.forEach(walk)
+      }
+      walk(await page.getStructTree() as Node)
+      pages.push([...outline, `P × ${paragraphs}`])
+    }
+    return pages
+  }
+  finally {
+    await task.destroy()
+  }
+}
 
 describe('playground annual-report.vue (showcase)', () => {
   it('renders the cover, letter, KPIs, SVG charts, ledger, and outline', async () => {
@@ -108,6 +154,14 @@ describe('playground annual-report.vue (showcase)', () => {
     expect(financials).toContain('529')
     // The ledger renders one row per derived line.
     expect(ledger).toHaveLength(11)
+    // Catches a ledger row lost by the PdfTable, or its cells out of column order:
+    // every row prints its label, then the current, then the prior figure.
+    const financialItems = parsed.pages[4]!.textItems.filter(item => item.trim())
+    const ledgerRows = ledgerView(current, sampleAnnualReport.prior)
+    expect(ledgerRows.map((row) => {
+      const at = financialItems.indexOf(row.label)
+      return financialItems.slice(at, at + 3)
+    })).toEqual(ledgerRows.map(row => [row.label, row.current, row.prior]))
 
     // Outline: one bookmark per section, cover first.
     const outlineTitles = parsed.outline.map(item => item.title)
@@ -118,6 +172,46 @@ describe('playground annual-report.vue (showcase)', () => {
       'Performance',
       'Financial Statements',
     ])
+
+    // Accessible document (PDF/A-3a and PDF/UA-1; veraPDF checks the rules in
+    // test:pdfa, this checks what the template decides). Catches a heading
+    // that lost its tag, a chart whose alt text no longer matches its data, a
+    // caption outside its figure, chart labels that are no longer decorative
+    // (they would read as stray paragraphs or list items), headings in
+    // capitals without their source text, and a dropped claim (no structure
+    // tree).
+    const report = sampleAnnualReport
+    expect(await structureOutline(bytes)).toEqual([
+      ['H1 Evidence, made legible.', 'P × 6'],
+      ['H2 From the Managing Director', 'P × 6'],
+      ['H2 The year in figures', 'L of 6', 'P × 2'],
+      [
+        'H2 Where the revenue came from',
+        'H3 Revenue by quarter',
+        `Figure ${barModel(report.quarters).alt} | Caption Consulting and licensing, USD thousands`,
+        'H3 Recurring revenue',
+        `Figure ${lineModel(report.monthly).alt} | Caption Monthly, USD thousands`,
+        'H3 Revenue by client sector',
+        // The legend beside the donut is part of the figure; the alt text gives the shares.
+        `Figure ${donutModel(report.sectors).alt} | Caption Share of total, USD thousands`,
+        // The eyebrow.
+        'P × 1',
+      ],
+      ['H2 Statement of operations', `Table of ${ledgerRows.length + 1}`, 'H3 Basis of preparation', 'P × 3'],
+    ])
+    // The ledger's first column: one row header per statement line.
+    expect(Buffer.from(bytes).toString('latin1').match(/\/Scope \/Row\b/g)).toHaveLength(ledgerRows.length)
+    // Headings and figures set with tight letter spacing carry their template
+    // text (Vue keeps one space around multi-line template text).
+    expect(pageContents(bytes).map(content => actualTexts(content).map(item => item.text))).toEqual([
+      ['Fieldnote Studio', '2025', 'Evidence, made legible.'],
+      ['To our partners and shareholders,'],
+      [' The year in figures ', '$2.90M', '$529K', '24.3%', '$930K', '18', '38'],
+      [' Where the revenue came from ', ' Revenue by quarter ', ' Recurring revenue ', ' Revenue by client sector '],
+      [' Statement of operations '],
+    ])
+    expect(barModel(report.quarters).alt).toBe('Grouped bar chart of revenue by quarter, in USD thousands. Consulting: Q1 420, Q2 460, Q3 510, Q4 580. Licensing: Q1 180, Q2 210, Q3 240, Q4 300.')
+    expect(lineModel(report.monthly).alt).toBe('Line chart of monthly recurring revenue, in USD thousands: it rises every month, from $58K in January to $84K in December.')
 
     // Dynamic footers number every content page against the total.
     for (const page of parsed.pages.slice(1)) {
@@ -157,12 +251,7 @@ describe('playground annual-report.vue (showcase)', () => {
         await writeFile(baselinePath, page.png)
       }
       const baseline = await decodePngPage(await readFile(baselinePath), page.number)
-      const comparison = comparePageImages(page, baseline, rasterThresholds)
-      expect(comparison, `annual baseline mismatch on page ${page.number}`).toMatchObject({
-        dimensionsMatch: true,
-        matches: true,
-        pageNumbersMatch: true,
-      })
+      await expectReviewedPage(page, baseline, 'annual')
     }
   }, 60_000)
 })

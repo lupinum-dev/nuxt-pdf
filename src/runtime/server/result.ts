@@ -80,21 +80,35 @@ export const createContentDisposition = (
 
 type CompletedRenderDiagnostics = Omit<PdfRenderDiagnostics, 'byteLength'>
 
+/**
+ * The result takes `bytes` over: the render passes fresh engine output and
+ * keeps no reference to it. Every conversion returns its own copy, so callers
+ * cannot change what a later conversion returns.
+ */
 export const createPdfRenderResult = (
-  source: Uint8Array,
+  bytes: Uint8Array<ArrayBuffer>,
   metadata: ResolvedPdfMetadata,
   diagnostics: CompletedRenderDiagnostics,
 ): PdfRenderResult => {
-  // The engine has completed before a result exists. Keep one private copy and
-  // return a fresh view for every conversion so callers cannot mutate it.
-  const bytes = new Uint8Array(source)
   const completedDiagnostics: PdfRenderDiagnostics = Object.freeze({
     byteLength: bytes.byteLength,
     durationMs: diagnostics.durationMs,
+    imageWarnings: Object.freeze(diagnostics.imageWarnings.map(warning =>
+      Object.freeze(warning.source
+        ? { ...warning, source: Object.freeze({ ...warning.source }) }
+        : { ...warning }))),
     layoutWarnings: Object.freeze(diagnostics.layoutWarnings.map(warning =>
-      Object.freeze({ ...warning }))),
+      Object.freeze({
+        ...warning,
+        ...(warning.source ? { source: Object.freeze({ ...warning.source }) } : {}),
+        ...(warning.code === 'PDF_FOOTNOTES_MOVED' ? { footnotes: Object.freeze([...warning.footnotes]) } : {}),
+      }))),
     pageCount: diagnostics.pageCount,
     passes: diagnostics.passes,
+    richTextWarnings: Object.freeze(diagnostics.richTextWarnings.map(warning =>
+      Object.freeze(warning.source
+        ? { ...warning, source: Object.freeze({ ...warning.source }) }
+        : { ...warning }))),
     registeredFontFaces: Object.freeze(diagnostics.registeredFontFaces.map(face =>
       Object.freeze({ ...face }))),
   })
@@ -129,7 +143,8 @@ export const createPdfRenderResult = (
         createContentDisposition(disposition, filename),
       )
 
-      return new Response(new Uint8Array(bytes), { ...responseInit, headers })
+      // The Fetch body copies a byte source, so the response cannot change `bytes`.
+      return new Response(bytes, { ...responseInit, headers })
     },
   })
 }

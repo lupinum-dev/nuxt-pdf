@@ -1,0 +1,233 @@
+{
+  "profile": "notes",
+  "invariants": [
+    "G1"
+  ],
+  "origin": {
+    "seed": 19,
+    "index": 99,
+    "rule": "documents"
+  },
+  "note": "Found in the notes profile with column breaks (seed 19, document 99). Reduced form: an A6 page with a view of two auto-fill columns in three segments: segment 0 (a 14 pt text with lineHeight 2, an 8 pt text of two lines, a view 12 pt high, and a 14 pt text of four lines with break=\"column\"), a span text, and segment 2, a 14 pt text of 13 tokens (seven lines of two words). Column 1 of segment 0 is 28 + 19.2 + 12 = 59.2 pt, column 2 is 4 x 16.8 = 67.2 pt, so the filled row is 67.2 pt high and the stacked galley 126.4 pt. Segment 0 ends on page 2, so pagination keeps its filled row (split-stack.ts:288-293, `withFilledRows`) and splits segment 2 at its top from the stacked layout (split-stack.ts:137, `topOf(child)`), 59.2 pt too low. Segment 2 has 120.4 pt above the notes; the split sees 120.4 - 59.2 = 61.2 pt, so its columns end at three lines (47.1 pt), where four lines (62.5 pt) would hold all seven lines and bring no note. Without the break it passes. Not fixed.",
+  "raw": {
+    "pages": [
+      {
+        "size": 0,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "text",
+            "n": 33,
+            "font": 0,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": []
+          }
+        ],
+        "bookmark": false
+      },
+      {
+        "size": 2,
+        "landscape": false,
+        "padding": [
+          0,
+          23,
+          42,
+          41
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "text",
+            "n": 1,
+            "font": 5,
+            "lineHeight": 4,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": []
+          },
+          {
+            "t": "view",
+            "margin": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "padding": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "border": 0,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "text",
+                "n": 7,
+                "font": 0,
+                "lineHeight": 0,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": []
+              },
+              {
+                "t": "view",
+                "margin": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "padding": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "border": 0,
+                "minHeight": 0,
+                "wrap": false,
+                "brk": false,
+                "children": [],
+                "bookmark": false
+              },
+              {
+                "t": "text",
+                "n": 11,
+                "font": 5,
+                "lineHeight": 2,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 49,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": []
+              },
+              {
+                "t": "text",
+                "n": 27,
+                "font": 0,
+                "lineHeight": 3,
+                "align": 0,
+                "wrap": true,
+                "brk": false,
+                "marginTop": 0,
+                "marginBottom": 0,
+                "extra": 0,
+                "ref": 0,
+                "link": 0,
+                "linkAt": 0,
+                "linkSize": 0,
+                "linkTo": 0,
+                "bookmark": false,
+                "marks": [
+                  {
+                    "at": 0,
+                    "n": 12
+                  },
+                  {
+                    "at": 0,
+                    "n": 1
+                  }
+                ]
+              }
+            ],
+            "bookmark": false
+          },
+          {
+            "t": "text",
+            "n": 13,
+            "font": 5,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": []
+          }
+        ],
+        "bookmark": false
+      }
+    ],
+    "footnotes": {
+      "page": false,
+      "styles": 0
+    },
+    "columns": [
+      null,
+      {
+        "page": false,
+        "count": 0,
+        "gap": -1,
+        "fill": 0,
+        "at": 0,
+        "size": 26,
+        "span": 673,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "breaks": 92
+      }
+    ]
+  }
+}

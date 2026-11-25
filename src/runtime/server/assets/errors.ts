@@ -23,3 +23,26 @@ export class PdfAssetError extends NuxtPdfError {
     this.name = 'PdfAssetError'
   }
 }
+
+const fail = (
+  code: PdfAssetErrorCode,
+  message: string,
+  cause?: unknown,
+): never => {
+  throw new PdfAssetError(code, message, { cause })
+}
+
+export const blocked = (message: string): never =>
+  fail(PDF_ASSET_ERROR_CODES.Blocked, message)
+
+export const invalid = (message: string, cause?: unknown): never =>
+  fail(PDF_ASSET_ERROR_CODES.Invalid, message, cause)
+
+export const limitExceeded = (maxBytes: number): never =>
+  fail(
+    PDF_ASSET_ERROR_CODES.LimitExceeded,
+    `The PDF image exceeds the ${maxBytes}-byte source limit.`,
+  )
+
+export const imageLimitExceeded = (message: string): never =>
+  fail(PDF_ASSET_ERROR_CODES.LimitExceeded, message)

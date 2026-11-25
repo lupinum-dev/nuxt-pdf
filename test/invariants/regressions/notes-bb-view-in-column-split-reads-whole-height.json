@@ -1,0 +1,87 @@
+{
+  "profile": "notes",
+  "invariants": [
+    "G3"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 14,
+    "rule": "neutral"
+  },
+  "note": "Found by G3 (the flow of each page in one plain view), notes profile, seed 20261116, document 14. Reduced form: an A5 page that is a column container (three auto-fill columns) with one text of 160 tokens (10 pt) and its footnote marks; G3 puts the text in one plain view. Plain: one page. Wrapped: two pages. A view split in a column keeps the box of the whole view: splitNode gives the current part the room only as its style height (split-node.ts:24-37, `box: { ...node.box }`). The column heights read that box (split-columns.ts:111, `endOf(children)`), and the note fit reads the column (the galley copy, with no style height) as its box (notes.ts:117, `extentOf`). So every try of the fit ends the flow at 360.9 pt, the whole text in one column, whatever the split height: a probe logged end 360.9 for heights 11.6 to 595.3. The notes may then take at most 595.3 - 360.9 = 234.4 pt: 12 notes need 226.1 pt and fit, 13 need 243.9 pt and do not, so the fit keeps columns about 100 pt high, 135 of the 160 tokens stay and the rest goes to page 2. The plain text part reads its lines: at 333.6 pt the flow ends at 333.6 and all 14 notes (261.7 pt) fit, 333.6 + 261.7 = 595.3. Not fixed.",
+  "raw": {
+    "pages": [
+      {
+        "size": 1,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "text",
+            "n": 160,
+            "font": 2,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": true,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": []
+          }
+        ],
+        "bookmark": false
+      }
+    ],
+    "footnotes": {
+      "page": false,
+      "styles": 0
+    },
+    "columns": [
+      {
+        "page": true,
+        "count": 1,
+        "gap": -1,
+        "fill": 0,
+        "at": 0,
+        "size": 0,
+        "span": -1,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "breaks": 0
+      },
+      {
+        "page": false,
+        "count": 0,
+        "gap": 0,
+        "fill": 0,
+        "at": 0,
+        "size": 0,
+        "span": -1,
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "breaks": 0
+      }
+    ]
+  }
+}

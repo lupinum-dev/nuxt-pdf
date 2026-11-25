@@ -1,0 +1,220 @@
+{
+  "profile": "notes",
+  "invariants": [
+    "F5"
+  ],
+  "origin": {
+    "seed": 23,
+    "index": 56,
+    "rule": "documents"
+  },
+  "note": "Reduced from notes document 56 of seed 23. A text with wrap={false} moves whole to the last page, inside two views; the fit splits above its end, the split keeps it whole at the page top, and the views are as high as the room the split gave them. Read at that height, the flow ended above the text, and the notes printed over its last line.",
+  "raw": {
+    "pages": [
+      {
+        "size": 2,
+        "landscape": true,
+        "padding": [
+          34,
+          0,
+          17,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "view",
+            "margin": [
+              0,
+              1,
+              0,
+              17
+            ],
+            "padding": [
+              0,
+              6,
+              0,
+              5
+            ],
+            "border": 0,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "view",
+                "margin": [
+                  0,
+                  0,
+                  0,
+                  12
+                ],
+                "padding": [
+                  0,
+                  8,
+                  0,
+                  19
+                ],
+                "border": 0,
+                "minHeight": 0,
+                "wrap": true,
+                "brk": false,
+                "children": [
+                  {
+                    "t": "text",
+                    "n": 329,
+                    "font": 0,
+                    "lineHeight": 0,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 0,
+                    "marginBottom": 0,
+                    "extra": 0,
+                    "ref": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0,
+                    "bookmark": false,
+                    "marks": []
+                  },
+                  {
+                    "t": "text",
+                    "n": 35,
+                    "font": 0,
+                    "lineHeight": 0,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 0,
+                    "marginBottom": 0,
+                    "extra": 0,
+                    "ref": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0,
+                    "bookmark": false,
+                    "marks": []
+                  },
+                  {
+                    "t": "text",
+                    "n": 313,
+                    "font": 0,
+                    "lineHeight": 0,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 0,
+                    "marginBottom": 0,
+                    "extra": 0,
+                    "ref": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0,
+                    "bookmark": false,
+                    "marks": [
+                      {
+                        "at": 0,
+                        "n": 31
+                      }
+                    ]
+                  },
+                  {
+                    "t": "text",
+                    "n": 230,
+                    "font": 0,
+                    "lineHeight": 0,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 0,
+                    "marginBottom": 0,
+                    "extra": 0,
+                    "ref": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0,
+                    "bookmark": false,
+                    "marks": [
+                      {
+                        "at": 0,
+                        "n": 13
+                      },
+                      {
+                        "at": 0,
+                        "n": 1
+                      }
+                    ]
+                  },
+                  {
+                    "t": "text",
+                    "n": 20,
+                    "font": 0,
+                    "lineHeight": 0,
+                    "align": 0,
+                    "wrap": true,
+                    "brk": false,
+                    "marginTop": 0,
+                    "marginBottom": 6,
+                    "extra": 0,
+                    "ref": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0,
+                    "bookmark": false,
+                    "marks": [
+                      {
+                        "at": 0,
+                        "n": 30
+                      }
+                    ]
+                  },
+                  {
+                    "t": "text",
+                    "n": 61,
+                    "font": 2,
+                    "lineHeight": 4,
+                    "align": 0,
+                    "wrap": false,
+                    "brk": false,
+                    "marginTop": 22,
+                    "marginBottom": 0,
+                    "extra": 0,
+                    "ref": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0,
+                    "bookmark": false,
+                    "marks": [
+                      {
+                        "at": 0,
+                        "n": 17
+                      },
+                      {
+                        "at": 0,
+                        "n": 1
+                      }
+                    ]
+                  }
+                ],
+                "bookmark": false
+              }
+            ],
+            "bookmark": false
+          }
+        ],
+        "bookmark": false
+      }
+    ],
+    "footnotes": {
+      "page": false,
+      "styles": 0
+    }
+  }
+}

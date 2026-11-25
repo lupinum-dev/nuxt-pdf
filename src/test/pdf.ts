@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module'
+import { dirname, join } from 'node:path'
 import type { Canvas, SKRSContext2D } from '@napi-rs/canvas'
 import type { PDFDocumentProxy } from 'pdfjs-dist/legacy/build/pdf.mjs'
 import type { PdfRenderResult } from '../runtime/shared/template'
@@ -242,8 +243,16 @@ const flattenLinks = (pages: readonly ParsedPdfPage[]): ParsedPdfLink[] =>
       }),
   )
 
+export interface ParsePdfOptions {
+  /**
+   * The open or owner password of a protected PDF. Without the right one,
+   * pdf.js fails with a `PasswordException`.
+   */
+  password?: string
+}
+
 /** Parse stable, semantic information from every page of a PDF. */
-export async function parsePdf(input: PdfInput): Promise<ParsedPdf> {
+export async function parsePdf(input: PdfInput, options: ParsePdfOptions = {}): Promise<ParsedPdf> {
   return withPdfDocument(await toPdfBytes(input), async (document) => {
     const pages: ParsedPdfPage[] = []
 
@@ -299,6 +308,28 @@ export async function parsePdf(input: PdfInput): Promise<ParsedPdf> {
       links: flattenLinks(pages),
       outline: outline ? simplifyOutline(outline) : [],
     }
+  }, options.password)
+}
+
+export interface ParsedPdfAttachment {
+  filename: string
+  description: string
+  content: Uint8Array
+}
+
+/** Read the embedded files of the document, in the order the PDF lists them. */
+export async function getPdfAttachments(input: PdfInput): Promise<ParsedPdfAttachment[]> {
+  return withPdfDocument(await toPdfBytes(input), async (document) => {
+    const attachments = await document.getAttachments()
+    const result: ParsedPdfAttachment[] = []
+    for (const [id, attachment] of attachments ?? []) {
+      result.push({
+        filename: attachment.filename,
+        description: attachment.description,
+        content: attachment.content ?? await document.getAttachmentContent(id) ?? new Uint8Array(),
+      })
+    }
+    return result
   })
 }
 
@@ -463,6 +494,25 @@ export function comparePageImages(
   }
 }
 
+/**
+ * Says how far a page is from its baseline, for a failure message: the changed
+ * pixels against the allowed share, and the largest channel difference, which
+ * tells anti-aliasing (a few units) from moved or missing ink (up to 255).
+ */
+export function describePageComparison(
+  comparison: PageImageComparison,
+  options: ComparePageImagesOptions = {},
+): string {
+  if (!comparison.dimensionsMatch) return 'the page size differs from the baseline'
+  if (!comparison.pageNumbersMatch) return 'the page number differs from the baseline'
+  const channelThreshold = options.channelThreshold ?? DEFAULT_CHANNEL_THRESHOLD
+  const allowed = options.maxChangedPixelRatio ?? DEFAULT_MAX_CHANGED_PIXEL_RATIO
+  const percent = (ratio: number): string => `${Number((ratio * 100).toFixed(4))} %`
+  return `${comparison.changedPixels} of ${comparison.totalPixels} pixels (${percent(comparison.changedPixelRatio)}) `
+    + `differ by more than ${channelThreshold} in a channel, and at most ${percent(allowed)} may; `
+    + `the largest channel difference is ${comparison.maxChannelDifference}`
+}
+
 async function getPdfJs(): Promise<PdfJs> {
   installPdfCanvasGlobals()
 
@@ -479,14 +529,26 @@ async function getPdfJs(): Promise<PdfJs> {
   return pdfJsPromise
 }
 
+// pdf.js draws the 14 standard PDF fonts (Helvetica, Times, Courier, …) from
+// the font files in its own `standard_fonts` folder. Without that folder it
+// draws a system face instead, such as a serif for Helvetica on Linux. The
+// folder comes from the pdfjs-dist the project under test installed. pdf.js
+// requires a trailing `/` on every platform and appends the file name to it.
+let standardFontDataUrl: string | undefined
+const standardFontsOf = (): string =>
+  standardFontDataUrl ??= `${join(dirname(require_.resolve('pdfjs-dist/package.json')), 'standard_fonts')}/`
+
 async function withPdfDocument<Result>(
   data: PdfData,
   read: (document: PDFDocumentProxy) => Promise<Result>,
+  password?: string,
 ): Promise<Result> {
   const pdfJs = await getPdfJs()
   const loadingTask = pdfJs.getDocument({
     CanvasFactory: NapiCanvasFactory,
     data: copyPdfData(data),
+    ...(password === undefined ? {} : { password }),
+    standardFontDataUrl: standardFontsOf(),
     stopAtErrors: true,
     useWorkerFetch: false,
     verbosity: 0,

@@ -1,0 +1,249 @@
+{
+  "profile": "notes",
+  "invariants": [
+    "F1",
+    "F2",
+    "F3",
+    "G1"
+  ],
+  "origin": {
+    "seed": 0,
+    "index": -2,
+    "rule": "documents"
+  },
+  "note": "Built by hand from the engine row \"warns once, on the page of the marks, for notes that move over two pages\" (test/footnote-component.test.ts). Guards F3 for notes that move on again: a 300 x 400 page (page end 395) with one wrap={false} text of 60 tokens and 48 marks, each with a one-line note (17.8 pt a note, 12.5 pt for the separator). Page 1 starts 16 notes (16 x 17.8 + 12.5 = 297.3 pt; a 17th would need 315.1 pt, more than the room under the text). The other 32 move. Page 2 has no flow and starts 21 of them (386.3 pt; 22 would need 404.1 pt, more than 395), so notes 38 to 48 start on page 3, two pages after their marks, by rule: each starts at most one page after the note before it. One PDF_FOOTNOTES_MOVED warning, on page 1, names notes 17 to 48. The F3 that allowed only the next page failed here. G1 checks that each page after which notes wait is full: page 1 has less than a note line left, page 2 less than 17.8 pt.",
+  "raw": {
+    "pages": [
+      {
+        "size": 4,
+        "landscape": false,
+        "padding": [
+          0,
+          0,
+          5,
+          22
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "text",
+            "n": 60,
+            "font": 3,
+            "lineHeight": 0,
+            "align": 0,
+            "wrap": false,
+            "brk": false,
+            "marginTop": 0,
+            "marginBottom": 0,
+            "extra": 0,
+            "ref": 0,
+            "link": 0,
+            "linkAt": 0,
+            "linkSize": 0,
+            "linkTo": 0,
+            "bookmark": false,
+            "marks": [
+              {
+                "at": 0.0104,
+                "n": 1
+              },
+              {
+                "at": 0.0312,
+                "n": 1
+              },
+              {
+                "at": 0.0521,
+                "n": 1
+              },
+              {
+                "at": 0.0729,
+                "n": 1
+              },
+              {
+                "at": 0.0938,
+                "n": 1
+              },
+              {
+                "at": 0.1146,
+                "n": 1
+              },
+              {
+                "at": 0.1354,
+                "n": 1
+              },
+              {
+                "at": 0.1562,
+                "n": 1
+              },
+              {
+                "at": 0.1771,
+                "n": 1
+              },
+              {
+                "at": 0.1979,
+                "n": 1
+              },
+              {
+                "at": 0.2188,
+                "n": 1
+              },
+              {
+                "at": 0.2396,
+                "n": 1
+              },
+              {
+                "at": 0.2604,
+                "n": 1
+              },
+              {
+                "at": 0.2812,
+                "n": 1
+              },
+              {
+                "at": 0.3021,
+                "n": 1
+              },
+              {
+                "at": 0.3229,
+                "n": 1
+              },
+              {
+                "at": 0.3438,
+                "n": 1
+              },
+              {
+                "at": 0.3646,
+                "n": 1
+              },
+              {
+                "at": 0.3854,
+                "n": 1
+              },
+              {
+                "at": 0.4062,
+                "n": 1
+              },
+              {
+                "at": 0.4271,
+                "n": 1
+              },
+              {
+                "at": 0.4479,
+                "n": 1
+              },
+              {
+                "at": 0.4688,
+                "n": 1
+              },
+              {
+                "at": 0.4896,
+                "n": 1
+              },
+              {
+                "at": 0.5104,
+                "n": 1
+              },
+              {
+                "at": 0.5312,
+                "n": 1
+              },
+              {
+                "at": 0.5521,
+                "n": 1
+              },
+              {
+                "at": 0.5729,
+                "n": 1
+              },
+              {
+                "at": 0.5938,
+                "n": 1
+              },
+              {
+                "at": 0.6146,
+                "n": 1
+              },
+              {
+                "at": 0.6354,
+                "n": 1
+              },
+              {
+                "at": 0.6562,
+                "n": 1
+              },
+              {
+                "at": 0.6771,
+                "n": 1
+              },
+              {
+                "at": 0.6979,
+                "n": 1
+              },
+              {
+                "at": 0.7188,
+                "n": 1
+              },
+              {
+                "at": 0.7396,
+                "n": 1
+              },
+              {
+                "at": 0.7604,
+                "n": 1
+              },
+              {
+                "at": 0.7812,
+                "n": 1
+              },
+              {
+                "at": 0.8021,
+                "n": 1
+              },
+              {
+                "at": 0.8229,
+                "n": 1
+              },
+              {
+                "at": 0.8438,
+                "n": 1
+              },
+              {
+                "at": 0.8646,
+                "n": 1
+              },
+              {
+                "at": 0.8854,
+                "n": 1
+              },
+              {
+                "at": 0.9062,
+                "n": 1
+              },
+              {
+                "at": 0.9271,
+                "n": 1
+              },
+              {
+                "at": 0.9479,
+                "n": 1
+              },
+              {
+                "at": 0.9688,
+                "n": 1
+              },
+              {
+                "at": 0.9896,
+                "n": 1
+              }
+            ]
+          }
+        ],
+        "bookmark": false
+      }
+    ],
+    "footnotes": {
+      "page": false,
+      "styles": 0
+    }
+  }
+}

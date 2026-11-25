@@ -1,14 +1,14 @@
 // Original content authored for this showcase. The prose is a calm
 // field-notes/nature-observation novella written for the demo; it is not
 // derived from any existing work. Chapters are intentionally long enough that
-// several span pages, so the resolved page map (usePdfPageNumbers) is the only
-// honest source for the Contents entries and the chapter-aware running footer.
+// several span pages, so the resolved start pages (PdfPageRef) are the only
+// honest source for the Contents entries.
 
 export interface EbookChapter {
-  // Anchor + bookmark id. Doubles as the internal-link target and the key the
-  // resolved page map is looked up under, for the TOC and the running footer.
+  // Anchor + bookmark id. Doubles as the internal-link target and the
+  // PdfPageRef target of the Contents entry.
   id: string
-  /** Oversized opener numeral (Lora, light tint) — the roman face of the ramp. */
+  /** Roman chapter numeral, shown in the contents badge and the chapter label. */
   numeral: string
   title: string
   /** Quiet standfirst under the chapter title. */
@@ -35,7 +35,7 @@ export const sampleEbook: Ebook = {
   imprint: 'Nuxt PDF Editions',
   year: 'MMXXVI',
   colophon: [
-    'Set in Lora and Inter, printed to a 5.5 by 8.5 inch digest page.',
+    'Set in Cormorant and Literata, printed to a 5.5 by 8.5 inch digest page.',
     'The page numbers you see in the Contents and the running foot were not typed.',
     'They were measured — the layout runs until the printed numbers stop moving.',
     'Composed and rendered with Nuxt PDF from a single Vue component.',

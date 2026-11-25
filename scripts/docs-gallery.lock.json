@@ -1,0 +1,44 @@
+{
+  "invoice": {
+    "inputs": "e9c622bf54d0a31bd41a84583f9225e420ba4f1c658ddd4a0555f307b97426e1",
+    "image": "1693210100e5a98949a555b7b8e115cff909ffe3033c2ba32a75ce550623f4f0",
+    "width": 899,
+    "height": 1272,
+    "pages": 2
+  },
+  "registration": {
+    "inputs": "42ad013684f442d3c29cc7d31de330d3f8e23edeb2cf670c92304232dea6bbd7",
+    "image": "36f423647c485a096b7e54aa80e37843656728aa14b6f6755a464eed8e26f912",
+    "width": 899,
+    "height": 1276,
+    "pages": 1
+  },
+  "article": {
+    "inputs": "9cb9afa3fc6cfb68a93274cd3f27b2c59fbdbc2dc8284498ad29983ad9173e83",
+    "image": "8368e55f8201208d5e222e0ff5a76382a3d6ed368e77b8945d493a1053918f51",
+    "width": 899,
+    "height": 1276,
+    "pages": 2
+  },
+  "ebook": {
+    "inputs": "2dad4214d8ac71eeb455b2d02d03a93aab96792dfd3f3db85853f944cf915764",
+    "image": "ef022aff5a282e2163458234ff0158ca8df392bee18abdcbc81f5175a70e4492",
+    "width": 901,
+    "height": 1391,
+    "pages": 18
+  },
+  "paper": {
+    "inputs": "8a730e19ae927c2b62044a67fde37e770f9b854806a56422436e4aafb741b75c",
+    "image": "71df4e1d2813d566edae54189a6b3299660cabd31e5882d90a93058c048700b9",
+    "width": 899,
+    "height": 1272,
+    "pages": 3
+  },
+  "letter": {
+    "inputs": "5fc64a30e332ed6868a921b411a23eb49d822862f8c1424e7b329c7633ae7116",
+    "image": "12e69f31e6761bff7ad226588af82c2a1eb9659426bc6758f99d9b41e5993597",
+    "width": 899,
+    "height": 1272,
+    "pages": 1
+  }
+}

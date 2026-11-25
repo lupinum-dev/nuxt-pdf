@@ -1,14 +1,6 @@
 /**
- * Shared, renderer-agnostic data for the text-behavior conformance corpus.
- *
- * Both the React fixtures (`text-react.ts`) and the Vue fixtures
- * (`text-vue.ts`) import from this single module, so any divergence in the
- * produced PDF belongs to the renderer boundary, never to the test inputs.
- *
- * Every value here is a plain data literal or a pure function. Style objects
- * are shared by reference; the hyphenation callbacks are the *same* function
- * identity on both sides, which is the only way to prove the callback wiring
- * (not just its presence) is equivalent.
+ * The data of the text-behavior conformance corpus (`text-vue.ts`): plain
+ * literals and pure functions.
  */
 
 /** Default embedded font, registered from the Roboto TTF in every fixture. */
@@ -24,23 +16,16 @@ export const textCorpusMeta = {
 } as const
 
 // ---------------------------------------------------------------------------
-// (1) hyphenationCallback + (2) long-word overflow without hyphenation
+// (1) default hyphenation + (2) long-word overflow without hyphenation
 // ---------------------------------------------------------------------------
 
 /**
  * A single long token with no internal spaces. At 20pt it is far wider than
- * the 132pt column, so its wrapping is decided entirely by the hyphenation
- * callback: disabling splitting overflows one line, aggressive splitting adds
- * lines and hyphen glyphs.
+ * the 132pt column, so its wrapping is decided entirely by hyphenation:
+ * disabling it overflows one line, the engine's default hyphenation adds lines
+ * and hyphen glyphs.
  */
 export const longToken = 'Supercalifragilisticexpialidocious'
-
-/** Disable hyphenation entirely: the word is never split, so it overflows. */
-export const noHyphenation = (word: string): string[] => [word]
-
-/** Custom splitter: break every word into fixed six-character syllables. */
-export const sixCharHyphenation = (word: string): string[] =>
-  word.match(/.{1,6}/g) ?? [word]
 
 export const hyphenationStyles = {
   column: { width: 132 },

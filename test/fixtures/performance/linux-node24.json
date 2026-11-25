@@ -1,13 +1,14 @@
 {
   "metrics": {
-    "coldRenderMs": 99,
-    "heapTrendBytes": 95800000,
+    "coldRenderMs": 339,
     "hundredOutputBytes": 54471,
-    "hundredPagesMs": 49,
+    "hundredPagesMs": 51,
     "multiPassOutputBytes": 3309,
-    "multiPassReportMs": 51,
-    "peakRssBytes": 457000000,
-    "warmInvoiceMs": 20,
+    "multiPassReportMs": 29,
+    "peakRssBytes": 596676608,
+    "realInvoiceMs": 407,
+    "retainedHeapBytes": 52533184,
+    "warmInvoiceMs": 15,
     "warmOutputBytes": 2115
   },
   "packageTarballBytes": 149805,

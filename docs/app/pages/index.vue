@@ -26,7 +26,7 @@ const showcase = [
   { id: "invoice", title: "Invoice", detail: "Typed props, computed totals, page numbers" },
   { id: "annual-report", title: "Annual report", detail: "SVG charts, KPI tiles, a financial table" },
   { id: "ebook", title: "E-book", detail: "Contents with real page numbers, running heads" },
-  { id: "certificate", title: "Certificate", detail: "Landscape page, SVG ornaments, a seal" },
+  { id: "certificate", title: "Certificate", detail: "Landscape page, a thin frame, an SVG seal" },
 ];
 </script>
 

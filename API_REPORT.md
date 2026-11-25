@@ -16,9 +16,21 @@ export { type PdfLimitsOptions } from '../dist/runtime/server/render-limits.js'
 
 export { type PdfFontDeclaration, type PdfFontStyle, type PdfFontWeight, type PdfFontWeightName } from '../dist/runtime/fonts.js'
 
+export { type PdfInvoiceIssue, type PdfSourcePosition } from '../dist/runtime/shared/errors.js'
+
+export { type PdfImageWarning, type PdfLayoutWarning, type PdfRichTextWarning, type PdfRichTextWarningCode } from '../dist/runtime/shared/template.js'
+
 export { type PdfLength, type PdfLengthOrPercentage, type PdfPercentage, type PdfStyle, type PdfStyleEntry, type PdfStyleValue } from '../dist/runtime/authoring.js'
 
-export { type PdfBaseProps, type PdfBookmark, type PdfCircleProps, type PdfClipPathProps, type PdfDefsProps, type PdfDocumentProps, type PdfEllipseProps, type PdfGProps, type PdfImageProps, type PdfImageSource, type PdfLineProps, type PdfLinearGradientProps, type PdfLinkProps, type PdfNoteProps, type PdfPageDimension, type PdfPageProps, type PdfPageSize, type PdfPageSizeName, type PdfPageUnit, type PdfPathProps, type PdfPolygonProps, type PdfPolylineProps, type PdfRadialGradientProps, type PdfRectProps, type PdfStopProps, type PdfSvgLength, type PdfSvgNumber, type PdfSvgPresentationProps, type PdfSvgProps, type PdfSvgTransform, type PdfSvgTransformOperation, type PdfTextProps, type PdfTspanProps, type PdfViewProps } from '../dist/runtime/components/index.js'
+export { type PdfTableCellProps, type PdfTableColumn, type PdfTableColumnOptions, type PdfTableColumnWidth, type PdfTableHeaderProps, type PdfTableProps, type PdfTableRowProps } from '../dist/runtime/components/table.js'
+
+export { type PdfAttachmentProps, type PdfAttachmentRelationship, type PdfBaseProps, type PdfBookmark, type PdfCheckboxProps, type PdfCircleProps, type PdfClipPathProps, type PdfConformance, type PdfContentsProps, type PdfContentsStyles, type PdfDefsProps, type PdfDocumentProps, type PdfEllipseProps, type PdfFacturXProfile, type PdfFacturXProps, type PdfFacturXRelationship, type PdfFixedPages, type PdfFootnoteProps, type PdfFootnoteStyles, type PdfGProps, type PdfImageProps, type PdfImageSource, type PdfLeaderProps, type PdfLeaderStyle, type PdfLeaderStyleEntry, type PdfLineProps, type PdfLinearGradientProps, type PdfLinkProps, type PdfNoteProps, type PdfPageCountProps, type PdfPageDimension, type PdfPageNumberProps, type PdfPageProps, type PdfPageRefProps, type PdfPageSize, type PdfPageSizeName, type PdfPageUnit, type PdfPathProps, type PdfPermissions, type PdfPolygonProps, type PdfPolylineProps, type PdfPrintingPermission, type PdfProtection, type PdfRadialGradientProps, type PdfRadioProps, type PdfRectProps, type PdfRunning, type PdfRunningAt, type PdfRunningTextProps, type PdfSelectProps, type PdfStopProps, type PdfSvgLength, type PdfSvgNumber, type PdfSvgPresentationProps, type PdfSvgProps, type PdfSvgTransform, type PdfSvgTransformOperation, type PdfTextFieldProps, type PdfTextProps, type PdfTextTag, type PdfTspanProps, type PdfViewProps, type PdfViewTag } from '../dist/runtime/primitives.js'
+
+export { type DecimalInput, type EInvoice, type EInvoiceAddress, type EInvoiceBuyer, type EInvoiceContact, type EInvoiceDelivery, type EInvoiceDocumentAllowanceCharge, type EInvoiceDocumentType, type EInvoiceElectronicAddress, type EInvoiceIssue, type EInvoiceLine, type EInvoiceLineAllowanceCharge, type EInvoiceLineTotals, type EInvoicePayment, type EInvoicePaymentMeans, type EInvoicePeriod, type EInvoicePrecedingInvoice, type EInvoiceProfile, type EInvoiceSeller, type EInvoiceTotals, type EInvoiceUnit, type EInvoiceUnitName, type EInvoiceVat, type EInvoiceVatBreakdown, type EInvoiceVatCategory, type RenderEInvoiceXmlOptions, type ValidateEInvoiceOptions } from '../dist/runtime/einvoice/index.js'
+
+export { type PdfRichBlock, type PdfRichBreak, type PdfRichCode, type PdfRichComponent, type PdfRichFootnote, type PdfRichHeading, type PdfRichImage, type PdfRichInline, type PdfRichJsonValue, type PdfRichLink, type PdfRichList, type PdfRichParagraph, type PdfRichQuote, type PdfRichRule, type PdfRichTable, type PdfRichTableCell, type PdfRichTextIssue, type PdfRichTextRun } from '../dist/runtime/rich-text/index.js'
+
+export { type PdfRichTextProps, type PdfRichTextStyleKey, type PdfRichTextStyles } from '../dist/runtime/components/rich-text.js'
 
 export { default } from './module.mjs'
 
@@ -37,16 +49,22 @@ import { PdfLimitsOptions } from '../dist/runtime/server/render-limits.js';
 export { PdfLimitsOptions } from '../dist/runtime/server/render-limits.js';
 import { PdfFontDeclaration } from '../dist/runtime/fonts.js';
 export { PdfFontDeclaration, PdfFontStyle, PdfFontWeight, PdfFontWeightName } from '../dist/runtime/fonts.js';
+export { PdfInvoiceIssue, PdfSourcePosition } from '../dist/runtime/shared/errors.js';
+export { PdfImageWarning, PdfLayoutWarning, PdfRichTextWarning, PdfRichTextWarningCode } from '../dist/runtime/shared/template.js';
 export { PdfLength, PdfLengthOrPercentage, PdfPercentage, PdfStyle, PdfStyleEntry, PdfStyleValue } from '../dist/runtime/authoring.js';
-export { PdfBaseProps, PdfBookmark, PdfCircleProps, PdfClipPathProps, PdfDefsProps, PdfDocumentProps, PdfEllipseProps, PdfGProps, PdfImageProps, PdfImageSource, PdfLineProps, PdfLinearGradientProps, PdfLinkProps, PdfNoteProps, PdfPageDimension, PdfPageProps, PdfPageSize, PdfPageSizeName, PdfPageUnit, PdfPathProps, PdfPolygonProps, PdfPolylineProps, PdfRadialGradientProps, PdfRectProps, PdfStopProps, PdfSvgLength, PdfSvgNumber, PdfSvgPresentationProps, PdfSvgProps, PdfSvgTransform, PdfSvgTransformOperation, PdfTextProps, PdfTspanProps, PdfViewProps } from '../dist/runtime/components/index.js';
+export { PdfTableCellProps, PdfTableColumn, PdfTableColumnOptions, PdfTableColumnWidth, PdfTableHeaderProps, PdfTableProps, PdfTableRowProps } from '../dist/runtime/components/table.js';
+export { PdfAttachmentProps, PdfAttachmentRelationship, PdfBaseProps, PdfBookmark, PdfCheckboxProps, PdfCircleProps, PdfClipPathProps, PdfConformance, PdfContentsProps, PdfContentsStyles, PdfDefsProps, PdfDocumentProps, PdfEllipseProps, PdfFacturXProfile, PdfFacturXProps, PdfFacturXRelationship, PdfFixedPages, PdfFootnoteProps, PdfFootnoteStyles, PdfGProps, PdfImageProps, PdfImageSource, PdfLeaderProps, PdfLeaderStyle, PdfLeaderStyleEntry, PdfLineProps, PdfLinearGradientProps, PdfLinkProps, PdfNoteProps, PdfPageCountProps, PdfPageDimension, PdfPageNumberProps, PdfPageProps, PdfPageRefProps, PdfPageSize, PdfPageSizeName, PdfPageUnit, PdfPathProps, PdfPermissions, PdfPolygonProps, PdfPolylineProps, PdfPrintingPermission, PdfProtection, PdfRadialGradientProps, PdfRadioProps, PdfRectProps, PdfRunning, PdfRunningAt, PdfRunningTextProps, PdfSelectProps, PdfStopProps, PdfSvgLength, PdfSvgNumber, PdfSvgPresentationProps, PdfSvgProps, PdfSvgTransform, PdfSvgTransformOperation, PdfTextFieldProps, PdfTextProps, PdfTextTag, PdfTspanProps, PdfViewProps, PdfViewTag } from '../dist/runtime/primitives.js';
+export { DecimalInput, EInvoice, EInvoiceAddress, EInvoiceBuyer, EInvoiceContact, EInvoiceDelivery, EInvoiceDocumentAllowanceCharge, EInvoiceDocumentType, EInvoiceElectronicAddress, EInvoiceIssue, EInvoiceLine, EInvoiceLineAllowanceCharge, EInvoiceLineTotals, EInvoicePayment, EInvoicePaymentMeans, EInvoicePeriod, EInvoicePrecedingInvoice, EInvoiceProfile, EInvoiceSeller, EInvoiceTotals, EInvoiceUnit, EInvoiceUnitName, EInvoiceVat, EInvoiceVatBreakdown, EInvoiceVatCategory, RenderEInvoiceXmlOptions, ValidateEInvoiceOptions } from '../dist/runtime/einvoice/index.js';
+export { PdfRichBlock, PdfRichBreak, PdfRichCode, PdfRichComponent, PdfRichFootnote, PdfRichHeading, PdfRichImage, PdfRichInline, PdfRichJsonValue, PdfRichLink, PdfRichList, PdfRichParagraph, PdfRichQuote, PdfRichRule, PdfRichTable, PdfRichTableCell, PdfRichTextIssue, PdfRichTextRun } from '../dist/runtime/rich-text/index.js';
+export { PdfRichTextProps, PdfRichTextStyleKey, PdfRichTextStyles } from '../dist/runtime/components/rich-text.js';
 
 interface ModuleOptions {
     fonts?: readonly PdfFontDeclaration[];
     remote?: RemoteAssetOptions;
     /**
      * Canonical render, tree, image, remote-request, and output budgets. Every
-     * field is an optional positive safe integer; omitted fields use the
-     * documented built-in defaults.
+     * field is an optional whole number from 1 (time limits up to
+     * 2,147,483,647 ms); omitted fields use the documented built-in defaults.
      */
     limits?: PdfLimitsOptions;
 }
@@ -69,8 +87,13 @@ import '@nuxt/schema';
 import '../dist/runtime/server/assets/remote.js';
 import '../dist/runtime/server/render-limits.js';
 import '../dist/runtime/fonts.js';
+import '../dist/runtime/shared/errors.js';
 import '../dist/runtime/authoring.js';
-import '../dist/runtime/components/index.js';
+import '../dist/runtime/components/table.js';
+import '../dist/runtime/primitives.js';
+import '../dist/runtime/einvoice/index.js';
+import '../dist/runtime/rich-text/index.js';
+import '../dist/runtime/components/rich-text.js';
 
 /** Raw PDF (or PNG) bytes accepted by the low-level readers. */
 type PdfData = ArrayBuffer | Uint8Array;
@@ -155,8 +178,22 @@ interface PageImageComparison {
 }
 /** Resolve any accepted input (bytes or a `PdfRenderResult`) to raw PDF bytes. */
 declare function toPdfBytes(input: PdfInput): Promise<Uint8Array>;
+interface ParsePdfOptions {
+    /**
+     * The open or owner password of a protected PDF. Without the right one,
+     * pdf.js fails with a `PasswordException`.
+     */
+    password?: string;
+}
 /** Parse stable, semantic information from every page of a PDF. */
-declare function parsePdf(input: PdfInput): Promise<ParsedPdf>;
+declare function parsePdf(input: PdfInput, options?: ParsePdfOptions): Promise<ParsedPdf>;
+interface ParsedPdfAttachment {
+    filename: string;
+    description: string;
+    content: Uint8Array;
+}
+/** Read the embedded files of the document, in the order the PDF lists them. */
+declare function getPdfAttachments(input: PdfInput): Promise<ParsedPdfAttachment[]>;
 /** Rasterize every PDF page independently for deterministic page-level diffs. */
 declare function rasterizePdf(input: PdfInput, options?: RasterizePdfOptions): Promise<PdfPageImage[]>;
 
@@ -201,8 +238,11 @@ interface PdfExpectation {
  */
 declare function expectPdf(parsed: ParsedPdf): PdfExpectation;
 
-/** User-shaped render policy, matching the corresponding Nuxt module options. */
-type RenderPdfTemplateOptions = Pick<ModuleOptions, 'limits' | 'remote'>;
+/**
+ * User-shaped render policy, matching the corresponding Nuxt module options,
+ * and the password that opens a protected PDF for parsing.
+ */
+type RenderPdfTemplateOptions = Pick<ModuleOptions, 'limits' | 'remote'> & Pick<ParsePdfOptions, 'password'>;
 interface RenderedPdfTemplate {
     /** The rendered PDF bytes. */
     bytes: Uint8Array;
@@ -257,8 +297,8 @@ interface PdfSnapshotResult {
  */
 declare function comparePdfSnapshot(input: PdfInput, baselineDir: string, options?: ComparePdfSnapshotOptions): Promise<PdfSnapshotResult>;
 
-export { PdfAssertionError, comparePdfSnapshot, expectPdf, loadPdfSfc, parsePdf, rasterizePdf, renderPdfSfc, renderPdfTemplate, toPdfBytes };
-export type { ComparePdfSnapshotOptions, LinkQuery, OutlineShape, ParsedPdf, ParsedPdfLink, ParsedPdfPage, ParsedPdfTextRun, PdfExpectation, PdfInput, PdfOutlineItem, PdfPageImage, PdfSnapshotResult, RasterizePdfOptions, RenderPdfSfcOptions, RenderPdfTemplateOptions, RenderedPdfTemplate, ToContainTextOptions };
+export { PdfAssertionError, comparePdfSnapshot, expectPdf, getPdfAttachments, loadPdfSfc, parsePdf, rasterizePdf, renderPdfSfc, renderPdfTemplate, toPdfBytes };
+export type { ComparePdfSnapshotOptions, LinkQuery, OutlineShape, ParsePdfOptions, ParsedPdf, ParsedPdfAttachment, ParsedPdfLink, ParsedPdfPage, ParsedPdfTextRun, PdfExpectation, PdfInput, PdfOutlineItem, PdfPageImage, PdfSnapshotResult, RasterizePdfOptions, RenderPdfSfcOptions, RenderPdfTemplateOptions, RenderedPdfTemplate, ToContainTextOptions };
 ```
 
 ## Standalone build entry
@@ -292,7 +332,8 @@ Source: `dist/server.d.mts`
 
 ```ts
 export { PdfRegistry, PdfRegistryEntries, createPdfRegistry, createPdfTemplate } from '../dist/runtime/server/registry.js';
-export { NuxtPdfError, PDF_ERROR_CODES, PdfErrorCode } from '../dist/runtime/shared/errors.js';
-export { usePdfPageNumbers } from '../dist/runtime/composables/index.js';
-export { PdfComponentProps, PdfDefinition, PdfRenderResult, PdfTemplate } from '../dist/runtime/shared/template.js';
+export { NuxtPdfError, PDF_ERROR_CODES, PdfErrorCode, PdfInvoiceIssue, PdfSourcePosition } from '../dist/runtime/shared/errors.js';
+export { DecimalInput, EInvoice, EInvoiceAddress, EInvoiceBuyer, EInvoiceContact, EInvoiceDelivery, EInvoiceDocumentAllowanceCharge, EInvoiceDocumentType, EInvoiceElectronicAddress, EInvoiceIssue, EInvoiceLine, EInvoiceLineAllowanceCharge, EInvoiceLineTotals, EInvoicePayment, EInvoicePaymentMeans, EInvoicePeriod, EInvoicePrecedingInvoice, EInvoiceProfile, EInvoiceSeller, EInvoiceTotals, EInvoiceUnit, EInvoiceUnitName, EInvoiceVat, EInvoiceVatBreakdown, EInvoiceVatCategory, RenderEInvoiceXmlOptions, ValidateEInvoiceOptions, computeEInvoice, renderEInvoiceXml, validateEInvoice } from '../dist/runtime/einvoice/index.js';
+export { ParseRichTextMarkdownOptions, PdfRichBlock, PdfRichBreak, PdfRichCode, PdfRichComponent, PdfRichFootnote, PdfRichHeading, PdfRichImage, PdfRichInline, PdfRichJsonValue, PdfRichLink, PdfRichList, PdfRichParagraph, PdfRichQuote, PdfRichRule, PdfRichTable, PdfRichTableCell, PdfRichTextIssue, PdfRichTextRun, parseRichTextHtml, parseRichTextMarkdown, validateRichText } from '../dist/runtime/rich-text/index.js';
+export { PdfComponentProps, PdfDefinition, PdfImageWarning, PdfLayoutWarning, PdfRenderResult, PdfTemplate } from '../dist/runtime/shared/template.js';
 ```

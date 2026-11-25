@@ -1,0 +1,416 @@
+{
+  "profile": "table",
+  "invariants": [
+    "I14"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 1788,
+    "rule": "documents"
+  },
+  "note": "Found by I14 in the 2,000-document table run of H6 (1 document). Reduced form: two tables, then a view (margin 5, paddingTop 13, the bookmark) whose first and only content is a table with marginTop 16 and one row. The table moves to page 4; the view starts on page 3, so its bookmark points to page 3. Same finding as fixed-h6a-empty-bordered-fragment-before-moved-text.json (there the view has a border, so the empty fragment is painted). Fixed: below other content, a row whose first cell with content shows nothing on the page moves whole (paginate/split.ts, splitRow); the second cell no longer stays a page before the first.",
+  "raw": {
+    "pages": [
+      {
+        "size": 4,
+        "landscape": false,
+        "padding": [
+          34,
+          0,
+          14,
+          0
+        ],
+        "fixed": [],
+        "children": [
+          {
+            "t": "table",
+            "font": 4,
+            "columns": [],
+            "header": true,
+            "headerCells": [],
+            "rows": [
+              {
+                "wrap": true,
+                "cells": []
+              },
+              {
+                "wrap": true,
+                "cells": []
+              },
+              {
+                "wrap": true,
+                "cells": []
+              },
+              {
+                "wrap": true,
+                "cells": []
+              },
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 4,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              },
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 4,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              },
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 5,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              },
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 3,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              },
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 5,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              },
+              {
+                "wrap": true,
+                "cells": []
+              },
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 3,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              },
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 3,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              }
+            ],
+            "marginTop": 11,
+            "marginBottom": 0
+          },
+          {
+            "t": "table",
+            "font": 4,
+            "columns": [
+              {
+                "kind": 1,
+                "value": 0
+              },
+              {
+                "kind": 1,
+                "value": 0
+              },
+              {
+                "kind": 0,
+                "value": 0
+              },
+              {
+                "kind": 0,
+                "value": 0
+              }
+            ],
+            "header": false,
+            "headerCells": [],
+            "rows": [
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 3,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  },
+                  {
+                    "n": 5,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  },
+                  {
+                    "n": 4,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  },
+                  {
+                    "n": 4,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              },
+              {
+                "wrap": true,
+                "cells": []
+              },
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 4,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              },
+              {
+                "wrap": true,
+                "cells": []
+              },
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 5,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  },
+                  {
+                    "n": 3,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  },
+                  {
+                    "n": 27,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              },
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 5,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              },
+              {
+                "wrap": true,
+                "cells": []
+              },
+              {
+                "wrap": true,
+                "cells": []
+              },
+              {
+                "wrap": true,
+                "cells": []
+              },
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 3,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              },
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 2,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              },
+              {
+                "wrap": true,
+                "cells": [
+                  {
+                    "n": 18,
+                    "span": 0,
+                    "align": 0,
+                    "link": 0,
+                    "linkAt": 0,
+                    "linkSize": 0,
+                    "linkTo": 0
+                  }
+                ]
+              }
+            ],
+            "marginTop": 12,
+            "marginBottom": 4
+          },
+          {
+            "t": "view",
+            "margin": [
+              5,
+              0,
+              0,
+              0
+            ],
+            "padding": [
+              13,
+              0,
+              0,
+              0
+            ],
+            "border": 0,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "table",
+                "font": 2,
+                "columns": [
+                  {
+                    "kind": 1,
+                    "value": 0
+                  },
+                  {
+                    "kind": 0,
+                    "value": 0
+                  }
+                ],
+                "header": false,
+                "headerCells": [],
+                "rows": [
+                  {
+                    "wrap": true,
+                    "cells": [
+                      {
+                        "n": 2,
+                        "span": 0,
+                        "align": 0,
+                        "link": 0,
+                        "linkAt": 0,
+                        "linkSize": 0,
+                        "linkTo": 0
+                      },
+                      {
+                        "n": 1,
+                        "span": 0,
+                        "align": 0,
+                        "link": 0,
+                        "linkAt": 0,
+                        "linkSize": 0,
+                        "linkTo": 0
+                      }
+                    ]
+                  }
+                ],
+                "marginTop": 16,
+                "marginBottom": 0
+              }
+            ],
+            "bookmark": true
+          }
+        ],
+        "bookmark": false
+      }
+    ],
+    "tagged": true
+  }
+}

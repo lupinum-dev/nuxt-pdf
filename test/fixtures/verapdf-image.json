@@ -1,0 +1,4 @@
+{
+  "comment": "veraPDF 1.30.4, pinned by digest. Read by scripts/test-pdfa.mjs (pulls it before the tests) and test/pdfa.test.ts (runs it).",
+  "image": "verapdf/cli@sha256:f085855d442ad415e79fabbabcdd1803c2db4ee097cd5b94506c95ecdcfa1728"
+}

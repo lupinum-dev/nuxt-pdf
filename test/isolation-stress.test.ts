@@ -1,14 +1,10 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { setFlagsFromString } from 'node:v8'
+import { runInNewContext } from 'node:vm'
 import { defineComponent, h, type Component } from 'vue'
 import { describe, expect, it } from 'vitest'
-import {
-  PdfDocument,
-  PdfImage,
-  PdfPage,
-  PdfText,
-} from '../src/runtime/components'
-import { usePdfPageNumbers } from '../src/runtime/composables'
+import { PDF_COMPONENTS } from '../src/runtime/components'
 import { DEFAULT_PDF_RENDER_LIMITS } from '../src/runtime/server/render-limits'
 import { createPdfTemplate } from '../src/runtime/server/registry'
 import {
@@ -16,6 +12,9 @@ import {
   type PdfDefinition,
 } from '../src/runtime/shared/template'
 import { parsePdf } from '../src/test/pdf'
+import { createPdfFontStore, fontStoreOf } from '../src/runtime/server/engine/fonts'
+
+const { PdfDocument, PdfImage, PdfPage, PdfPageRef, PdfText } = PDF_COMPONENTS
 
 const PNG = readFileSync(resolve('test/fixtures/assets/sample.png'))
 const FONT_DATA = `data:font/ttf;base64,${readFileSync(
@@ -38,7 +37,6 @@ const stressComponent = (
   name: `ConcurrentStress${index}`,
   props: { token: { required: true, type: String } },
   setup(props) {
-    const pages = multiPass ? usePdfPageNumbers() : undefined
     const destination = `destination-${index}`
     return () => h(PdfDocument, {}, {
       default: () => h(PdfPage, { size: 'A4', style: { padding: 32 } }, {
@@ -47,7 +45,11 @@ const stressComponent = (
             id: destination,
             bookmark: `Bookmark ${index}`,
             style: { fontFamily: `Stress Font ${index}`, fontSize: 14 },
-          }, { default: () => `${props.token} page ${pages?.[destination] ?? 1}` }),
+          }, {
+            default: () => multiPass
+              ? [`${props.token} page `, h(PdfPageRef, { to: destination })]
+              : `${props.token} page 1`,
+          }),
           h(PdfImage, {
             src: `images/unique-${index}.png`,
             style: { height: 8, width: 8 },
@@ -138,6 +140,8 @@ describe('render isolation stress', () => {
     }
   }, 60_000)
 
+  // Catches state carried from one render to the next on the same handle
+  // and the same warm worker: a document that prints an earlier token.
   it('keeps 100 sequential renders independent', async () => {
     const template = createPdfTemplate<StressProps>(
       'sequential',
@@ -147,8 +151,12 @@ describe('render isolation stress', () => {
     for (let index = 0; index < 100; index += 1) {
       const token = `SEQUENTIAL-${index}`
       const result = await template.render({ token })
+      const text = (await parsePdf(await result.toUint8Array())).pages
+        .map(page => page.text)
+        .join('\n')
       expect(result.metadata.title).toBe(`Stress ${token}`)
       expect(result.diagnostics.pageCount).toBe(1)
+      expect(text.match(/SEQUENTIAL-\d+/g)).toEqual([token])
     }
   }, 60_000)
 
@@ -178,7 +186,34 @@ describe('render isolation stress', () => {
     expect(parsed.pages[0]?.textItems).toEqual(['Own'])
   })
 
-  it('renders an explicit 100-page document without state accumulation', async () => {
+  // Catches font data shared between renders that holds one render's font
+  // object: fontkit gives each table it decodes a hidden `parent`, the font
+  // that asked, and the decoded tables are shared, so the first render's font
+  // object (with the strings it shaped) stayed reachable for the life of the
+  // worker. The render's font object must be collectable once the render
+  // drops it.
+  it('keeps no font object of an earlier render alive', async () => {
+    setFlagsFromString('--expose-gc')
+    const collect: unknown = runInNewContext('gc')
+    if (typeof collect !== 'function') throw new Error('No garbage collector function')
+    const layOutOnce = async (): Promise<WeakRef<object>> => {
+      const store = fontStoreOf(createPdfFontStore([{ family: 'Retained Font', src: FONT_DATA }]))
+      await store.load({ fontFamily: 'Retained Font' })
+      const font = store.getFont({ fontFamily: 'Retained Font' }).data
+      if (font === null || font.type !== 'TTF') throw new Error('The font did not load as a fontkit font')
+      font.layout('SECRET-TEXT office', undefined, undefined, undefined, 'ltr')
+      return new WeakRef(font)
+    }
+    const first = await layOutOnce()
+    await layOutOnce()
+    await new Promise(resolve => setImmediate(resolve))
+    collect()
+
+    expect(first.deref()).toBeUndefined()
+  })
+
+  // Catches pages that share or repeat content: every page prints only its own text.
+  it('renders each of 100 explicit pages with only its own text', async () => {
     const component = asTemplate(defineComponent({
       name: 'HundredPages',
       inheritAttrs: false,
@@ -197,7 +232,7 @@ describe('render isolation stress', () => {
 
     expect(result.diagnostics.pageCount).toBe(100)
     expect(parsed.pageCount).toBe(100)
-    expect(parsed.pages[0]?.text).toContain('PAGE-1')
-    expect(parsed.pages[99]?.text).toContain('PAGE-100')
+    expect(parsed.pages.map(page => page.text.match(/PAGE-\d+/g)))
+      .toEqual(Array.from({ length: 100 }, (_, index) => [`PAGE-${index + 1}`]))
   }, 60_000)
 })

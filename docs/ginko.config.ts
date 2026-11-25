@@ -21,7 +21,8 @@ export default defineSite({
   },
   agents: { description: "Use this site to author and render PDF documents with Nuxt PDF." },
   linkCheck: { anchors: "error" },
-  pages: { home: { en: "/" } },
+  // playground: app/pages/playground.vue, an app page with no content entry.
+  pages: { home: { en: "/" }, playground: { en: "/playground" } },
   components,
   bricks: {
     home: docsHome(),

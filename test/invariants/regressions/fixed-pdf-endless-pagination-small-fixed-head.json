@@ -1,0 +1,144 @@
+{
+  "profile": "fixed",
+  "invariants": [
+    "PDF"
+  ],
+  "origin": {
+    "seed": 20261116,
+    "index": 22,
+    "rule": "documents"
+  },
+  "note": "Finding F5, fixed by the layout copy (D19). It was: pagination does not end (PDF_LIMIT_EXCEEDED at 10 s in the worker) with one 8 pt in-flow fixed text and no block that cannot break; the nested breakable view has minHeight 233 and break. Not the documented limit, which needs an unbreakable block higher than the room.",
+  "raw": {
+    "pages": [
+      {
+        "size": 2,
+        "landscape": false,
+        "padding": [
+          0,
+          24,
+          0,
+          53
+        ],
+        "fixed": [
+          {
+            "kind": 0,
+            "pages": 0,
+            "absolute": false,
+            "n": 1,
+            "font": 0,
+            "numbers": 0,
+            "offset": 0,
+            "fromBottom": false,
+            "inset": 0,
+            "marginBottom": 0
+          }
+        ],
+        "children": [
+          {
+            "t": "view",
+            "margin": [
+              9,
+              3,
+              13,
+              17
+            ],
+            "padding": [
+              1,
+              13,
+              0,
+              4
+            ],
+            "border": 0,
+            "minHeight": 0,
+            "wrap": true,
+            "brk": false,
+            "children": [
+              {
+                "t": "view",
+                "margin": [
+                  4,
+                  18,
+                  8,
+                  16
+                ],
+                "padding": [
+                  7,
+                  5,
+                  11,
+                  14
+                ],
+                "border": 3,
+                "minHeight": 233,
+                "wrap": true,
+                "brk": true,
+                "children": [
+                  {
+                    "t": "view",
+                    "margin": [
+                      16,
+                      6,
+                      13,
+                      11
+                    ],
+                    "padding": [
+                      9,
+                      2,
+                      15,
+                      11
+                    ],
+                    "border": 0,
+                    "minHeight": 0,
+                    "wrap": false,
+                    "brk": false,
+                    "children": [
+                      {
+                        "t": "text",
+                        "n": 35,
+                        "font": 2,
+                        "lineHeight": 1,
+                        "align": 1,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 20,
+                        "marginBottom": 13,
+                        "extra": 0,
+                        "ref": 802
+                      },
+                      {
+                        "t": "text",
+                        "n": 23,
+                        "font": 0,
+                        "lineHeight": 1,
+                        "align": 2,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 1,
+                        "marginBottom": 1,
+                        "extra": 0,
+                        "ref": 586
+                      },
+                      {
+                        "t": "text",
+                        "n": 30,
+                        "font": 4,
+                        "lineHeight": 2,
+                        "align": 2,
+                        "wrap": true,
+                        "brk": false,
+                        "marginTop": 18,
+                        "marginBottom": 19,
+                        "extra": 0,
+                        "ref": 472
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
