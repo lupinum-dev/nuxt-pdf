@@ -40,3 +40,6 @@ allowBuilds:
   sharp: true
   unrs-resolver: true
   vue-demi: true
+minimumReleaseAgeExclude:
+  # Renovate security update: nuxt@4.6.4
+  - nuxt@4.6.4
